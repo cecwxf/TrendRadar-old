@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from trendradar.storage.base import StorageBackend, NewsItem, NewsData, RSSItem, RSSData
+from trendradar.storage.market_models import MarketData, CryptoItem, StockItem
 from trendradar.utils.time import (
     get_configured_time,
     format_date_folder,
@@ -120,13 +121,15 @@ class LocalStorageBackend(StorageBackend):
         获取 schema.sql 文件路径
 
         Args:
-            db_type: 数据库类型 ("news" 或 "rss")
+            db_type: 数据库类型 ("news", "rss", 或 "market")
 
         Returns:
             schema 文件路径
         """
         if db_type == "rss":
             return Path(__file__).parent / "rss_schema.sql"
+        elif db_type == "market":
+            return Path(__file__).parent / "market_schema.sql"
         return Path(__file__).parent / "schema.sql"
 
     def _init_tables(self, conn: sqlite3.Connection, db_type: str = "news") -> None:
@@ -1334,6 +1337,234 @@ class LocalStorageBackend(StorageBackend):
         except Exception as e:
             print(f"[本地存储] 获取最新 RSS 数据失败: {e}")
             return None
+
+    # ========================================
+    # 市场数据存储方法
+    # ========================================
+
+    def save_market_data(self, data: MarketData) -> bool:
+        """
+        保存市场数据到 SQLite（加密货币 + 股票）
+
+        Args:
+            data: 市场数据
+
+        Returns:
+            是否保存成功
+        """
+        try:
+            conn = self._get_connection(data.date, db_type="market")
+            cursor = conn.cursor()
+
+            now_str = self._get_configured_time().strftime("%Y-%m-%d %H:%M:%S")
+
+            # 统计计数器
+            crypto_count = 0
+            stock_count = 0
+            history_count = 0
+
+            # 保存加密货币数据
+            for symbol, item in data.crypto_items.items():
+                try:
+                    cursor.execute("""
+                        INSERT INTO crypto_data
+                        (date, crawl_time, symbol, price, price_change_24h, volume_24h, timestamp, exchange)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(date, crawl_time, symbol) DO UPDATE SET
+                            price = excluded.price,
+                            price_change_24h = excluded.price_change_24h,
+                            volume_24h = excluded.volume_24h,
+                            timestamp = excluded.timestamp
+                    """, (data.date, data.crawl_time, symbol, item.price,
+                          item.price_change_24h, item.volume_24h, item.timestamp, item.exchange))
+
+                    # 保存价格历史数据
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO price_history
+                        (asset_type, symbol, timestamp, price)
+                        VALUES ('crypto', ?, ?, ?)
+                    """, (symbol, item.timestamp, item.price))
+
+                    crypto_count += 1
+                    history_count += 1
+
+                except sqlite3.Error as e:
+                    print(f"[本地存储] 保存加密货币数据失败 [{symbol}]: {e}")
+
+            # 保存股票数据
+            for symbol, item in data.stock_items.items():
+                try:
+                    cursor.execute("""
+                        INSERT INTO stock_data
+                        (date, crawl_time, symbol, name, price, change, change_percent, volume, timestamp, market)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(date, crawl_time, symbol) DO UPDATE SET
+                            name = excluded.name,
+                            price = excluded.price,
+                            change = excluded.change,
+                            change_percent = excluded.change_percent,
+                            volume = excluded.volume,
+                            timestamp = excluded.timestamp
+                    """, (data.date, data.crawl_time, symbol, item.name, item.price,
+                          item.change, item.change_percent, item.volume, item.timestamp, item.market))
+
+                    # 保存价格历史数据
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO price_history
+                        (asset_type, symbol, timestamp, price)
+                        VALUES ('stock', ?, ?, ?)
+                    """, (symbol, item.timestamp, item.price))
+
+                    stock_count += 1
+                    history_count += 1
+
+                except sqlite3.Error as e:
+                    print(f"[本地存储] 保存股票数据失败 [{symbol}]: {e}")
+
+            conn.commit()
+
+            # 输出统计日志
+            print(f"[本地存储] 市场数据保存完成：加密货币 {crypto_count} 条，股票 {stock_count} 条，历史价格 {history_count} 条")
+
+            return True
+
+        except Exception as e:
+            print(f"[本地存储] 保存市场数据失败: {e}")
+            return False
+
+    def get_latest_market_data(self, date: Optional[str] = None) -> Optional[MarketData]:
+        """
+        获取最新一次抓取的市场数据
+
+        Args:
+            date: 日期字符串（YYYY-MM-DD），默认为今天
+
+        Returns:
+            最新抓取的市场数据，如果没有数据返回 None
+        """
+        try:
+            db_path = self._get_db_path(date, db_type="market")
+            if not db_path.exists():
+                return None
+
+            conn = self._get_connection(date, db_type="market")
+            cursor = conn.cursor()
+
+            crawl_date = self._format_date_folder(date)
+
+            # 获取最新的抓取时间
+            cursor.execute("""
+                SELECT DISTINCT crawl_time FROM crypto_data
+                WHERE date = ?
+                ORDER BY crawl_time DESC
+                LIMIT 1
+            """, (crawl_date,))
+
+            time_row = cursor.fetchone()
+            if not time_row:
+                return None
+
+            latest_time = time_row[0]
+
+            # 获取加密货币数据
+            cursor.execute("""
+                SELECT symbol, price, price_change_24h, volume_24h, timestamp, exchange
+                FROM crypto_data
+                WHERE date = ? AND crawl_time = ?
+            """, (crawl_date, latest_time))
+
+            crypto_items: Dict[str, CryptoItem] = {}
+            for row in cursor.fetchall():
+                symbol = row[0]
+                crypto_items[symbol] = CryptoItem(
+                    symbol=symbol,
+                    price=row[1],
+                    price_change_24h=row[2],
+                    volume_24h=row[3],
+                    timestamp=row[4],
+                    exchange=row[5],
+                    price_history=[],
+                )
+
+            # 获取股票数据
+            cursor.execute("""
+                SELECT symbol, name, price, change, change_percent, volume, timestamp, market
+                FROM stock_data
+                WHERE date = ? AND crawl_time = ?
+            """, (crawl_date, latest_time))
+
+            stock_items: Dict[str, StockItem] = {}
+            for row in cursor.fetchall():
+                symbol = row[0]
+                stock_items[symbol] = StockItem(
+                    symbol=symbol,
+                    name=row[1],
+                    price=row[2],
+                    change=row[3],
+                    change_percent=row[4],
+                    volume=row[5],
+                    timestamp=row[6],
+                    market=row[7],
+                    price_history=[],
+                )
+
+            return MarketData(
+                date=crawl_date,
+                crawl_time=latest_time,
+                crypto_items=crypto_items,
+                stock_items=stock_items,
+                failed_sources=[],
+            )
+
+        except Exception as e:
+            print(f"[本地存储] 获取最新市场数据失败: {e}")
+            return None
+
+    def get_price_history(
+        self,
+        asset_type: str,
+        symbol: str,
+        hours: int = 24,
+        date: Optional[str] = None
+    ) -> List[Dict]:
+        """
+        获取价格历史数据（用于绘制图表）
+
+        Args:
+            asset_type: 资产类型 ("crypto" 或 "stock")
+            symbol: 资产符号（如 "BTC", "^GSPC"）
+            hours: 获取最近多少小时的数据
+            date: 日期字符串（YYYY-MM-DD），默认为今天
+
+        Returns:
+            价格历史数据列表 [{"timestamp": "2025-01-01 10:00:00", "price": 42000.0}, ...]
+        """
+        try:
+            db_path = self._get_db_path(date, db_type="market")
+            if not db_path.exists():
+                return []
+
+            conn = self._get_connection(date, db_type="market")
+            cursor = conn.cursor()
+
+            # 计算时间范围
+            cutoff_time = self._get_configured_time() - timedelta(hours=hours)
+            cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            # 查询价格历史
+            cursor.execute("""
+                SELECT timestamp, price
+                FROM price_history
+                WHERE asset_type = ? AND symbol = ? AND timestamp >= ?
+                ORDER BY timestamp ASC
+            """, (asset_type, symbol, cutoff_str))
+
+            rows = cursor.fetchall()
+            return [{"timestamp": row[0], "price": row[1]} for row in rows]
+
+        except Exception as e:
+            print(f"[本地存储] 获取价格历史失败 [{asset_type}/{symbol}]: {e}")
+            return []
 
     def __del__(self):
         """析构函数，确保关闭连接"""

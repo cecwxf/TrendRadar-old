@@ -1,0 +1,257 @@
+# ═══════════════════════════════════════════════════════════════
+#                TrendRadar 金融市场仪表盘配置
+# ═══════════════════════════════════════════════════════════════
+
+
+# ===============================================================
+# 1. 基础设置
+# ===============================================================
+app:
+  # 时区配置
+  timezone: "Asia/Shanghai"
+  show_version_update: true
+
+
+# ===============================================================
+# 2. 市场数据源配置
+# ===============================================================
+market:
+  # 加密货币配置
+  crypto:
+    enabled: true
+    symbols:
+      - "BTC"                         # 比特币
+      - "ETH"                         # 以太坊
+    exchange: "CoinGecko"             # 数据源: CoinGecko API
+    update_interval: 3600             # 更新间隔（秒），默认1小时
+
+  # 股票市场配置
+  stocks:
+    enabled: true
+    # 预定义指数（勿修改 symbol）
+    indices:
+      # 美股
+      - symbol: "^GSPC"
+        name: "S&P 500"
+        market: "US"
+      - symbol: "^IXIC"
+        name: "Nasdaq"
+        market: "US"
+      - symbol: "^DJI"
+        name: "道琼斯指数"
+        market: "US"
+
+      # 港股
+      - symbol: "^HSI"
+        name: "恒生指数"
+        market: "HK"
+
+      # A股
+      - symbol: "000001.SS"
+        name: "上证指数"
+        market: "CN"
+      - symbol: "399001.SZ"
+        name: "深证成指"
+        market: "CN"
+      - symbol: "399006.SZ"
+        name: "创业板指"
+        market: "CN"
+
+    # 自定义股票（可选）
+    custom_stocks:
+      - symbol: "AAPL"
+        name: "Apple"
+        market: "US"
+        enabled: false
+      - symbol: "TSLA"
+        name: "Tesla"
+        market: "US"
+        enabled: false
+      - symbol: "0700.HK"
+        name: "腾讯控股"
+        market: "HK"
+        enabled: false
+
+    update_interval: 3600             # 更新间隔（秒），默认1小时
+    data_source: "Yahoo Finance"      # 数据源
+
+
+# ===============================================================
+# 3. RSS 订阅 - 硅谷王川推文
+# ===============================================================
+rss:
+  enabled: true
+
+  feeds:
+    - id: "chuanwang-twitter"
+      name: "硅谷王川 Twitter"
+      url: "https://rsshub.app/twitter/user/chuanwang"
+      max_items: 10                   # 最多显示条数
+      enabled: true
+
+
+# ===============================================================
+# 4. AI 分析配置
+# ===============================================================
+ai_analysis:
+  enabled: true
+  provider: "claude"                  # AI 提供商: claude | openai
+
+  # Claude API 配置
+  claude:
+    model: "claude-sonnet-4-5-20250929"
+    max_tokens: 2000
+    temperature: 0.7
+    api_key: ""                       # ⚠️ 请填入 GitHub Secrets: ANTHROPIC_API_KEY
+
+  # OpenAI API 配置（备选）
+  openai:
+    model: "gpt-4"
+    max_tokens: 2000
+    temperature: 0.7
+    api_key: ""                       # 备选：OPENAI_API_KEY
+
+  # 分析选项
+  options:
+    include_investment_advice: true   # 是否包含投资建议
+    include_risk_warning: true        # 是否包含风险提示
+    include_news_context: true        # 是否结合 RSS 新闻分析
+
+
+# ===============================================================
+# 5. 仪表盘配置
+# ===============================================================
+dashboard:
+  enabled: true
+
+  # GitHub Pages 部署配置
+  github_pages:
+    enabled: true
+    repository: "your-username/TrendRadar"  # ⚠️ 修改为你的仓库
+    branch: "gh-pages"                # 部署分支
+    path: "/"                         # 部署路径
+
+  # 仪表盘选项
+  options:
+    show_price_history: true          # 显示价格历史图表
+    history_hours: 24                 # 历史数据时间范围（小时）
+    show_ai_analysis: true            # 显示 AI 分析
+    show_rss_feed: true               # 显示 RSS 推文
+    theme: "dark"                     # 主题: dark | light
+
+
+# ===============================================================
+# 6. 推送通知配置
+# ===============================================================
+notification:
+  enabled: true
+
+  # 推送时间窗口（可选）
+  push_window:
+    enabled: false
+    start: "09:00"
+    end: "21:00"
+    once_per_day: false               # false = 每小时推送一次
+
+  # 推送条件
+  triggers:
+    price_change_threshold: 5.0       # 价格变动超过 X% 时推送（0 = 禁用）
+    always_push: true                 # 是否总是推送（忽略价格变动阈值）
+
+  # 推送格式
+  format: "rich_card"                 # rich_card | markdown | text
+
+  # 推送渠道
+  channels:
+    feishu:
+      webhook_url: ""                 # ⚠️ 请填入 GitHub Secrets: FEISHU_WEBHOOK
+      use_rich_card: true             # 使用 Rich Card 格式
+
+    dingtalk:
+      webhook_url: ""
+
+    wework:
+      webhook_url: ""
+      msg_type: "markdown"
+
+    telegram:
+      bot_token: ""
+      chat_id: ""
+
+    email:
+      from: ""
+      password: ""
+      to: ""
+      smtp_server: ""
+      smtp_port: ""
+
+
+# ===============================================================
+# 7. 存储配置
+# ===============================================================
+storage:
+  backend: "local"                    # local | remote
+
+  formats:
+    sqlite: true                      # SQLite 数据库（必须）
+    html: true                        # HTML 仪表盘
+    json: true                        # JSON 数据快照
+
+  local:
+    data_dir: "output"
+    market_db_dir: "output/market"    # 市场数据库目录
+    dashboard_dir: "output/dashboard" # 仪表盘输出目录
+    retention_days: 30                # 保留30天历史数据
+
+  remote:
+    endpoint_url: ""
+    bucket_name: ""
+    access_key_id: ""
+    secret_access_key: ""
+    region: ""
+
+
+# ===============================================================
+# 8. MCP Server 配置（可选）
+# ===============================================================
+mcp_server:
+  enabled: false                      # 是否启用 MCP Server
+  host: "localhost"
+  port: 8000
+
+  # MCP 工具配置
+  tools:
+    - get_crypto_prices
+    - get_stock_prices
+    - get_market_summary
+    - get_price_history
+    - calculate_volatility
+    - compare_performance
+    - get_market_sentiment
+
+
+# ===============================================================
+# 9. 高级设置
+# ===============================================================
+advanced:
+  # 版本检查
+  version_check_url: "https://raw.githubusercontent.com/sansan0/TrendRadar/refs/heads/master/version"
+
+  # 数据获取设置
+  crawler:
+    request_interval: 2000            # 请求间隔（毫秒）
+    timeout: 30                       # 超时时间（秒）
+    retry_times: 3                    # 重试次数
+    use_proxy: false
+    default_proxy: ""
+
+  # 价格历史数据
+  price_history:
+    max_data_points: 168              # 最多保存数据点（7天 * 24小时）
+    cleanup_interval: 86400           # 清理间隔（秒），24小时
+
+  # 性能优化
+  performance:
+    cache_enabled: true               # 启用缓存
+    cache_ttl: 300                    # 缓存过期时间（秒）
+    parallel_fetch: true              # 并行获取数据
