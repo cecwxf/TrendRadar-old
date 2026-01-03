@@ -83,8 +83,9 @@ open output/dashboard/index.html
 ### 2. 启用 GitHub Pages
 
 1. 进入仓库 Settings → Pages
-2. Source 选择 `gh-pages` 分支
-3. 保存后等待部署完成
+2. Source 选择 `Deploy from a branch`
+3. Branch 选择 `master` 分支，目录选择 `/docs`
+4. 保存后等待部署完成
 
 ### 3. 访问仪表盘
 

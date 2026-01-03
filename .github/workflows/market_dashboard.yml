@@ -77,16 +77,27 @@ jobs:
             echo "✅ Dashboard HTML generated: output/dashboard/index.html"
           fi
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy to docs folder
         if: success()
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./output/dashboard
-          publish_branch: gh-pages
-          commit_message: "Update market dashboard - ${{ github.event.head_commit.message }}"
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
+        run: |
+          echo "📂 Copying dashboard to docs/ folder..."
+          mkdir -p docs
+          cp -r output/dashboard/* docs/
+          echo "✅ Files copied to docs/"
+
+      - name: Commit and push to master
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "ℹ️  No changes to commit"
+          else
+            git commit -m "Update market dashboard - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push origin master
+            echo "✅ Dashboard updated and pushed to master"
+          fi
 
       - name: Archive data artifacts
         if: success()
@@ -108,7 +119,7 @@ jobs:
           echo "🕐 **Updated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ -f output/dashboard/index.html ]; then
+          if [ -f docs/index.html ]; then
             echo "📊 **Dashboard**: [View Live Dashboard](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
           fi
 

@@ -1,0 +1,924 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>金融市场仪表盘 - 2026-01-03</title>
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                margin: 0;
+                padding: 0;
+                background: #0f172a;
+                color: #e2e8f0;
+                line-height: 1.6;
+            }
+
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+
+            .header {
+                background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%);
+                color: white;
+                padding: 40px 32px;
+                text-align: center;
+                border-radius: 16px;
+                margin-bottom: 32px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+
+            .header h1 {
+                margin: 0 0 12px 0;
+                font-size: 36px;
+                font-weight: 700;
+                letter-spacing: -0.5px;
+            }
+
+            .header .subtitle {
+                font-size: 16px;
+                opacity: 0.9;
+                font-weight: 400;
+            }
+
+            .section {
+                background: #1e293b;
+                border-radius: 12px;
+                padding: 24px;
+                margin-bottom: 24px;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            }
+
+            .section-title {
+                font-size: 20px;
+                font-weight: 600;
+                margin: 0 0 20px 0;
+                color: #f1f5f9;
+                border-left: 4px solid #3b82f6;
+                padding-left: 12px;
+            }
+
+            .cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 16px;
+                margin-bottom: 24px;
+            }
+
+            .card {
+                background: #334155;
+                border-radius: 10px;
+                padding: 20px;
+                border: 1px solid #475569;
+                transition: all 0.2s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .card:hover {
+                border-color: #3b82f6;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+                transform: translateY(-2px);
+            }
+
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+
+            .card-symbol {
+                font-size: 18px;
+                font-weight: 700;
+                color: #f1f5f9;
+            }
+
+            .card-exchange {
+                font-size: 12px;
+                color: #94a3b8;
+                background: #1e293b;
+                padding: 4px 8px;
+                border-radius: 4px;
+            }
+
+            .card-price {
+                font-size: 32px;
+                font-weight: 700;
+                margin: 8px 0;
+                color: #f1f5f9;
+            }
+
+            .card-change {
+                font-size: 16px;
+                font-weight: 600;
+                padding: 4px 10px;
+                border-radius: 6px;
+                display: inline-block;
+            }
+
+            .card-change.positive {
+                color: #22c55e;
+                background: rgba(34, 197, 94, 0.1);
+            }
+
+            .card-change.negative {
+                color: #ef4444;
+                background: rgba(239, 68, 68, 0.1);
+            }
+
+            .card-volume {
+                font-size: 13px;
+                color: #94a3b8;
+                margin-top: 12px;
+            }
+
+            .chart-container {
+                width: 100%;
+                height: 400px;
+                margin-bottom: 16px;
+            }
+
+            .ai-insights {
+                background: linear-gradient(135deg, #1e3a8a 0%, #6b21a8 100%);
+                border-radius: 12px;
+                padding: 24px;
+                margin-bottom: 24px;
+                border: 1px solid #3730a3;
+            }
+
+            .ai-insights h3 {
+                margin: 0 0 16px 0;
+                font-size: 20px;
+                color: #f1f5f9;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .ai-insights .content {
+                color: #e2e8f0;
+                line-height: 1.8;
+                white-space: pre-wrap;
+            }
+
+            .rss-feed {
+                background: #1e293b;
+                border-radius: 12px;
+                padding: 24px;
+            }
+
+            .rss-item {
+                background: #334155;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border-left: 3px solid #3b82f6;
+                transition: all 0.2s ease;
+            }
+
+            .rss-item:hover {
+                background: #3f4d63;
+                transform: translateX(4px);
+            }
+
+            .rss-item .title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #f1f5f9;
+                margin-bottom: 8px;
+            }
+
+            .rss-item .meta {
+                font-size: 13px;
+                color: #94a3b8;
+            }
+
+            .rss-item .summary {
+                font-size: 14px;
+                color: #cbd5e1;
+                margin-top: 8px;
+                line-height: 1.6;
+            }
+
+            .timestamp {
+                text-align: center;
+                color: #64748b;
+                font-size: 14px;
+                margin-top: 32px;
+                padding: 16px;
+            }
+
+            @media (max-width: 768px) {
+                .container {
+                    padding: 12px;
+                }
+
+                .header h1 {
+                    font-size: 28px;
+                }
+
+                .cards-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .chart-container {
+                    height: 300px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- 头部 -->
+            <div class="header">
+                <h1>📈 金融市场仪表盘</h1>
+                <div class="subtitle">实时追踪加密货币、股票市场及AI智能分析</div>
+            </div>
+
+            <!-- 加密货币部分 -->
+            <div class="section">
+                <h2 class="section-title">💰 加密货币行情</h2>
+                <div class="cards-grid">
+                    
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">BTC</span>
+                <span class="card-exchange">CoinGecko</span>
+            </div>
+            <div class="card-price">$89,604.00</div>
+            <div class="card-change positive">
+                ▲ +0.83%
+            </div>
+            <div class="card-volume">
+                成交量: $49,965,326,319
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">ETH</span>
+                <span class="card-exchange">CoinGecko</span>
+            </div>
+            <div class="card-price">$3,084.54</div>
+            <div class="card-change positive">
+                ▲ +1.95%
+            </div>
+            <div class="card-volume">
+                成交量: $25,058,060,839
+            </div>
+        </div>
+        
+                </div>
+            </div>
+
+            <!-- 股票市场部分 -->
+            <div class="section">
+                <h2 class="section-title">📊 全球股票指数</h2>
+                <div class="cards-grid">
+                    
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">S&P 500</span>
+                <span class="card-exchange">美股</span>
+            </div>
+            <div class="card-price">$6,858.47</div>
+            <div class="card-change positive">
+                ▲ +12.97 (+0.19%)
+            </div>
+            <div class="card-volume">
+                成交量: 2,633,650,000
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">NASDAQ Composite</span>
+                <span class="card-exchange">美股</span>
+            </div>
+            <div class="card-price">$23,235.63</div>
+            <div class="card-change negative">
+                ▼ -6.36 (-0.03%)
+            </div>
+            <div class="card-volume">
+                成交量: 6,112,022,000
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">Dow Jones Industrial Average</span>
+                <span class="card-exchange">美股</span>
+            </div>
+            <div class="card-price">$48,382.39</div>
+            <div class="card-change positive">
+                ▲ +319.10 (+0.66%)
+            </div>
+            <div class="card-volume">
+                成交量: 465,061,562
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">HANG SENG INDEX</span>
+                <span class="card-exchange">港股</span>
+            </div>
+            <div class="card-price">$26,338.47</div>
+            <div class="card-change positive">
+                ▲ +707.93 (+2.76%)
+            </div>
+            <div class="card-volume">
+                成交量: 0
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">SSE Composite Index</span>
+                <span class="card-exchange">A股</span>
+            </div>
+            <div class="card-price">$3,968.84</div>
+            <div class="card-change positive">
+                ▲ +3.72 (+0.09%)
+            </div>
+            <div class="card-volume">
+                成交量: 1,830,508,744
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">Shenzhen Index</span>
+                <span class="card-exchange">A股</span>
+            </div>
+            <div class="card-price">$13,525.02</div>
+            <div class="card-change negative">
+                ▼ -79.04 (-0.58%)
+            </div>
+            <div class="card-volume">
+                成交量: 428,970,086
+            </div>
+        </div>
+        
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-symbol">ChiNext</span>
+                <span class="card-exchange">A股</span>
+            </div>
+            <div class="card-price">$3,203.17</div>
+            <div class="card-change negative">
+                ▼ -39.73 (-1.23%)
+            </div>
+            <div class="card-volume">
+                成交量: 3,650,572,876
+            </div>
+        </div>
+        
+                </div>
+            </div>
+
+            <!-- 价格走势图表 -->
+            <div class="section">
+                <h2 class="section-title">📉 价格走势（24小时）</h2>
+                <div id="chart-BTC" class="chart-container"></div>
+<div id="chart-ETH" class="chart-container"></div>
+<div id="chart-S&P500" class="chart-container"></div>
+<div id="chart-NASDAQ" class="chart-container"></div>
+<div id="chart-HSI" class="chart-container"></div>
+            </div>
+
+            <!-- AI 分析 -->
+            
+
+            <!-- RSS 推文 -->
+            
+
+            <!-- 时间戳 -->
+            <div class="timestamp">
+                更新时间: 2026-01-03 15-23 | 数据来源: CoinGecko, Yahoo Finance
+            </div>
+        </div>
+
+        <script>
+            
+        (function() {
+            var chartDom = document.getElementById('chart-BTC');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+            var option = {
+                title: {
+                    text: 'BTC 价格走势',
+                    textStyle: {
+                        color: '#f1f5f9',
+                        fontSize: 18,
+                        fontWeight: 600
+                    },
+                    left: '20px'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#f1f5f9'
+                    },
+                    formatter: function(params) {
+                        var param = params[0];
+                        return param.name + '<br/>' +
+                               '<span style="color:#3b82f6;">●</span> ' +
+                               '$' + param.value.toFixed(2);
+                    }
+                },
+                grid: {
+                    left: '50px',
+                    right: '50px',
+                    top: '60px',
+                    bottom: '50px',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['15:06', '15:09', '15:22'],
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    splitLine: {
+                        lineStyle: { color: '#334155', type: 'dashed' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        formatter: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                series: [{
+                    name: 'BTC',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#3b82f6',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                                { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                            ]
+                        }
+                    },
+                    data: [89888.0, 89872.0, 89604.0]
+                }]
+            };
+            myChart.setOption(option);
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        })();
+        
+
+        (function() {
+            var chartDom = document.getElementById('chart-ETH');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+            var option = {
+                title: {
+                    text: 'ETH 价格走势',
+                    textStyle: {
+                        color: '#f1f5f9',
+                        fontSize: 18,
+                        fontWeight: 600
+                    },
+                    left: '20px'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#f1f5f9'
+                    },
+                    formatter: function(params) {
+                        var param = params[0];
+                        return param.name + '<br/>' +
+                               '<span style="color:#3b82f6;">●</span> ' +
+                               '$' + param.value.toFixed(2);
+                    }
+                },
+                grid: {
+                    left: '50px',
+                    right: '50px',
+                    top: '60px',
+                    bottom: '50px',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['15:06', '15:09', '15:22'],
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    splitLine: {
+                        lineStyle: { color: '#334155', type: 'dashed' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        formatter: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                series: [{
+                    name: 'ETH',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#3b82f6',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                                { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                            ]
+                        }
+                    },
+                    data: [3100.55, 3099.18, 3084.54]
+                }]
+            };
+            myChart.setOption(option);
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        })();
+        
+
+        (function() {
+            var chartDom = document.getElementById('chart-S&P500');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+            var option = {
+                title: {
+                    text: 'S&P500 价格走势',
+                    textStyle: {
+                        color: '#f1f5f9',
+                        fontSize: 18,
+                        fontWeight: 600
+                    },
+                    left: '20px'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#f1f5f9'
+                    },
+                    formatter: function(params) {
+                        var param = params[0];
+                        return param.name + '<br/>' +
+                               '<span style="color:#3b82f6;">●</span> ' +
+                               '$' + param.value.toFixed(2);
+                    }
+                },
+                grid: {
+                    left: '50px',
+                    right: '50px',
+                    top: '60px',
+                    bottom: '50px',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['15:06', '15:09', '15:22'],
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    splitLine: {
+                        lineStyle: { color: '#334155', type: 'dashed' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        formatter: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                series: [{
+                    name: 'S&P500',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#3b82f6',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                                { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                            ]
+                        }
+                    },
+                    data: [6858.47, 6858.47, 6858.47]
+                }]
+            };
+            myChart.setOption(option);
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        })();
+        
+
+        (function() {
+            var chartDom = document.getElementById('chart-NASDAQ');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+            var option = {
+                title: {
+                    text: 'NASDAQ 价格走势',
+                    textStyle: {
+                        color: '#f1f5f9',
+                        fontSize: 18,
+                        fontWeight: 600
+                    },
+                    left: '20px'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#f1f5f9'
+                    },
+                    formatter: function(params) {
+                        var param = params[0];
+                        return param.name + '<br/>' +
+                               '<span style="color:#3b82f6;">●</span> ' +
+                               '$' + param.value.toFixed(2);
+                    }
+                },
+                grid: {
+                    left: '50px',
+                    right: '50px',
+                    top: '60px',
+                    bottom: '50px',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['15:06', '15:09', '15:23'],
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    splitLine: {
+                        lineStyle: { color: '#334155', type: 'dashed' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        formatter: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                series: [{
+                    name: 'NASDAQ',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#3b82f6',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                                { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                            ]
+                        }
+                    },
+                    data: [23235.629, 23235.629, 23235.629]
+                }]
+            };
+            myChart.setOption(option);
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        })();
+        
+
+        (function() {
+            var chartDom = document.getElementById('chart-HSI');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+            var option = {
+                title: {
+                    text: 'HSI 价格走势',
+                    textStyle: {
+                        color: '#f1f5f9',
+                        fontSize: 18,
+                        fontWeight: 600
+                    },
+                    left: '20px'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    textStyle: {
+                        color: '#f1f5f9'
+                    },
+                    formatter: function(params) {
+                        var param = params[0];
+                        return param.name + '<br/>' +
+                               '<span style="color:#3b82f6;">●</span> ' +
+                               '$' + param.value.toFixed(2);
+                    }
+                },
+                grid: {
+                    left: '50px',
+                    right: '50px',
+                    top: '60px',
+                    bottom: '50px',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['15:06', '15:09', '15:23'],
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        lineStyle: { color: '#475569' }
+                    },
+                    splitLine: {
+                        lineStyle: { color: '#334155', type: 'dashed' }
+                    },
+                    axisLabel: {
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        formatter: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                series: [{
+                    name: 'HSI',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#3b82f6',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                                { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                            ]
+                        }
+                    },
+                    data: [26338.47, 26338.47, 26338.47]
+                }]
+            };
+            myChart.setOption(option);
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        })();
+        
+        </script>
+    </body>
+    </html>
+    
