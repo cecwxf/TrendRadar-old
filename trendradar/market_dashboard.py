@@ -8,8 +8,9 @@ TrendRadar 金融市场仪表盘主程序
 
 import os
 import sys
+import yaml
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from datetime import datetime
 
 from trendradar.crawler.crypto import CryptoFetcher
@@ -43,7 +44,8 @@ class MarketDashboard:
         data_dir: str = "output",
         timezone: str = "Asia/Shanghai",
         enable_ai: bool = True,
-        enable_notifications: bool = True
+        enable_notifications: bool = True,
+        config: Optional[Dict] = None
     ):
         """
         初始化仪表盘
@@ -53,15 +55,28 @@ class MarketDashboard:
             timezone: 时区
             enable_ai: 是否启用 AI 分析
             enable_notifications: 是否启用通知推送
+            config: 配置字典（可选，如不提供则从配置文件读取）
         """
         self.data_dir = Path(data_dir)
         self.timezone = timezone
         self.enable_ai = enable_ai
         self.enable_notifications = enable_notifications
 
-        # 初始化组件
-        self.crypto_fetcher = CryptoFetcher()
-        self.stock_fetcher = StockFetcher()
+        # 读取配置文件（如果没有提供config参数）
+        if config is None:
+            config = self._load_config()
+        self.config = config
+
+        # 从配置中提取crypto symbols和custom stocks
+        crypto_symbols = self._extract_crypto_symbols(config)
+        custom_stocks_list = self._extract_custom_stocks(config)
+
+        # 初始化组件（传入配置）
+        self.crypto_fetcher = CryptoFetcher(symbols=crypto_symbols)
+        self.stock_fetcher = StockFetcher(
+            custom_stocks=custom_stocks_list,
+            use_predefined_indices=True
+        )
         self.storage = LocalStorageBackend(
             data_dir=str(self.data_dir),
             enable_txt=False,
@@ -72,6 +87,57 @@ class MarketDashboard:
         print("=" * 60)
         print("📈 敬湛飞轮精选")
         print("=" * 60)
+        print(f"  加载了 {len(crypto_symbols)} 个加密货币")
+        print(f"  加载了 {len(custom_stocks_list)} 个自定义股票")
+
+    def _load_config(self) -> Dict:
+        """读取配置文件"""
+        config_path = Path("config/market_config.yaml")
+
+        if not config_path.exists():
+            print(f"⚠️  配置文件不存在: {config_path}，使用默认配置")
+            return {}
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            print(f"✓ 已加载配置文件: {config_path}")
+            return config
+        except Exception as e:
+            print(f"⚠️  读取配置文件失败: {e}，使用默认配置")
+            return {}
+
+    def _extract_crypto_symbols(self, config: Dict) -> List[str]:
+        """从配置中提取加密货币符号列表"""
+        try:
+            symbols = config.get("market", {}).get("crypto", {}).get("symbols", [])
+            if not symbols:
+                print("⚠️  配置中未找到crypto symbols，使用默认: BTC, ETH")
+                return ["BTC", "ETH"]
+            return symbols
+        except Exception as e:
+            print(f"⚠️  提取crypto symbols失败: {e}，使用默认: BTC, ETH")
+            return ["BTC", "ETH"]
+
+    def _extract_custom_stocks(self, config: Dict) -> List[str]:
+        """从配置中提取自定义股票代码列表"""
+        try:
+            custom_stocks_config = config.get("market", {}).get("stocks", {}).get("custom_stocks", [])
+
+            # 过滤出enabled=true的股票
+            enabled_stocks = [
+                stock["symbol"]
+                for stock in custom_stocks_config
+                if stock.get("enabled", True)  # 默认enabled
+            ]
+
+            if not enabled_stocks:
+                print("⚠️  配置中未找到enabled的custom stocks")
+
+            return enabled_stocks
+        except Exception as e:
+            print(f"⚠️  提取custom stocks失败: {e}")
+            return []
 
     def run(self) -> bool:
         """
