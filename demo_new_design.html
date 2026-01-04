@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热点新闻分析 · TrendRadar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
+            color: #1a1a1a;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            background: transparent;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            padding: 48px 32px 32px;
+            text-align: center;
+            position: relative;
+            border-radius: 0;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .header-title {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .header-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+            font-weight: 400;
+        }
+
+        .header-info {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            font-size: 14px;
+            margin-top: 32px;
+        }
+
+        .info-item {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 16px 12px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .info-label {
+            display: block;
+            font-size: 13px;
+            opacity: 0.85;
+            margin-bottom: 6px;
+            font-weight: 400;
+        }
+
+        .info-value {
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        .content {
+            padding: 32px 24px;
+        }
+
+        .word-group {
+            margin-bottom: 32px;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .word-group:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .word-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .word-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .word-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .word-count {
+            color: white;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 4px 12px;
+            background: #f3f4f6;
+            border-radius: 20px;
+        }
+
+        .word-count.hot {
+            color: white;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            font-weight: 600;
+        }
+
+        .word-index {
+            color: #9ca3af;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .news-item {
+            margin-bottom: 16px;
+            padding: 16px;
+            border-bottom: none;
+            position: relative;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            background: #f9fafb;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .news-item:hover {
+            background: #f3f4f6;
+            transform: translateX(4px);
+        }
+
+        .news-number {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 32px;
+            text-align: center;
+            flex-shrink: 0;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            align-self: flex-start;
+        }
+
+        .news-content {
+            flex: 1;
+            min-width: 0;
+            padding-right: 40px;
+        }
+
+        .news-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .source-name {
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 3px 10px;
+            background: #f3f4f6;
+            border-radius: 6px;
+        }
+
+        .rank-num {
+            color: #fff;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            min-width: 24px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
+        }
+
+        .time-info {
+            color: #9ca3af;
+            font-size: 12px;
+            font-weight: 400;
+        }
+
+        .news-title {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #1f2937;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .news-link {
+            color: #1f2937;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .news-link:hover {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer {
+            margin-top: 48px;
+            padding: 32px 24px;
+            background: white;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            border-radius: 0;
+        }
+
+        .footer-content {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        .footer-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .footer-link:hover {
+            color: #764ba2;
+            text-decoration: none;
+        }
+
+        .project-name {
+            font-weight: 700;
+            color: #1f2937;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 0; }
+            .header {
+                padding: 36px 24px 24px;
+                border-radius: 0;
+            }
+            .header-title { font-size: 28px; }
+            .header-info { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .info-item { padding: 12px 10px; }
+            .content { padding: 24px 16px; }
+            .footer { padding: 24px 16px; }
+            .word-group { padding: 20px 16px; }
+        }
+
+        @media (max-width: 480px) {
+            .header-title { font-size: 24px; }
+            .header-info { grid-template-columns: 1fr; }
+            .word-name { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">TrendRadar</div>
+            <div class="header-subtitle">热点新闻分析 · 追踪热点，洞察趋势</div>
+            <div class="header-info">
+                <div class="info-item">
+                    <span class="info-label">报告类型</span>
+                    <span class="info-value">当日汇总</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">新闻总数</span>
+                    <span class="info-value">156 条</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">热点新闻</span>
+                    <span class="info-value">42 条</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">生成时间</span>
+                    <span class="info-value">01-04 15:30</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="word-group">
+                <div class="word-header">
+                    <div class="word-info">
+                        <div class="word-name">AI技术</div>
+                        <div class="word-count hot">12 条</div>
+                    </div>
+                    <div class="word-index">1/5</div>
+                </div>
+
+                <div class="news-item">
+                    <div class="news-number">1</div>
+                    <div class="news-content">
+                        <div class="news-header">
+                            <span class="source-name">微博热搜</span>
+                            <span class="rank-num">1</span>
+                            <span class="time-info">01-04 14:20</span>
+                        </div>
+                        <div class="news-title">
+                            <a href="#" class="news-link">Claude推出全新代码助手功能，开发效率提升200%</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="news-item">
+                    <div class="news-number">2</div>
+                    <div class="news-content">
+                        <div class="news-header">
+                            <span class="source-name">知乎热榜</span>
+                            <span class="rank-num">3</span>
+                            <span class="time-info">01-04 13:45</span>
+                        </div>
+                        <div class="news-title">
+                            <a href="#" class="news-link">如何评价最新发布的GPT-5模型？</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="news-item">
+                    <div class="news-number">3</div>
+                    <div class="news-content">
+                        <div class="news-header">
+                            <span class="source-name">抖音热榜</span>
+                            <span class="rank-num">5</span>
+                            <span class="time-info">01-04 12:30</span>
+                        </div>
+                        <div class="news-title">
+                            <a href="#" class="news-link">AI绘画工具Midjourney V7震撼发布</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="word-group">
+                <div class="word-header">
+                    <div class="word-info">
+                        <div class="word-name">科技新闻</div>
+                        <div class="word-count hot">8 条</div>
+                    </div>
+                    <div class="word-index">2/5</div>
+                </div>
+
+                <div class="news-item">
+                    <div class="news-number">1</div>
+                    <div class="news-content">
+                        <div class="news-header">
+                            <span class="source-name">百度热搜</span>
+                            <span class="rank-num">2</span>
+                            <span class="time-info">01-04 11:15</span>
+                        </div>
+                        <div class="news-title">
+                            <a href="#" class="news-link">苹果Vision Pro 2代即将发布，价格更亲民</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="news-item">
+                    <div class="news-number">2</div>
+                    <div class="news-content">
+                        <div class="news-header">
+                            <span class="source-name">今日头条</span>
+                            <span class="rank-num">7</span>
+                            <span class="time-info">01-04 10:20</span>
+                        </div>
+                        <div class="news-title">
+                            <a href="#" class="news-link">特斯拉发布全新电池技术，续航突破1000公里</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="word-group">
+                <div class="word-header">
+                    <div class="word-info">
+                        <div class="word-name">开源项目</div>
+                        <div class="word-count">5 条</div>
+                    </div>
+                    <div class="word-index">3/5</div>
+                </div>
+
+                <div class="news-item">
+                    <div class="news-number">1</div>
+                    <div class="news-content">
+                        <div class="news-header">
+                            <span class="source-name">GitHub Trending</span>
+                            <span class="rank-num">1</span>
+                            <span class="time-info">01-04 09:30</span>
+                        </div>
+                        <div class="news-title">
+                            <a href="#" class="news-link">TrendRadar: 开源热点新闻聚合工具登顶GitHub趋势榜</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-content">
+                由 <span class="project-name">TrendRadar</span> 生成 ·
+                <a href="https://github.com/sansan0/TrendRadar" target="_blank" class="footer-link">
+                    GitHub 开源项目
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

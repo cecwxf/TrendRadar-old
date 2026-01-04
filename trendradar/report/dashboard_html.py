@@ -65,61 +65,68 @@ def render_dashboard_html(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>敬湛飞轮精选 - {market_data.date}</title>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
             * {{ box-sizing: border-box; }}
             body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
                 margin: 0;
                 padding: 0;
-                background: #0f172a;
-                color: #e2e8f0;
+                background: #f5f7fa;
+                color: #1f2937;
                 line-height: 1.6;
+                min-height: 100vh;
             }}
 
             .container {{
                 max-width: 1400px;
                 margin: 0 auto;
-                padding: 20px;
+                padding: 0;
             }}
 
             .header {{
-                background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%);
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
                 color: white;
-                padding: 40px 32px;
+                padding: 48px 32px 32px;
                 text-align: center;
-                border-radius: 16px;
+                border-radius: 0;
                 margin-bottom: 32px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
             }}
 
             .header h1 {{
                 margin: 0 0 12px 0;
-                font-size: 36px;
+                font-size: 42px;
                 font-weight: 700;
                 letter-spacing: -0.5px;
             }}
 
             .header .subtitle {{
-                font-size: 16px;
-                opacity: 0.9;
+                font-size: 17px;
+                opacity: 0.92;
                 font-weight: 400;
             }}
 
             .section {{
-                background: #1e293b;
-                border-radius: 12px;
-                padding: 24px;
+                background: transparent;
+                padding: 24px 32px;
                 margin-bottom: 24px;
-                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
             }}
 
             .section-title {{
-                font-size: 20px;
-                font-weight: 600;
-                margin: 0 0 20px 0;
-                color: #f1f5f9;
-                border-left: 4px solid #3b82f6;
-                padding-left: 12px;
+                font-size: 24px;
+                font-weight: 700;
+                margin: 0 0 24px 0;
+                color: #1f2937;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
             }}
 
             /* 板块分类样式 */
@@ -128,229 +135,314 @@ def render_dashboard_html(
             }}
 
             .category-title {{
-                font-size: 18px;
-                font-weight: 600;
-                margin: 0 0 16px 0;
-                color: #f1f5f9;
+                font-size: 20px;
+                font-weight: 700;
+                margin: 0 0 20px 0;
+                color: #374151;
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 10px;
                 padding-bottom: 12px;
-                border-bottom: 2px solid #334155;
+                border-bottom: 2px solid #e5e7eb;
             }}
 
             .card-name {{
-                font-size: 12px;
-                color: #94a3b8;
+                font-size: 13px;
+                color: #6b7280;
+                font-weight: 500;
             }}
 
             .card-ticker {{
-                font-size: 11px;
-                color: #64748b;
-                background: #1e293b;
-                padding: 2px 6px;
-                border-radius: 3px;
+                font-size: 12px;
+                color: #6b7280;
+                background: #f3f4f6;
+                padding: 3px 8px;
+                border-radius: 6px;
+                font-weight: 500;
             }}
 
             .cards-grid {{
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 16px;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
                 margin-bottom: 24px;
             }}
 
             .card {{
-                background: #334155;
-                border-radius: 10px;
-                padding: 20px;
-                border: 1px solid #475569;
-                transition: all 0.2s ease;
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                border: 1px solid #e5e7eb;
+                transition: all 0.3s ease;
                 position: relative;
                 overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
             }}
 
             .card:hover {{
-                border-color: #3b82f6;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-                transform: translateY(-2px);
+                border-color: #667eea;
+                box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15), 0 4px 8px rgba(102, 126, 234, 0.1);
+                transform: translateY(-4px);
             }}
 
             .card-header {{
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 12px;
+                margin-bottom: 16px;
             }}
 
             .card-symbol {{
-                font-size: 18px;
+                font-size: 20px;
                 font-weight: 700;
-                color: #f1f5f9;
+                color: #1f2937;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
             }}
 
             .card-exchange {{
-                font-size: 12px;
-                color: #94a3b8;
-                background: #1e293b;
-                padding: 4px 8px;
-                border-radius: 4px;
+                font-size: 13px;
+                color: white;
+                background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+                padding: 4px 12px;
+                border-radius: 8px;
+                font-weight: 600;
+                box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
             }}
 
             .card-price {{
-                font-size: 32px;
+                font-size: 36px;
                 font-weight: 700;
-                margin: 8px 0;
-                color: #f1f5f9;
+                margin: 12px 0;
+                color: #1f2937;
+                letter-spacing: -1px;
             }}
 
             .card-change {{
-                font-size: 16px;
+                font-size: 17px;
                 font-weight: 600;
-                padding: 4px 10px;
-                border-radius: 6px;
+                padding: 6px 14px;
+                border-radius: 8px;
                 display: inline-block;
             }}
 
             .card-change.positive {{
-                color: #22c55e;
-                background: rgba(34, 197, 94, 0.1);
+                color: white;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
             }}
 
             .card-change.negative {{
-                color: #ef4444;
-                background: rgba(239, 68, 68, 0.1);
+                color: white;
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
             }}
 
             .card-volume {{
-                font-size: 13px;
-                color: #94a3b8;
-                margin-top: 12px;
+                font-size: 14px;
+                color: #6b7280;
+                margin-top: 14px;
+                padding: 8px 12px;
+                background: #f9fafb;
+                border-radius: 8px;
+                font-weight: 500;
             }}
 
             .chart-container {{
                 width: 100%;
                 height: 400px;
-                margin-bottom: 16px;
+                margin-bottom: 20px;
+                background: white;
+                border-radius: 16px;
+                padding: 20px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
             }}
 
             .ai-insights {{
-                background: linear-gradient(135deg, #1e3a8a 0%, #6b21a8 100%);
-                border-radius: 12px;
-                padding: 24px;
-                margin-bottom: 24px;
-                border: 1px solid #3730a3;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 16px;
+                padding: 32px;
+                margin: 24px 32px;
+                border: none;
+                box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
             }}
 
             .ai-insights h3 {{
-                margin: 0 0 16px 0;
-                font-size: 20px;
-                color: #f1f5f9;
+                margin: 0 0 20px 0;
+                font-size: 24px;
+                color: white;
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 10px;
+                font-weight: 700;
             }}
 
             .ai-insights .content {{
-                color: #e2e8f0;
+                color: rgba(255, 255, 255, 0.95);
                 line-height: 1.8;
                 white-space: pre-wrap;
+                font-size: 15px;
             }}
 
             .rss-feed {{
-                background: #1e293b;
-                border-radius: 12px;
+                background: white;
+                border-radius: 16px;
                 padding: 24px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
             }}
 
             .rss-item {{
-                background: #334155;
-                border-radius: 8px;
-                padding: 16px;
-                margin-bottom: 12px;
-                border-left: 3px solid #3b82f6;
+                background: #f9fafb;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 16px;
+                border-left: 4px solid #10b981;
                 transition: all 0.2s ease;
             }}
 
             .rss-item:hover {{
-                background: #3f4d63;
+                background: #f3f4f6;
                 transform: translateX(4px);
+                border-left-color: #059669;
             }}
 
             .rss-item .title {{
                 font-size: 16px;
                 font-weight: 600;
-                color: #f1f5f9;
-                margin-bottom: 8px;
+                color: #1f2937;
+                margin-bottom: 10px;
+                line-height: 1.6;
+            }}
+
+            .rss-item .title a {{
+                color: #1f2937;
+                text-decoration: none;
+                transition: color 0.2s ease;
+            }}
+
+            .rss-item .title a:hover {{
+                color: #667eea;
             }}
 
             .rss-item .meta {{
                 font-size: 13px;
-                color: #94a3b8;
+                color: #6b7280;
+                font-weight: 500;
             }}
 
             .rss-item .summary {{
                 font-size: 14px;
-                color: #cbd5e1;
-                margin-top: 8px;
-                line-height: 1.6;
+                color: #6b7280;
+                margin-top: 10px;
+                line-height: 1.7;
             }}
 
             .time-range-tabs {{
                 display: flex;
-                gap: 12px;
+                gap: 8px;
                 margin-bottom: 24px;
-                padding: 4px;
-                background: #334155;
-                border-radius: 8px;
+                padding: 6px;
+                background: white;
+                border-radius: 12px;
                 overflow-x: auto;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             }}
 
             .time-range-tab {{
-                padding: 10px 20px;
+                padding: 10px 24px;
                 border: none;
                 background: transparent;
-                color: #94a3b8;
+                color: #6b7280;
                 font-size: 14px;
-                font-weight: 500;
+                font-weight: 600;
                 cursor: pointer;
-                border-radius: 6px;
-                transition: all 0.2s ease;
+                border-radius: 8px;
+                transition: all 0.3s ease;
                 white-space: nowrap;
             }}
 
             .time-range-tab:hover {{
-                background: #475569;
-                color: #e2e8f0;
+                background: #f3f4f6;
+                color: #1f2937;
             }}
 
             .time-range-tab.active {{
-                background: #3b82f6;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
             }}
 
             .timestamp {{
                 text-align: center;
-                color: #64748b;
+                color: #9ca3af;
                 font-size: 14px;
-                margin-top: 32px;
-                padding: 16px;
+                margin-top: 48px;
+                padding: 24px;
+                font-weight: 500;
             }}
 
             @media (max-width: 768px) {{
                 .container {{
-                    padding: 12px;
+                    padding: 0;
+                }}
+
+                .section {{
+                    padding: 20px 16px;
+                }}
+
+                .header {{
+                    padding: 36px 24px 24px;
+                    border-radius: 0;
                 }}
 
                 .header h1 {{
-                    font-size: 28px;
+                    font-size: 32px;
+                }}
+
+                .header .subtitle {{
+                    font-size: 15px;
+                }}
+
+                .section-title {{
+                    font-size: 20px;
+                }}
+
+                .category-title {{
+                    font-size: 18px;
                 }}
 
                 .cards-grid {{
                     grid-template-columns: 1fr;
+                    gap: 16px;
+                }}
+
+                .card {{
+                    padding: 20px;
+                }}
+
+                .card-price {{
+                    font-size: 28px;
                 }}
 
                 .chart-container {{
                     height: 300px;
+                    padding: 16px;
+                }}
+
+                .ai-insights {{
+                    margin: 24px 16px;
+                    padding: 24px;
+                }}
+
+                .time-range-tabs {{
+                    padding: 4px;
+                }}
+
+                .time-range-tab {{
+                    padding: 8px 16px;
+                    font-size: 13px;
                 }}
             }}
         </style>
@@ -708,26 +800,28 @@ def _generate_charts_config(price_history: Dict[str, Dict[str, List[Dict]]]) -> 
                     title: {{
                         text: '{symbol} 价格走势',
                         textStyle: {{
-                            color: '#f1f5f9',
+                            color: '#1f2937',
                             fontSize: 18,
-                            fontWeight: 600
+                            fontWeight: 700
                         }},
                         left: '20px'
                     }},
                     tooltip: {{
                         trigger: 'axis',
-                        backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1,
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
                         textStyle: {{
-                            color: '#f1f5f9'
+                            color: '#1f2937'
                         }},
                         formatter: function(params) {{
                             var param = params[0];
                             return param.name + '<br/>' +
-                                   '<span style="color:#3b82f6;">●</span> ' +
-                                   '$' + param.value.toFixed(2);
-                        }}
+                                   '<span style="color:#667eea;">●</span> ' +
+                                   '<b>$' + param.value.toFixed(2) + '</b>';
+                        }},
+                        shadowColor: 'rgba(0, 0, 0, 0.1)',
+                        shadowBlur: 10
                     }},
                     grid: {{
                         left: '50px',
@@ -740,25 +834,27 @@ def _generate_charts_config(price_history: Dict[str, Dict[str, List[Dict]]]) -> 
                         type: 'category',
                         data: data.timestamps,
                         axisLine: {{
-                            lineStyle: {{ color: '#475569' }}
+                            lineStyle: {{ color: '#e5e7eb' }}
                         }},
                         axisLabel: {{
-                            color: '#94a3b8',
+                            color: '#6b7280',
                             fontSize: 12,
+                            fontWeight: 500,
                             rotate: range === '1y' || range === '30d' ? 45 : 0
                         }}
                     }},
                     yAxis: {{
                         type: 'value',
                         axisLine: {{
-                            lineStyle: {{ color: '#475569' }}
+                            lineStyle: {{ color: '#e5e7eb' }}
                         }},
                         splitLine: {{
-                            lineStyle: {{ color: '#334155', type: 'dashed' }}
+                            lineStyle: {{ color: '#f3f4f6', type: 'solid' }}
                         }},
                         axisLabel: {{
-                            color: '#94a3b8',
+                            color: '#6b7280',
                             fontSize: 12,
+                            fontWeight: 500,
                             formatter: function(value) {{
                                 return '$' + value.toFixed(0);
                             }}
@@ -769,23 +865,23 @@ def _generate_charts_config(price_history: Dict[str, Dict[str, List[Dict]]]) -> 
                         type: 'line',
                         smooth: true,
                         symbol: 'circle',
-                        symbolSize: range === '24h' ? 6 : 4,
+                        symbolSize: range === '24h' ? 7 : 5,
                         lineStyle: {{
-                            color: '#3b82f6',
+                            color: '#667eea',
                             width: 3
                         }},
                         itemStyle: {{
-                            color: '#3b82f6',
-                            borderColor: '#60a5fa',
-                            borderWidth: 2
+                            color: '#667eea',
+                            borderColor: '#ffffff',
+                            borderWidth: 3
                         }},
                         areaStyle: {{
                             color: {{
                                 type: 'linear',
                                 x: 0, y: 0, x2: 0, y2: 1,
                                 colorStops: [
-                                    {{ offset: 0, color: 'rgba(59, 130, 246, 0.3)' }},
-                                    {{ offset: 1, color: 'rgba(59, 130, 246, 0.05)' }}
+                                    {{ offset: 0, color: 'rgba(102, 126, 234, 0.25)' }},
+                                    {{ offset: 1, color: 'rgba(102, 126, 234, 0.02)' }}
                                 ]
                             }}
                         }},
@@ -862,7 +958,7 @@ def _generate_rss_section(rss_data: RSSData) -> str:
             item_html = f"""
             <div class="rss-item">
                 <div class="title">
-                    <a href="{item.url}" target="_blank" style="color: #f1f5f9; text-decoration: none;">
+                    <a href="{item.url}" target="_blank">
                         {item.title}
                     </a>
                 </div>
