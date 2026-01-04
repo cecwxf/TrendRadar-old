@@ -22,6 +22,13 @@ market:
     symbols:
       - "BTC"                         # 比特币
       - "ETH"                         # 以太坊
+      - "BNB"                         # 币安币 (公链)
+      - "SOL"                         # Solana (公链)
+      - "AVAX"                        # Avalanche (公链)
+      - "MATIC"                       # Polygon (公链)
+      - "UNI"                         # Uniswap (DeFi)
+      - "AAVE"                        # Aave (DeFi)
+      - "LINK"                        # Chainlink (DeFi)
     exchange: "CoinGecko"             # 数据源: CoinGecko API
     update_interval: 3600             # 更新间隔（秒），默认1小时
 
@@ -59,18 +66,67 @@ market:
 
     # 自定义股票（可选）
     custom_stocks:
-      - symbol: "AAPL"
-        name: "Apple"
-        market: "US"
-        enabled: false
+      # 美股科技股
       - symbol: "TSLA"
-        name: "Tesla"
+        name: "特斯拉"
         market: "US"
-        enabled: false
+        enabled: true
+      - symbol: "MSFT"
+        name: "微软"
+        market: "US"
+        enabled: true
+      - symbol: "GOOGL"
+        name: "谷歌"
+        market: "US"
+        enabled: true
+      - symbol: "NVDA"
+        name: "英伟达"
+        market: "US"
+        enabled: true
+      - symbol: "QCOM"
+        name: "高通"
+        market: "US"
+        enabled: true
+      - symbol: "META"
+        name: "Meta"
+        market: "US"
+        enabled: true
+      - symbol: "AVGO"
+        name: "博通"
+        market: "US"
+        enabled: true
+
+      # 港股
       - symbol: "0700.HK"
         name: "腾讯控股"
         market: "HK"
-        enabled: false
+        enabled: true
+      - symbol: "1810.HK"
+        name: "小米集团"
+        market: "HK"
+        enabled: true
+      - symbol: "9988.HK"
+        name: "阿里巴巴"
+        market: "HK"
+        enabled: true
+      - symbol: "2160.HK"
+        name: "地平线"
+        market: "HK"
+        enabled: true
+
+      # A股
+      - symbol: "688661.SS"
+        name: "星宸科技"
+        market: "CN"
+        enabled: true
+      - symbol: "688047.SS"
+        name: "龙芯中科"
+        market: "CN"
+        enabled: true
+      - symbol: "600519.SS"
+        name: "贵州茅台"
+        market: "CN"
+        enabled: true
 
     update_interval: 3600             # 更新间隔（秒），默认1小时
     data_source: "Yahoo Finance"      # 数据源

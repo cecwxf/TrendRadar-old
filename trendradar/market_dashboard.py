@@ -70,7 +70,7 @@ class MarketDashboard:
         )
 
         print("=" * 60)
-        print("📈 TrendRadar Market Dashboard")
+        print("📈 敬湛飞轮精选")
         print("=" * 60)
 
     def run(self) -> bool:
@@ -136,7 +136,7 @@ class MarketDashboard:
 
             # 完成
             print("\n" + "=" * 60)
-            print("✅ 市场仪表盘更新完成")
+            print("✅ 敬湛飞轮精选更新完成")
             print("=" * 60)
             print(f"\n📊 数据概览:")
             print(f"  - 加密货币: {len(market_data.crypto_items)} 个")
@@ -181,52 +181,85 @@ class MarketDashboard:
             print(f"  ✗ 获取市场数据失败: {e}")
             return None
 
-    def _fetch_price_history(self, market_data: MarketData) -> Dict[str, list]:
-        """获取价格历史数据"""
-        price_history = {}
+    def _fetch_price_history(self, market_data: MarketData) -> Dict[str, Dict[str, list]]:
+        """
+        获取价格历史数据（多个时间范围）
+
+        Returns:
+            Dict[time_range, Dict[symbol, history]]
+            例如: {
+                "24h": {"BTC": [...], "ETH": [...]},
+                "7d": {"BTC": [...], "ETH": [...]},
+                "30d": {"BTC": [...], "ETH": [...]}
+            }
+        """
+        # 定义时间范围
+        time_ranges = {
+            "24h": 24,      # 1天
+            "7d": 168,      # 7天
+            "30d": 720,     # 30天
+            "1y": 8760      # 365天
+        }
+
+        price_history = {range_name: {} for range_name in time_ranges.keys()}
 
         try:
             # 获取加密货币历史
             for symbol in market_data.crypto_items.keys():
-                history = self.storage.get_price_history(
-                    asset_type="crypto",
-                    symbol=symbol,
-                    hours=24
-                )
-                if history:
-                    price_history[symbol] = history
-                    print(f"  ✓ {symbol}: {len(history)} 条历史")
-
-            # 获取股票历史（主要指数）
-            major_indices = ["^GSPC", "^IXIC", "^HSI"]
-            for symbol in market_data.stock_items.keys():
-                if symbol in major_indices:
+                for range_name, hours in time_ranges.items():
                     history = self.storage.get_price_history(
-                        asset_type="stock",
+                        asset_type="crypto",
                         symbol=symbol,
-                        hours=24
+                        hours=hours
                     )
                     if history:
-                        # 使用友好的名称
-                        display_name = {
-                            "^GSPC": "S&P500",
-                            "^IXIC": "NASDAQ",
-                            "^HSI": "HSI"
-                        }.get(symbol, symbol)
-                        price_history[display_name] = history
-                        print(f"  ✓ {display_name}: {len(history)} 条历史")
+                        price_history[range_name][symbol] = history
 
-            if not price_history:
+                # 只打印24小时的统计
+                if price_history["24h"].get(symbol):
+                    print(f"  ✓ {symbol}: {len(price_history['24h'][symbol])} 条历史(24h)")
+
+            # 获取股票历史（主要指数）
+            major_indices = {
+                "^GSPC": "S&P500",
+                "^IXIC": "NASDAQ",
+                "^HSI": "HSI"
+            }
+
+            for symbol, display_name in major_indices.items():
+                if symbol in market_data.stock_items:
+                    for range_name, hours in time_ranges.items():
+                        history = self.storage.get_price_history(
+                            asset_type="stock",
+                            symbol=symbol,
+                            hours=hours
+                        )
+                        if history:
+                            price_history[range_name][display_name] = history
+
+                    # 只打印24小时的统计
+                    if price_history["24h"].get(display_name):
+                        print(f"  ✓ {display_name}: {len(price_history['24h'][display_name])} 条历史(24h)")
+
+            # 统计所有时间范围的数据
+            total_points = sum(
+                sum(len(data) for data in range_data.values())
+                for range_data in price_history.values()
+            )
+
+            if total_points == 0:
                 print("  ⚠️  暂无历史数据（需运行一段时间积累）")
+            else:
+                print(f"  ✓ 共获取 {total_points} 条历史数据点")
 
             return price_history
 
         except Exception as e:
             print(f"  ✗ 获取价格历史失败: {e}")
-            return {}
+            return {range_name: {} for range_name in time_ranges.keys()}
 
     def _analyze_market(self, market_data: MarketData) -> Optional[str]:
-        """AI 市场分析"""
+        """AI 市场分析（支持每日一次缓存）"""
         try:
             api_key = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -234,10 +267,35 @@ class MarketDashboard:
                 print("  ⚠️  未配置 ANTHROPIC_API_KEY，跳过 AI 分析")
                 return None
 
-            analysis = analyze_market_simple(market_data, api_key=api_key)
+            # 检查是否已经有今日的 AI 分析（每日一次）
+            today_analysis = self._get_today_ai_analysis()
+            if today_analysis:
+                print(f"  ✓ 使用今日已缓存的 AI 分析: {len(today_analysis)} 字符")
+                return today_analysis
+
+            # 获取一周历史数据（7天 = 168小时）
+            print("  📊 获取一周历史趋势...")
+            weekly_history = self._fetch_trend_history(market_data, hours=168)
+
+            # 获取一个月历史数据（30天 = 720小时）
+            print("  📊 获取一个月历史趋势...")
+            monthly_history = self._fetch_trend_history(market_data, hours=720)
+
+            # 调用 AI 分析（包含历史趋势）
+            from trendradar.analysis.claude_analyzer import ClaudeMarketAnalyzer
+
+            analyzer = ClaudeMarketAnalyzer(api_key=api_key)
+            analysis = analyzer.analyze_market(
+                market_data,
+                include_advice=True,
+                weekly_history=weekly_history,
+                monthly_history=monthly_history
+            )
 
             if analysis:
                 print(f"  ✓ AI 分析完成: {len(analysis)} 字符")
+                # 缓存今日的分析结果
+                self._save_today_ai_analysis(analysis)
                 return analysis
             else:
                 print("  ✗ AI 分析失败")
@@ -246,6 +304,89 @@ class MarketDashboard:
         except Exception as e:
             print(f"  ✗ AI 分析异常: {e}")
             return None
+
+    def _fetch_trend_history(self, market_data: MarketData, hours: int) -> Dict[str, list]:
+        """
+        获取趋势历史数据
+
+        Args:
+            market_data: 市场数据
+            hours: 历史时间跨度（小时）
+
+        Returns:
+            历史价格数据字典
+        """
+        history = {}
+
+        try:
+            # 获取主要加密货币的历史数据
+            for symbol in ["BTC", "ETH", "BNB", "SOL"]:
+                if symbol in market_data.crypto_items:
+                    data = self.storage.get_price_history(
+                        asset_type="crypto",
+                        symbol=symbol,
+                        hours=hours
+                    )
+                    if data and len(data) > 1:
+                        history[symbol] = data
+
+            # 获取主要股票指数的历史数据
+            major_indices = {
+                "^GSPC": "S&P500",
+                "^IXIC": "NASDAQ",
+                "^HSI": "HSI"
+            }
+            for symbol, display_name in major_indices.items():
+                if symbol in market_data.stock_items:
+                    data = self.storage.get_price_history(
+                        asset_type="stock",
+                        symbol=symbol,
+                        hours=hours
+                    )
+                    if data and len(data) > 1:
+                        history[display_name] = data
+
+            return history
+
+        except Exception as e:
+            print(f"  ⚠️  获取趋势历史失败: {e}")
+            return {}
+
+    def _get_today_ai_analysis(self) -> Optional[str]:
+        """获取今日已缓存的 AI 分析"""
+        try:
+            cache_dir = self.data_dir / "ai_cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            today = format_date_folder(timezone=self.timezone)
+            cache_file = cache_dir / f"analysis_{today}.txt"
+
+            if cache_file.exists():
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    return f.read()
+
+            return None
+
+        except Exception as e:
+            print(f"  ⚠️  读取 AI 分析缓存失败: {e}")
+            return None
+
+    def _save_today_ai_analysis(self, analysis: str):
+        """保存今日的 AI 分析到缓存"""
+        try:
+            cache_dir = self.data_dir / "ai_cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            today = format_date_folder(timezone=self.timezone)
+            cache_file = cache_dir / f"analysis_{today}.txt"
+
+            with open(cache_file, "w", encoding="utf-8") as f:
+                f.write(analysis)
+
+            print(f"  ✓ AI 分析已缓存到: {cache_file}")
+
+        except Exception as e:
+            print(f"  ⚠️  保存 AI 分析缓存失败: {e}")
 
     def _fetch_rss_data(self) -> Optional[str]:
         """获取 RSS 数据（硅谷王川推文）"""

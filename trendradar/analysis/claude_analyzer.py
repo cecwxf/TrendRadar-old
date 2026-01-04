@@ -34,26 +34,39 @@ class ClaudeMarketAnalyzer:
         self.model = model
         self.client = Anthropic(api_key=self.api_key)
 
-    def analyze_market(self, market_data: MarketData, include_advice: bool = True) -> str:
+    def analyze_market(
+        self,
+        market_data: MarketData,
+        include_advice: bool = True,
+        weekly_history: Optional[Dict] = None,
+        monthly_history: Optional[Dict] = None
+    ) -> str:
         """
-        分析市场数据
+        分析市场数据（支持一周和一个月趋势）
 
         Args:
-            market_data: 市场数据
+            market_data: 当前市场数据
             include_advice: 是否包含投资建议
+            weekly_history: 一周历史数据（可选）
+            monthly_history: 一个月历史数据（可选）
 
         Returns:
             AI 分析结果（Markdown 格式）
         """
 
-        # 构建分析提示词
-        prompt = self._build_analysis_prompt(market_data, include_advice)
+        # 构建分析提示词（包含历史趋势）
+        prompt = self._build_analysis_prompt(
+            market_data,
+            include_advice,
+            weekly_history=weekly_history,
+            monthly_history=monthly_history
+        )
 
         try:
             # 调用 Claude API
             message = self.client.messages.create(
                 model=self.model,
-                max_tokens=2000,
+                max_tokens=3000,  # 增加token限制以支持更长的分析
                 temperature=0.7,
                 messages=[
                     {
@@ -73,8 +86,14 @@ class ClaudeMarketAnalyzer:
             print(f"[Claude 分析] API 调用失败: {e}")
             return self._generate_fallback_analysis(market_data)
 
-    def _build_analysis_prompt(self, market_data: MarketData, include_advice: bool) -> str:
-        """构建分析提示词"""
+    def _build_analysis_prompt(
+        self,
+        market_data: MarketData,
+        include_advice: bool,
+        weekly_history: Optional[Dict] = None,
+        monthly_history: Optional[Dict] = None
+    ) -> str:
+        """构建分析提示词（支持历史趋势分析）"""
 
         # 格式化加密货币数据
         crypto_summary = self._format_crypto_data(market_data.crypto_items)
@@ -82,27 +101,51 @@ class ClaudeMarketAnalyzer:
         # 格式化股票数据
         stock_summary = self._format_stock_data(market_data.stock_items)
 
+        # 格式化历史趋势数据
+        weekly_trend = self._format_trend_data(weekly_history, "一周") if weekly_history else None
+        monthly_trend = self._format_trend_data(monthly_history, "一个月") if monthly_history else None
+
         # 构建提示词
-        prompt = f"""你是一位资深的金融分析师。请分析以下市场数据，并提供专业的市场洞察。
+        prompt_parts = [f"""你是一位资深的金融分析师。请分析以下市场数据，并提供专业的市场洞察。
 
 **日期**: {market_data.date}
 **时间**: {market_data.crawl_time}
 
-## 📈 加密货币市场数据
+## 📈 当前加密货币市场数据
 
 {crypto_summary}
 
-## 📊 股票市场数据
+## 📊 当前股票市场数据
 
 {stock_summary}
+"""]
 
+        # 添加一周趋势
+        if weekly_trend:
+            prompt_parts.append(f"""
+## 📉 一周趋势分析
+
+{weekly_trend}
+""")
+
+        # 添加一个月趋势
+        if monthly_trend:
+            prompt_parts.append(f"""
+## 📊 一个月趋势分析
+
+{monthly_trend}
+""")
+
+        # 分析要求
+        analysis_requirements = f"""
 请提供以下分析：
 
 1. **市场概况**：总结当前加密货币和股票市场的整体表现
 2. **关键趋势**：识别市场中的重要趋势和变化
-3. **板块分析**：分析不同市场（美股、港股、A股、加密货币）的表现差异
-4. **风险提示**：指出当前市场的潜在风险
-{'5. **投资建议**：基于当前数据提供简要的投资策略建议' if include_advice else ''}
+{"3. **历史对比**：对比一周和一个月的价格变化，识别中长期趋势" if weekly_trend or monthly_trend else ""}
+4. **板块分析**：分析不同市场（美股、港股、A股、加密货币、DeFi、公链）的表现差异
+5. **风险提示**：指出当前市场的潜在风险
+{'6. **投资建议**：基于当前数据和历史趋势提供简要的投资策略建议' if include_advice else ''}
 
 要求：
 - 使用中文输出
@@ -110,9 +153,50 @@ class ClaudeMarketAnalyzer:
 - 使用 Markdown 格式
 - 重点突出关键数据和趋势
 - 每个部分使用表情符号标记（如 🔹、💡、⚠️）
+- 结合历史趋势提供更深入的洞察
 """
 
-        return prompt
+        prompt_parts.append(analysis_requirements)
+        return "\n".join(prompt_parts)
+
+    def _format_trend_data(self, history: Dict, period: str) -> str:
+        """
+        格式化趋势数据
+
+        Args:
+            history: 历史价格数据 {"BTC": [{"timestamp": "...", "price": 123.0}, ...], ...}
+            period: 时间周期（如 "一周"、"一个月"）
+
+        Returns:
+            格式化的趋势分析文本
+        """
+        if not history:
+            return f"（暂无{period}数据）"
+
+        lines = []
+        for symbol, data_points in history.items():
+            if not data_points or len(data_points) < 2:
+                continue
+
+            # 计算价格变化
+            start_price = data_points[0]["price"]
+            end_price = data_points[-1]["price"]
+            price_change = ((end_price - start_price) / start_price) * 100
+
+            # 计算最高和最低价
+            prices = [p["price"] for p in data_points]
+            max_price = max(prices)
+            min_price = min(prices)
+            volatility = ((max_price - min_price) / min_price) * 100
+
+            change_indicator = "📈" if price_change >= 0 else "📉"
+            lines.append(
+                f"- **{symbol}**: {period}变化 {change_indicator} {price_change:+.2f}% "
+                f"| 波动率: {volatility:.2f}% "
+                f"| 区间: ${min_price:,.2f} - ${max_price:,.2f}"
+            )
+
+        return "\n".join(lines) if lines else f"（暂无{period}数据）"
 
     def _format_crypto_data(self, crypto_items: Dict[str, CryptoItem]) -> str:
         """格式化加密货币数据"""
