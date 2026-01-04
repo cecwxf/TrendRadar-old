@@ -19,16 +19,50 @@ market:
   # 加密货币配置
   crypto:
     enabled: true
-    symbols:
-      - "BTC"                         # 比特币
-      - "ETH"                         # 以太坊
-      - "BNB"                         # 币安币 (公链)
-      - "SOL"                         # Solana (公链)
-      - "AVAX"                        # Avalanche (公链)
-      - "MATIC"                       # Polygon (公链)
-      - "UNI"                         # Uniswap (DeFi)
-      - "AAVE"                        # Aave (DeFi)
-      - "LINK"                        # Chainlink (DeFi)
+    # 加密货币列表（带板块分类）
+    coins:
+      # 主流币
+      - symbol: "BTC"
+        name: "比特币"
+        category: "主流币"
+        enabled: true
+      - symbol: "ETH"
+        name: "以太坊"
+        category: "主流币"
+        enabled: true
+
+      # 公链板块
+      - symbol: "BNB"
+        name: "币安链"
+        category: "公链"
+        enabled: true
+      - symbol: "SOL"
+        name: "Solana"
+        category: "公链"
+        enabled: true
+      - symbol: "AVAX"
+        name: "Avalanche"
+        category: "公链"
+        enabled: true
+      - symbol: "MATIC"
+        name: "Polygon"
+        category: "公链"
+        enabled: true
+
+      # DeFi板块
+      - symbol: "UNI"
+        name: "Uniswap"
+        category: "DeFi"
+        enabled: true
+      - symbol: "AAVE"
+        name: "Aave"
+        category: "DeFi"
+        enabled: true
+      - symbol: "LINK"
+        name: "Chainlink"
+        category: "DeFi"
+        enabled: true
+
     exchange: "CoinGecko"             # 数据源: CoinGecko API
     update_interval: 3600             # 更新间隔（秒），默认1小时
 

@@ -143,29 +143,60 @@ class CryptoFetcher:
     def fetch_historical(
         self,
         symbol: str,
-        interval: str = "1h",
-        limit: int = 24
+        days: int = 1,
+        interval: str = "hourly"
     ) -> List[Dict]:
         """
         获取历史价格数据（用于绘制图表）
 
-        注意：CoinGecko 的历史数据 API 现在需要付费。
-        此方法返回空列表，历史数据将从我们自己的数据库中读取。
-
-        每次抓取时将价格存入 price_history 表，
-        运行几天后会自然积累24小时历史数据。
+        使用CoinGecko免费API获取历史数据
+        API: /coins/{id}/market_chart?vs_currency=usd&days={days}
 
         Args:
             symbol: 加密货币符号（如 "BTC"）
-            interval: 时间间隔（保留参数以兼容接口）
-            limit: 返回的数据点数量（保留参数以兼容接口）
+            days: 历史天数 (1=24h, 7=7d, 30=30d, 365=1y, max=全部历史)
+            interval: 时间间隔 ("hourly" 或 "daily")
 
         Returns:
-            空列表（历史数据由 StorageManager 提供）
+            历史价格数据列表 [{"timestamp": "2024-01-01T00:00:00", "price": 42000}, ...]
         """
-        # 注意：此方法不再从外部 API 获取历史数据
-        # 历史数据将从数据库的 price_history 表中读取
-        # 见 trendradar/storage/local.py::get_price_history()
+        coin_id = self.COIN_IDS.get(symbol)
+        if not coin_id:
+            print(f"⚠️ {symbol} 不在支持列表中")
+            return []
+
+        try:
+            # CoinGecko market_chart API
+            url = f"{self.BASE_URL}/coins/{coin_id}/market_chart"
+            params = {
+                "vs_currency": "usd",
+                "days": days,
+                "interval": interval if days <= 90 else "daily"  # >90天自动切换到daily
+            }
+
+            response = self.session.get(url, params=params, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+
+            # 解析价格数据: data["prices"] = [[timestamp_ms, price], ...]
+            prices = data.get("prices", [])
+            if not prices:
+                return []
+
+            # 转换格式
+            history = []
+            for timestamp_ms, price in prices:
+                dt = datetime.fromtimestamp(timestamp_ms / 1000)
+                history.append({
+                    "timestamp": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "price": float(price)
+                })
+
+            return history
+
+        except Exception as e:
+            print(f"❌ 获取 {symbol} 历史数据失败: {e}")
+            return []
 
         print(f"ℹ️  {symbol} 历史数据将从数据库读取（需运行一段时间后积累）")
         return []
