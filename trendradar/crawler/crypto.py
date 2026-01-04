@@ -33,8 +33,13 @@ class CryptoFetcher:
     COIN_IDS = {
         "BTC": "bitcoin",
         "ETH": "ethereum",
-        "BNB": "binancecoin",
-        "SOL": "solana",
+        "BNB": "binancecoin",          # 公链
+        "SOL": "solana",               # 公链
+        "AVAX": "avalanche-2",         # 公链
+        "MATIC": "matic-network",      # 公链
+        "UNI": "uniswap",              # DeFi
+        "AAVE": "aave",                # DeFi
+        "LINK": "chainlink",           # DeFi/Oracle
         "XRP": "ripple",
     }
 

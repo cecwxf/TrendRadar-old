@@ -13,7 +13,7 @@ from trendradar.storage.base import RSSData
 
 def render_dashboard_html(
     market_data: MarketData,
-    price_history: Dict[str, List[Dict]],
+    price_history: Dict[str, Dict[str, List[Dict]]],
     ai_insights: Optional[str] = None,
     rss_data: Optional[RSSData] = None,
 ) -> str:
@@ -22,7 +22,13 @@ def render_dashboard_html(
 
     Args:
         market_data: 市场数据（加密货币 + 股票）
-        price_history: 价格历史数据 {"BTC": [{"timestamp": "...", "price": 123.0}, ...], ...}
+        price_history: 多时间范围价格历史数据
+            格式: {
+                "24h": {"BTC": [{"timestamp": "...", "price": 123.0}, ...], ...},
+                "7d": {...},
+                "30d": {...},
+                "1y": {...}
+            }
         ai_insights: AI 分析结果（可选）
         rss_data: RSS 数据（可选，显示推文）
 
@@ -30,7 +36,13 @@ def render_dashboard_html(
         渲染后的 HTML 字符串
     """
 
-    # 生成 ECharts 配置
+    # 处理旧格式兼容（如果传入的是简单dict，转换为新格式）
+    if price_history and not any(isinstance(v, dict) for v in price_history.values()):
+        # 旧格式: {"BTC": [...], "ETH": [...]}
+        # 转换为新格式
+        price_history = {"24h": price_history, "7d": {}, "30d": {}, "1y": {}}
+
+    # 生成 ECharts 配置（多时间范围）
     charts_config = _generate_charts_config(price_history)
 
     # 生成加密货币卡片
@@ -51,7 +63,7 @@ def render_dashboard_html(
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>金融市场仪表盘 - {market_data.date}</title>
+        <title>敬湛飞轮精选 - {market_data.date}</title>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
         <style>
             * {{ box-sizing: border-box; }}
@@ -253,6 +265,39 @@ def render_dashboard_html(
                 line-height: 1.6;
             }}
 
+            .time-range-tabs {{
+                display: flex;
+                gap: 12px;
+                margin-bottom: 24px;
+                padding: 4px;
+                background: #334155;
+                border-radius: 8px;
+                overflow-x: auto;
+            }}
+
+            .time-range-tab {{
+                padding: 10px 20px;
+                border: none;
+                background: transparent;
+                color: #94a3b8;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                white-space: nowrap;
+            }}
+
+            .time-range-tab:hover {{
+                background: #475569;
+                color: #e2e8f0;
+            }}
+
+            .time-range-tab.active {{
+                background: #3b82f6;
+                color: white;
+            }}
+
             .timestamp {{
                 text-align: center;
                 color: #64748b;
@@ -284,7 +329,7 @@ def render_dashboard_html(
         <div class="container">
             <!-- 头部 -->
             <div class="header">
-                <h1>📈 金融市场仪表盘</h1>
+                <h1>📈 敬湛飞轮精选</h1>
                 <div class="subtitle">实时追踪加密货币、股票市场及AI智能分析</div>
             </div>
 
@@ -306,8 +351,8 @@ def render_dashboard_html(
 
             <!-- 价格走势图表 -->
             <div class="section">
-                <h2 class="section-title">📉 价格走势（24小时）</h2>
-                {_generate_chart_containers(price_history)}
+                <h2 class="section-title">📉 价格走势</h2>
+                {_generate_chart_section(price_history)}
             </div>
 
             <!-- AI 分析 -->
@@ -400,133 +445,226 @@ def _generate_stock_cards(stock_items: Dict[str, StockItem]) -> str:
     return "\n".join(cards)
 
 
-def _generate_chart_containers(price_history: Dict[str, List[Dict]]) -> str:
-    """生成图表容器"""
+def _generate_chart_section(price_history: Dict[str, Dict[str, List[Dict]]]) -> str:
+    """生成图表区域（包含时间范围选择器）"""
+    # 获取所有资产符号（从24h数据中获取）
+    symbols = list(price_history.get("24h", {}).keys())
+    if not symbols:
+        return "<p style='text-align: center; color: #94a3b8;'>暂无历史数据</p>"
+
+    # 生成时间范围选择器
+    time_ranges = [
+        ("24h", "24小时"),
+        ("7d", "7天"),
+        ("30d", "30天"),
+        ("1y", "1年")
+    ]
+
+    tabs_html = '<div class="time-range-tabs">'
+    for range_key, range_label in time_ranges:
+        active_class = ' active' if range_key == "24h" else ''
+        tabs_html += f'<button class="time-range-tab{active_class}" data-range="{range_key}">{range_label}</button>'
+    tabs_html += '</div>'
+
+    # 生成图表容器（每个符号一个容器）
     containers = []
+    for symbol in symbols:
+        containers.append(f'<div id="chart-{symbol}" class="chart-container"></div>')
 
-    for symbol in price_history.keys():
-        container = f'<div id="chart-{symbol}" class="chart-container"></div>'
-        containers.append(container)
-
-    return "\n".join(containers)
+    return tabs_html + "\n".join(containers)
 
 
-def _generate_charts_config(price_history: Dict[str, List[Dict]]) -> str:
-    """生成 ECharts 配置 JavaScript"""
+def _generate_charts_config(price_history: Dict[str, Dict[str, List[Dict]]]) -> str:
+    """生成 ECharts 配置 JavaScript（支持多时间范围）"""
+    # 存储所有时间范围的数据
+    all_data = {}
+
+    # 为每个符号准备所有时间范围的数据
+    for range_key, range_data in price_history.items():
+        for symbol, history in range_data.items():
+            if symbol not in all_data:
+                all_data[symbol] = {}
+
+            if not history:
+                all_data[symbol][range_key] = {"timestamps": [], "prices": []}
+                continue
+
+            # 提取时间和价格数据（根据时间范围调整格式）
+            if range_key == "24h":
+                # 24小时: 显示 HH:MM
+                timestamps = [item["timestamp"].split("T")[1][:5] if "T" in item["timestamp"] else item["timestamp"][-8:-3] for item in history]
+            elif range_key == "7d":
+                # 7天: 显示 MM-DD HH:MM
+                timestamps = [item["timestamp"][5:16].replace("T", " ") if "T" in item["timestamp"] else item["timestamp"][5:16] for item in history]
+            elif range_key == "30d":
+                # 30天: 显示 MM-DD
+                timestamps = [item["timestamp"][:10][5:] if len(item["timestamp"]) >= 10 else item["timestamp"][:5] for item in history]
+            else:  # 1y
+                # 1年: 显示 YYYY-MM-DD
+                timestamps = [item["timestamp"][:10] if len(item["timestamp"]) >= 10 else item["timestamp"] for item in history]
+
+            prices = [item["price"] for item in history]
+            all_data[symbol][range_key] = {"timestamps": timestamps, "prices": prices}
+
+    # 生成图表初始化代码
     charts_js = []
 
-    for symbol, history in price_history.items():
-        if not history:
-            continue
-
-        # 提取时间和价格数据
-        timestamps = [item["timestamp"].split("T")[1][:5] if "T" in item["timestamp"] else item["timestamp"][-8:-3] for item in history]
-        prices = [item["price"] for item in history]
-
+    for symbol, range_data in all_data.items():
         chart_js = f"""
         (function() {{
             var chartDom = document.getElementById('chart-{symbol}');
             if (!chartDom) return;
 
             var myChart = echarts.init(chartDom);
-            var option = {{
-                title: {{
-                    text: '{symbol} 价格走势',
-                    textStyle: {{
-                        color: '#f1f5f9',
-                        fontSize: 18,
-                        fontWeight: 600
+
+            // 所有时间范围的数据
+            var chartData = {str(range_data).replace("'", '"')};
+
+            // 当前显示的时间范围
+            var currentRange = '24h';
+
+            // 更新图表函数
+            function updateChart(range) {{
+                currentRange = range;
+                var data = chartData[range];
+
+                if (!data || data.timestamps.length === 0) {{
+                    console.warn('No data for', '{symbol}', range);
+                    return;
+                }}
+
+                var option = {{
+                    title: {{
+                        text: '{symbol} 价格走势',
+                        textStyle: {{
+                            color: '#f1f5f9',
+                            fontSize: 18,
+                            fontWeight: 600
+                        }},
+                        left: '20px'
                     }},
-                    left: '20px'
-                }},
-                tooltip: {{
-                    trigger: 'axis',
-                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 1,
-                    textStyle: {{
-                        color: '#f1f5f9'
-                    }},
-                    formatter: function(params) {{
-                        var param = params[0];
-                        return param.name + '<br/>' +
-                               '<span style="color:#3b82f6;">●</span> ' +
-                               '$' + param.value.toFixed(2);
-                    }}
-                }},
-                grid: {{
-                    left: '50px',
-                    right: '50px',
-                    top: '60px',
-                    bottom: '50px',
-                    containLabel: true
-                }},
-                xAxis: {{
-                    type: 'category',
-                    data: {timestamps},
-                    axisLine: {{
-                        lineStyle: {{ color: '#475569' }}
-                    }},
-                    axisLabel: {{
-                        color: '#94a3b8',
-                        fontSize: 12
-                    }}
-                }},
-                yAxis: {{
-                    type: 'value',
-                    axisLine: {{
-                        lineStyle: {{ color: '#475569' }}
-                    }},
-                    splitLine: {{
-                        lineStyle: {{ color: '#334155', type: 'dashed' }}
-                    }},
-                    axisLabel: {{
-                        color: '#94a3b8',
-                        fontSize: 12,
-                        formatter: function(value) {{
-                            return '$' + value.toFixed(0);
-                        }}
-                    }}
-                }},
-                series: [{{
-                    name: '{symbol}',
-                    type: 'line',
-                    smooth: true,
-                    symbol: 'circle',
-                    symbolSize: 6,
-                    lineStyle: {{
-                        color: '#3b82f6',
-                        width: 3
-                    }},
-                    itemStyle: {{
-                        color: '#3b82f6',
-                        borderColor: '#60a5fa',
-                        borderWidth: 2
-                    }},
-                    areaStyle: {{
-                        color: {{
-                            type: 'linear',
-                            x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                {{ offset: 0, color: 'rgba(59, 130, 246, 0.3)' }},
-                                {{ offset: 1, color: 'rgba(59, 130, 246, 0.05)' }}
-                            ]
+                    tooltip: {{
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        textStyle: {{
+                            color: '#f1f5f9'
+                        }},
+                        formatter: function(params) {{
+                            var param = params[0];
+                            return param.name + '<br/>' +
+                                   '<span style="color:#3b82f6;">●</span> ' +
+                                   '$' + param.value.toFixed(2);
                         }}
                     }},
-                    data: {prices}
-                }}]
-            }};
-            myChart.setOption(option);
+                    grid: {{
+                        left: '50px',
+                        right: '50px',
+                        top: '60px',
+                        bottom: '50px',
+                        containLabel: true
+                    }},
+                    xAxis: {{
+                        type: 'category',
+                        data: data.timestamps,
+                        axisLine: {{
+                            lineStyle: {{ color: '#475569' }}
+                        }},
+                        axisLabel: {{
+                            color: '#94a3b8',
+                            fontSize: 12,
+                            rotate: range === '1y' || range === '30d' ? 45 : 0
+                        }}
+                    }},
+                    yAxis: {{
+                        type: 'value',
+                        axisLine: {{
+                            lineStyle: {{ color: '#475569' }}
+                        }},
+                        splitLine: {{
+                            lineStyle: {{ color: '#334155', type: 'dashed' }}
+                        }},
+                        axisLabel: {{
+                            color: '#94a3b8',
+                            fontSize: 12,
+                            formatter: function(value) {{
+                                return '$' + value.toFixed(0);
+                            }}
+                        }}
+                    }},
+                    series: [{{
+                        name: '{symbol}',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: range === '24h' ? 6 : 4,
+                        lineStyle: {{
+                            color: '#3b82f6',
+                            width: 3
+                        }},
+                        itemStyle: {{
+                            color: '#3b82f6',
+                            borderColor: '#60a5fa',
+                            borderWidth: 2
+                        }},
+                        areaStyle: {{
+                            color: {{
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    {{ offset: 0, color: 'rgba(59, 130, 246, 0.3)' }},
+                                    {{ offset: 1, color: 'rgba(59, 130, 246, 0.05)' }}
+                                ]
+                            }}
+                        }},
+                        data: data.prices
+                    }}]
+                }};
+                myChart.setOption(option);
+            }}
+
+            // 初始化显示24小时数据
+            updateChart('24h');
 
             // 响应式
             window.addEventListener('resize', function() {{
                 myChart.resize();
             }});
+
+            // 将更新函数存储到全局，供时间范围切换按钮调用
+            window.updateChart_{symbol.replace("^", "").replace(".", "_")} = updateChart;
         }})();
         """
         charts_js.append(chart_js)
 
-    return "\n".join(charts_js)
+    # 添加时间范围切换逻辑
+    switch_js = """
+    // 时间范围切换
+    document.addEventListener('DOMContentLoaded', function() {
+        var tabs = document.querySelectorAll('.time-range-tab');
+
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // 更新选中状态
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // 获取选中的时间范围
+                var range = this.dataset.range;
+
+                // 更新所有图表
+                Object.keys(window).forEach(function(key) {
+                    if (key.startsWith('updateChart_')) {
+                        window[key](range);
+                    }
+                });
+            });
+        });
+    });
+    """
+
+    return "\n".join(charts_js) + "\n" + switch_js
 
 
 def _generate_ai_section(ai_insights: str) -> str:

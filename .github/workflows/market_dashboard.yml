@@ -2,9 +2,9 @@ name: Market Dashboard Update
 
 on:
   schedule:
-    # 每小时更新一次市场数据（第18分钟运行）
+    # 每天午夜更新一次市场数据（UTC 16:18 = 北京时间 00:18）
     # 📝 修改运行时间：只改第一个数字（0-59）
-    - cron: "18 * * * *"
+    - cron: "18 16 * * *"
 
   workflow_dispatch:
     inputs:
