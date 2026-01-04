@@ -110,11 +110,28 @@ class MarketDashboard:
     def _extract_crypto_symbols(self, config: Dict) -> List[str]:
         """从配置中提取加密货币符号列表"""
         try:
-            symbols = config.get("market", {}).get("crypto", {}).get("symbols", [])
-            if not symbols:
-                print("⚠️  配置中未找到crypto symbols，使用默认: BTC, ETH")
-                return ["BTC", "ETH"]
-            return symbols
+            # 支持新格式 (coins) 和旧格式 (symbols)
+            crypto_config = config.get("market", {}).get("crypto", {})
+
+            # 尝试新格式：coins (带category)
+            coins = crypto_config.get("coins", [])
+            if coins:
+                symbols = [
+                    coin["symbol"]
+                    for coin in coins
+                    if coin.get("enabled", True)
+                ]
+                if symbols:
+                    return symbols
+
+            # 尝试旧格式：symbols (向后兼容)
+            symbols = crypto_config.get("symbols", [])
+            if symbols:
+                return symbols
+
+            print("⚠️  配置中未找到crypto coins/symbols，使用默认: BTC, ETH")
+            return ["BTC", "ETH"]
+
         except Exception as e:
             print(f"⚠️  提取crypto symbols失败: {e}，使用默认: BTC, ETH")
             return ["BTC", "ETH"]
@@ -249,7 +266,7 @@ class MarketDashboard:
 
     def _fetch_price_history(self, market_data: MarketData) -> Dict[str, Dict[str, list]]:
         """
-        获取价格历史数据（多个时间范围）
+        获取价格历史数据（多个时间范围）- 直接从API获取
 
         Returns:
             Dict[time_range, Dict[symbol, history]]
@@ -259,33 +276,36 @@ class MarketDashboard:
                 "30d": {"BTC": [...], "ETH": [...]}
             }
         """
-        # 定义时间范围
+        # 定义时间范围（API参数映射）
         time_ranges = {
-            "24h": 24,      # 1天
-            "7d": 168,      # 7天
-            "30d": 720,     # 30天
-            "1y": 8760      # 365天
+            "24h": {"days": 1, "period": "1d", "interval": "1h"},      # 1天，每小时
+            "7d": {"days": 7, "period": "5d", "interval": "1h"},       # 7天，每小时
+            "30d": {"days": 30, "period": "1mo", "interval": "1d"},    # 30天，每天
+            "1y": {"days": 365, "period": "1y", "interval": "1d"}      # 365天，每天
         }
 
         price_history = {range_name: {} for range_name in time_ranges.keys()}
 
         try:
-            # 获取加密货币历史
+            # 获取加密货币历史（直接从CoinGecko API）
+            print("  📊 从API获取加密货币历史数据...")
             for symbol in market_data.crypto_items.keys():
-                for range_name, hours in time_ranges.items():
-                    history = self.storage.get_price_history(
-                        asset_type="crypto",
+                for range_name, params in time_ranges.items():
+                    history = self.crypto_fetcher.fetch_historical(
                         symbol=symbol,
-                        hours=hours
+                        days=params["days"]
                     )
                     if history:
                         price_history[range_name][symbol] = history
+                        if range_name == "24h":  # 只打印24小时的统计
+                            print(f"    ✓ {symbol}: {len(history)} 条历史数据")
 
-                # 只打印24小时的统计
-                if price_history["24h"].get(symbol):
-                    print(f"  ✓ {symbol}: {len(price_history['24h'][symbol])} 条历史(24h)")
+                # 短暂延迟避免API限流
+                import time
+                time.sleep(0.2)
 
-            # 获取股票历史（主要指数）
+            # 获取股票历史（直接从Yahoo Finance API）
+            print("  📊 从API获取股票历史数据...")
             major_indices = {
                 "^GSPC": "S&P500",
                 "^IXIC": "NASDAQ",
@@ -294,18 +314,20 @@ class MarketDashboard:
 
             for symbol, display_name in major_indices.items():
                 if symbol in market_data.stock_items:
-                    for range_name, hours in time_ranges.items():
-                        history = self.storage.get_price_history(
-                            asset_type="stock",
+                    for range_name, params in time_ranges.items():
+                        history = self.stock_fetcher.fetch_historical(
                             symbol=symbol,
-                            hours=hours
+                            period=params["period"],
+                            interval=params["interval"]
                         )
                         if history:
                             price_history[range_name][display_name] = history
+                            if range_name == "24h":  # 只打印24小时的统计
+                                print(f"    ✓ {display_name}: {len(history)} 条历史数据")
 
-                    # 只打印24小时的统计
-                    if price_history["24h"].get(display_name):
-                        print(f"  ✓ {display_name}: {len(price_history['24h'][display_name])} 条历史(24h)")
+                    # 短暂延迟避免API限流
+                    import time
+                    time.sleep(0.2)
 
             # 统计所有时间范围的数据
             total_points = sum(
@@ -313,15 +335,14 @@ class MarketDashboard:
                 for range_data in price_history.values()
             )
 
-            if total_points == 0:
-                print("  ⚠️  暂无历史数据（需运行一段时间积累）")
-            else:
-                print(f"  ✓ 共获取 {total_points} 条历史数据点")
+            print(f"  ✓ 共获取 {total_points} 条历史数据点（来自API）")
 
             return price_history
 
         except Exception as e:
             print(f"  ✗ 获取价格历史失败: {e}")
+            import traceback
+            traceback.print_exc()
             return {range_name: {} for range_name in time_ranges.keys()}
 
     def _analyze_market(self, market_data: MarketData) -> Optional[str]:

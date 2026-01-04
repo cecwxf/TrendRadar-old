@@ -122,6 +122,36 @@ def render_dashboard_html(
                 padding-left: 12px;
             }}
 
+            /* 板块分类样式 */
+            .crypto-category, .stock-category {{
+                margin-bottom: 32px;
+            }}
+
+            .category-title {{
+                font-size: 18px;
+                font-weight: 600;
+                margin: 0 0 16px 0;
+                color: #f1f5f9;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding-bottom: 12px;
+                border-bottom: 2px solid #334155;
+            }}
+
+            .card-name {{
+                font-size: 12px;
+                color: #94a3b8;
+            }}
+
+            .card-ticker {{
+                font-size: 11px;
+                color: #64748b;
+                background: #1e293b;
+                padding: 2px 6px;
+                border-radius: 3px;
+            }}
+
             .cards-grid {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -378,71 +408,212 @@ def render_dashboard_html(
 
 
 def _generate_crypto_cards(crypto_items: Dict[str, CryptoItem]) -> str:
-    """生成加密货币卡片"""
-    cards = []
+    """生成加密货币卡片 - 按板块分组显示"""
 
+    # 读取配置获取category信息
+    from pathlib import Path
+    import yaml
+
+    category_map = {}
+    try:
+        config_path = Path("config/market_config.yaml")
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            coins = config.get("market", {}).get("crypto", {}).get("coins", [])
+            for coin in coins:
+                category_map[coin["symbol"]] = {
+                    "name": coin.get("name", coin["symbol"]),
+                    "category": coin.get("category", "其他")
+                }
+    except Exception as e:
+        print(f"⚠️  读取crypto category失败: {e}")
+
+    # 按category分组
+    categories = {}
     for symbol, item in crypto_items.items():
-        change_class = "positive" if item.price_change_24h >= 0 else "negative"
-        change_sign = "+" if item.price_change_24h >= 0 else ""
-        arrow = "▲" if item.price_change_24h >= 0 else "▼"
+        cat_info = category_map.get(symbol, {"name": symbol, "category": "其他"})
+        category = cat_info["category"]
 
-        card = f"""
-        <div class="card">
-            <div class="card-header">
-                <span class="card-symbol">{symbol}</span>
-                <span class="card-exchange">{item.exchange}</span>
+        if category not in categories:
+            categories[category] = []
+
+        categories[category].append((symbol, item, cat_info["name"]))
+
+    # 定义category显示顺序
+    category_order = ["主流币", "公链", "DeFi", "NFT", "其他"]
+    category_icons = {
+        "主流币": "💰",
+        "公链": "⛓️",
+        "DeFi": "🏦",
+        "NFT": "🎨",
+        "其他": "📊"
+    }
+
+    # 生成HTML（按category分组）
+    html_sections = []
+
+    for category in category_order:
+        if category not in categories:
+            continue
+
+        icon = category_icons.get(category, "📊")
+        items = categories[category]
+
+        # Category标题
+        section = f"""
+        <div class="crypto-category">
+            <h3 class="category-title">{icon} {category}</h3>
+            <div class="cards-grid">
+        """
+
+        # 该category下的所有卡片
+        for symbol, item, name in items:
+            change_class = "positive" if item.price_change_24h >= 0 else "negative"
+            change_sign = "+" if item.price_change_24h >= 0 else ""
+            arrow = "▲" if item.price_change_24h >= 0 else "▼"
+
+            card = f"""
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-symbol">{symbol}</span>
+                    <span class="card-name">{name}</span>
+                </div>
+                <div class="card-price">${item.price:,.2f}</div>
+                <div class="card-change {change_class}">
+                    {arrow} {change_sign}{item.price_change_24h:.2f}%
+                </div>
+                <div class="card-volume">
+                    成交量: ${item.volume_24h:,.0f}
+                </div>
             </div>
-            <div class="card-price">${item.price:,.2f}</div>
-            <div class="card-change {change_class}">
-                {arrow} {change_sign}{item.price_change_24h:.2f}%
-            </div>
-            <div class="card-volume">
-                成交量: ${item.volume_24h:,.0f}
+            """
+            section += card
+
+        section += """
             </div>
         </div>
         """
-        cards.append(card)
+        html_sections.append(section)
 
-    return "\n".join(cards)
+    return "\n".join(html_sections)
 
 
 def _generate_stock_cards(stock_items: Dict[str, StockItem]) -> str:
-    """生成股票卡片"""
-    cards = []
+    """生成股票卡片 - 指数和个股分开显示"""
 
-    # 按市场分组排序（US -> HK -> CN）
-    market_order = {"US": 0, "HK": 1, "CN": 2}
-    sorted_items = sorted(
-        stock_items.items(),
-        key=lambda x: market_order.get(x[1].market, 99)
-    )
+    # 分类：指数 vs 个股
+    indices = {}  # 指数
+    stocks_by_market = {"US": [], "HK": [], "CN": []}  # 个股按市场分组
 
-    for symbol, item in sorted_items:
-        change_class = "positive" if item.change >= 0 else "negative"
-        change_sign = "+" if item.change >= 0 else ""
-        arrow = "▲" if item.change >= 0 else "▼"
+    for symbol, item in stock_items.items():
+        # 判断是否为指数（symbol以^开头，或特定格式）
+        is_index = (
+            symbol.startswith("^") or
+            symbol in ["000001.SS", "399001.SZ", "399006.SZ"]  # A股指数
+        )
 
-        # 市场标签
-        market_label = {"US": "美股", "HK": "港股", "CN": "A股"}.get(item.market, item.market)
+        if is_index:
+            indices[symbol] = item
+        else:
+            market = item.market
+            if market in stocks_by_market:
+                stocks_by_market[market].append((symbol, item))
 
-        card = f"""
-        <div class="card">
-            <div class="card-header">
-                <span class="card-symbol">{item.name}</span>
-                <span class="card-exchange">{market_label}</span>
+    html_sections = []
+
+    # ===== 1. 市场指数区域 =====
+    if indices:
+        section = """
+        <div class="stock-category">
+            <h3 class="category-title">📊 市场指数</h3>
+            <div class="cards-grid">
+        """
+
+        # 按市场排序指数
+        market_order = {"US": 0, "HK": 1, "CN": 2}
+        sorted_indices = sorted(
+            indices.items(),
+            key=lambda x: market_order.get(x[1].market, 99)
+        )
+
+        for symbol, item in sorted_indices:
+            change_class = "positive" if item.change >= 0 else "negative"
+            change_sign = "+" if item.change >= 0 else ""
+            arrow = "▲" if item.change >= 0 else "▼"
+            market_label = {"US": "美股", "HK": "港股", "CN": "A股"}.get(item.market, item.market)
+
+            card = f"""
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">{item.name}</span>
+                    <span class="card-exchange">{market_label}</span>
+                </div>
+                <div class="card-price">{item.price:,.2f}</div>
+                <div class="card-change {change_class}">
+                    {arrow} {change_sign}{item.change:.2f} ({change_sign}{item.change_percent:.2f}%)
+                </div>
+                <div class="card-volume">
+                    成交量: {item.volume:,}
+                </div>
             </div>
-            <div class="card-price">${item.price:,.2f}</div>
-            <div class="card-change {change_class}">
-                {arrow} {change_sign}{item.change:.2f} ({change_sign}{item.change_percent:.2f}%)
-            </div>
-            <div class="card-volume">
-                成交量: {item.volume:,}
+            """
+            section += card
+
+        section += """
             </div>
         </div>
         """
-        cards.append(card)
+        html_sections.append(section)
 
-    return "\n".join(cards)
+    # ===== 2. 个股区域 =====
+    market_info = {
+        "US": {"icon": "🇺🇸", "name": "美股科技股"},
+        "HK": {"icon": "🇭🇰", "name": "港股"},
+        "CN": {"icon": "🇨🇳", "name": "A股"}
+    }
+
+    for market in ["US", "HK", "CN"]:
+        items = stocks_by_market[market]
+        if not items:
+            continue
+
+        info = market_info[market]
+        section = f"""
+        <div class="stock-category">
+            <h3 class="category-title">{info['icon']} {info['name']}</h3>
+            <div class="cards-grid">
+        """
+
+        for symbol, item in items:
+            change_class = "positive" if item.change >= 0 else "negative"
+            change_sign = "+" if item.change >= 0 else ""
+            arrow = "▲" if item.change >= 0 else "▼"
+
+            card = f"""
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">{item.name}</span>
+                    <span class="card-ticker">{symbol}</span>
+                </div>
+                <div class="card-price">${item.price:,.2f}</div>
+                <div class="card-change {change_class}">
+                    {arrow} {change_sign}{item.change:.2f} ({change_sign}{item.change_percent:.2f}%)
+                </div>
+                <div class="card-volume">
+                    成交量: {item.volume:,}
+                </div>
+            </div>
+            """
+            section += card
+
+        section += """
+            </div>
+        </div>
+        """
+        html_sections.append(section)
+
+    return "\n".join(html_sections)
 
 
 def _generate_chart_section(price_history: Dict[str, Dict[str, List[Dict]]]) -> str:
