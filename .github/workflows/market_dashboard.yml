@@ -95,6 +95,11 @@ jobs:
             echo "ℹ️  No changes to commit"
           else
             git commit -m "Update market dashboard - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            # Pull latest changes before pushing
+            git pull --rebase origin master || {
+              echo "⚠️  Rebase failed, trying merge strategy"
+              git pull --no-rebase origin master
+            }
             git push origin master
             echo "✅ Dashboard updated and pushed to master"
           fi
