@@ -1,0 +1,9 @@
+# LXGW WenKai Font Placeholder
+
+Please download the LXGW WenKai font from:
+https://github.com/lxgw/LxgwWenKai/releases
+
+1. Download LXGWWenKai-Regular.ttf
+2. Place it in this directory (public/fonts/)
+3. Delete this placeholder file
+4. Rename the font file to: LXGWWenKai-Regular.ttf

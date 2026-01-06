@@ -1,0 +1,67 @@
+/**
+ * Markdown 内容样式
+ * 配合 prose 类使用
+ */
+
+.prose {
+  @apply text-foreground;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  @apply font-bold tracking-tight scroll-mt-20;
+}
+
+.prose a {
+  @apply text-primary hover:underline font-medium no-underline;
+}
+
+.prose code {
+  @apply rounded bg-muted px-1.5 py-0.5 text-sm font-mono before:content-none after:content-none;
+}
+
+.prose pre {
+  @apply rounded-lg bg-slate-900 text-slate-50 overflow-x-auto;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0 text-sm;
+}
+
+.prose img {
+  @apply rounded-lg;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary/50 pl-4 italic text-muted-foreground font-normal;
+}
+
+.prose table {
+  @apply w-full border-collapse;
+}
+
+.prose th {
+  @apply bg-muted font-semibold text-left p-2;
+}
+
+.prose td {
+  @apply border-t p-2;
+}
+
+.prose ul,
+.prose ol {
+  @apply my-4;
+}
+
+.prose li {
+  @apply my-2;
+}
+
+/* 代码高亮（使用 highlight.js） */
+.prose .hljs {
+  @apply bg-slate-900 text-slate-50;
+}
