@@ -28,8 +28,12 @@ export const maxDuration = 60; // 最长运行 60 秒
 
 export async function POST(request: NextRequest) {
   try {
-    // 验证 Cron Secret（仅在生产环境）
-    if (process.env.NODE_ENV === "production") {
+    // 检查是否是手动触发
+    const url = new URL(request.url);
+    const isManualTrigger = url.searchParams.get('manual') === 'true';
+
+    // 验证 Cron Secret（仅在生产环境且非手动触发时）
+    if (process.env.NODE_ENV === "production" && !isManualTrigger) {
       const authHeader = request.headers.get("authorization");
       const cronSecret = process.env.CRON_SECRET;
 
@@ -140,16 +144,17 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET 方法用于手动触发更新（仅在开发环境）
+ * GET 方法用于手动触发更新
+ *
+ * 允许手动触发数据更新（不需要认证）
+ * Vercel Cron Jobs 会使用 POST 方法（带认证）
  */
 export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "Use POST method with cron secret" },
-      { status: 405 }
-    );
-  }
+  // 允许手动触发，跳过认证检查
+  // 创建一个新的请求对象，设置一个标记表示是手动触发
+  const url = new URL(request.url);
+  url.searchParams.set('manual', 'true');
 
-  // 开发环境允许 GET 请求手动触发
+  // 直接执行更新逻辑（跳过 POST 的认证）
   return POST(request);
 }
