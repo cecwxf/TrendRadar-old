@@ -74,43 +74,52 @@ export async function POST(request: NextRequest) {
       results.crypto.error = String(error);
     }
 
-    // 2. 获取股票数据（暂时禁用，因为 Yahoo Finance API 不稳定）
-    // 如果需要启用，设置环境变量 ENABLE_STOCK_DATA=true
-    if (process.env.ENABLE_STOCK_DATA === "true") {
-      try {
-        const stockFetcher = createStockFetcher({
-          usePredefinedIndices: true,
-        });
+    // 2. 获取股票数据
+    try {
+      console.log("📊 开始获取股票数据...");
+      const stockFetcher = createStockFetcher({
+        usePredefinedIndices: true,
+      });
 
-        const stockItems = await stockFetcher.fetchCurrent();
-        results.stocks.count = Object.keys(stockItems).length;
+      const stockItems = await stockFetcher.fetchCurrent();
+      results.stocks.count = Object.keys(stockItems).length;
+      console.log(`📊 成功获取 ${results.stocks.count} 个股票数据`);
 
-        if (results.stocks.count > 0) {
-          // 保存到数据库
-          const saveResult = await saveStockData(stockItems);
-          results.stocks.success = saveResult.success;
-          results.stocks.error = saveResult.error || null;
+      if (results.stocks.count > 0) {
+        // 保存到数据库
+        const saveResult = await saveStockData(stockItems);
+        results.stocks.success = saveResult.success;
+        results.stocks.error = saveResult.error || null;
 
-          // 保存价格历史（当日）
-          for (const [symbol, item] of Object.entries(stockItems)) {
-            try {
-              const history = await stockFetcher.fetchHistorical(symbol, "1d", "1h");
-              if (history.length > 0) {
-                await savePriceHistory(symbol, "stock", history);
-                results.priceHistory.count += history.length;
-              }
-            } catch (error) {
-              console.error(`获取 ${symbol} 历史数据失败:`, error);
+        if (saveResult.success) {
+          console.log(`✅ 成功保存 ${results.stocks.count} 条股票数据`);
+        } else {
+          console.error(`❌ 保存股票数据失败:`, saveResult.error);
+        }
+
+        // 保存价格历史（当日）
+        for (const [symbol, item] of Object.entries(stockItems)) {
+          try {
+            const history = await stockFetcher.fetchHistorical(symbol, "1d", "1h");
+            if (history.length > 0) {
+              await savePriceHistory(symbol, "stock", history);
+              results.priceHistory.count += history.length;
             }
+          } catch (error) {
+            console.error(`获取 ${symbol} 历史数据失败:`, error);
           }
         }
-      } catch (error) {
-        console.error("获取股票数据失败:", error);
-        results.stocks.error = String(error);
+      } else {
+        console.warn("⚠️ 未获取到任何股票数据");
       }
-    } else {
-      console.log("📊 股票数据获取已禁用（ENABLE_STOCK_DATA != true）");
-      results.stocks.error = "Stock data fetching disabled";
+    } catch (error: any) {
+      console.error("❌ 获取股票数据失败:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      });
+      results.stocks.error = String(error.message || error);
     }
 
     console.log("✅ 市场数据更新完成:", results);
