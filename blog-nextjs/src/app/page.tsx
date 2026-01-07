@@ -1,8 +1,99 @@
-export default function Home() {
+import { getPosts } from "@/lib/notion/client";
+import { notionPageToMarkdown, calculateReadingTime } from "@/lib/notion/renderer";
+import { getLatestCryptoData } from "@/lib/market/market-service";
+import { PostCard } from "@/components/blog/PostCard";
+import { MarketBanner } from "@/components/market/MarketBanner";
+import { SearchBar } from "@/components/blog/SearchBar";
+import type { PostListItem } from "@/types/blog";
+
+export const revalidate = 3600; // ISR: 每小时重新验证
+
+export default async function Home() {
+  // 并行获取文章列表和市场数据
+  const [notionPosts, cryptoData] = await Promise.all([
+    getPosts(),
+    getLatestCryptoData(),
+  ]);
+
+  // 转换为 PostListItem 格式
+  const posts: PostListItem[] = await Promise.all(
+    notionPosts.map(async (post) => {
+      // 获取内容以计算阅读时间
+      const content = await notionPageToMarkdown(post.id);
+      const readingTime = calculateReadingTime(content);
+
+      return {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        summary: post.summary,
+        category: post.category,
+        tags: post.tags,
+        cover: post.cover,
+        publishedAt: post.publishedAt,
+        readingTime,
+        viewCount: 0, // TODO: 从 Supabase 获取
+      };
+    })
+  );
+
   return (
-    <div style={{ padding: 40 }}>
-      <h1>HOME OK</h1>
-      <p>{new Date().toISOString()}</p>
-    </div>
+    <main className="min-h-screen">
+      {/* Hero 区域 */}
+      <section className="bg-gradient-to-b from-background to-muted/20 py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-5xl font-bold tracking-tight mb-4">
+            敬湛飞轮精选
+          </h1>
+          <p className="text-xl text-muted-foreground mb-2">
+            AI SaaS 出海
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Ship Fast, Ship More!
+          </p>
+        </div>
+      </section>
+
+      {/* 金融横幅 */}
+      <section className="container mx-auto px-4 -mt-8">
+        <MarketBanner initialData={cryptoData} />
+      </section>
+
+      {/* 文章列表 */}
+      <section className="container mx-auto px-4 py-16">
+        {posts.length === 0 ? (
+          <div className="text-center py-20">
+            <h2 className="text-2xl font-bold mb-4">还没有文章</h2>
+            <p className="text-muted-foreground mb-8">
+              请先在 Notion 创建文章并配置环境变量
+            </p>
+            <div className="max-w-2xl mx-auto text-left bg-muted/50 p-6 rounded-lg">
+              <h3 className="font-bold mb-2">配置步骤：</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm">
+                <li>在 Notion 创建 "Posts" 数据库</li>
+                <li>添加属性：Title, Slug, Status, Category, Tags, Summary, Cover, PublishedAt</li>
+                <li>获取 API Key 和 Database ID</li>
+                <li>复制 .env.example 为 .env.local 并填入配置</li>
+                <li>重启开发服务器</li>
+              </ol>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+              <h2 className="text-3xl font-bold">最新文章</h2>
+              <div className="w-full md:w-96">
+                <SearchBar posts={posts} />
+              </div>
+            </div>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {posts.map(post => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+    </main>
   );
 }
