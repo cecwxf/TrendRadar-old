@@ -1,0 +1,31 @@
+# ============================================
+# Vercel 环境变量配置清单
+# ============================================
+# 复制下面的内容到 Vercel Dashboard
+# ============================================
+
+# ========== 必需配置 ==========
+
+NOTION_TOKEN=ntn_b22210465734uukYVnzcxR3tq9500XeuX4y3POCpGnfg4g
+NOTION_DATABASE_ID=9580a24e-5174-4a45-b008-57de17e7cf1a
+NEXT_PUBLIC_SITE_URL=https://your-project-name.vercel.app
+NEXT_PUBLIC_SITE_TITLE=敬湛飞轮精选
+NEXT_PUBLIC_GISCUS_REPO=placeholder/placeholder
+NEXT_PUBLIC_GISCUS_REPO_ID=placeholder
+NEXT_PUBLIC_GISCUS_CATEGORY=General
+NEXT_PUBLIC_GISCUS_CATEGORY_ID=placeholder
+
+# ========== 可选配置（金融功能） ==========
+# 如果不需要金融市场功能，可以先不配置
+
+# NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx
+# SUPABASE_SERVICE_ROLE_KEY=eyJxxx
+# CRON_SECRET=your-random-secret-key
+
+# ============================================
+# 说明：
+# 1. NEXT_PUBLIC_SITE_URL 部署后会得到实际域名，再回来更新
+# 2. Giscus 变量用 placeholder，评论功能会被禁用（可稍后配置）
+# 3. Supabase 变量可选，不配置的话金融功能不显示
+# ============================================

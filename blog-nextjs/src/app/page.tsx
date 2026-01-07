@@ -54,10 +54,12 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 金融横幅 */}
-      <section className="container mx-auto px-4 -mt-8">
-        <MarketBanner initialData={cryptoData} />
-      </section>
+      {/* 金融横幅 - 仅在有数据时显示 */}
+      {cryptoData && cryptoData.length > 0 && (
+        <section className="container mx-auto px-4 -mt-8">
+          <MarketBanner initialData={cryptoData} />
+        </section>
+      )}
 
       {/* 文章列表 */}
       <section className="container mx-auto px-4 py-16">

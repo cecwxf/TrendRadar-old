@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: PageProps) {
     openGraph: {
       title: post.title,
       description: post.summary,
-      images: post.cover ? [post.cover] : [],
+      images: (post.cover && (post.cover.startsWith('http://') || post.cover.startsWith('https://'))) ? [post.cover] : [],
       type: "article",
       publishedTime: post.publishedAt,
     },
@@ -131,7 +131,7 @@ export default async function ArticlePage({ params }: PageProps) {
           </div>
 
           {/* 封面图 */}
-          {post.cover && (
+          {post.cover && (post.cover.startsWith('http://') || post.cover.startsWith('https://')) && (
             <div className="relative aspect-video mt-8 overflow-hidden rounded-xl">
               <Image
                 src={post.cover}

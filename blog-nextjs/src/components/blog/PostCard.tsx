@@ -19,7 +19,7 @@ export function PostCard({ post }: PostCardProps) {
   return (
     <article className="group relative flex flex-col space-y-4 rounded-xl border bg-card p-6 transition-all hover:shadow-lg">
       {/* 封面图 */}
-      {post.cover && (
+      {post.cover && (post.cover.startsWith('http://') || post.cover.startsWith('https://')) && (
         <Link href={`/article/${post.slug}`} className="relative aspect-video overflow-hidden rounded-lg">
           <Image
             src={post.cover}

@@ -11,18 +11,26 @@
 import { Client } from "@notionhq/client";
 import type { NotionPost } from "@/types/notion";
 
-// 初始化 Notion 客户端
-export const notion = new Client({
-  auth: process.env.NOTION_API_KEY,
-});
-
-// Notion 数据库 ID
+// 获取环境变量
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID || "";
+
+// 初始化 Notion 客户端（仅当有 Token 时）
+export const notion = NOTION_TOKEN
+  ? new Client({
+      auth: NOTION_TOKEN,
+    })
+  : null;
 
 /**
  * 获取所有已发布的文章
  */
 export async function getPosts(): Promise<NotionPost[]> {
+  if (!notion) {
+    console.warn("NOTION_TOKEN not configured");
+    return [];
+  }
+
   if (!DATABASE_ID) {
     console.warn("NOTION_DATABASE_ID not configured");
     return [];
@@ -32,14 +40,14 @@ export async function getPosts(): Promise<NotionPost[]> {
     const response = await (notion.databases as any).query({
       database_id: DATABASE_ID,
       filter: {
-        property: "Status",
-        select: {
-          equals: "Published",
+        property: "Published",
+        checkbox: {
+          equals: true,
         },
       },
       sorts: [
         {
-          property: "PublishedAt",
+          property: "PublishDate",
           direction: "descending",
         },
       ],
@@ -56,6 +64,11 @@ export async function getPosts(): Promise<NotionPost[]> {
  * 根据 slug 获取单篇文章
  */
 export async function getPostBySlug(slug: string): Promise<NotionPost | null> {
+  if (!notion) {
+    console.warn("NOTION_TOKEN not configured");
+    return null;
+  }
+
   if (!DATABASE_ID) {
     console.warn("NOTION_DATABASE_ID not configured");
     return null;
@@ -67,15 +80,15 @@ export async function getPostBySlug(slug: string): Promise<NotionPost | null> {
       filter: {
         and: [
           {
-            property: "Slug",
+            property: "slug",
             rich_text: {
               equals: slug,
             },
           },
           {
-            property: "Status",
-            select: {
-              equals: "Published",
+            property: "Published",
+            checkbox: {
+              equals: true,
             },
           },
         ],
@@ -97,6 +110,11 @@ export async function getPostBySlug(slug: string): Promise<NotionPost | null> {
  * 获取文章页面内容
  */
 export async function getPageContent(pageId: string): Promise<any[]> {
+  if (!notion) {
+    console.warn("NOTION_TOKEN not configured");
+    return [];
+  }
+
   try {
     const response = await notion.blocks.children.list({
       block_id: pageId,
@@ -113,6 +131,7 @@ export async function getPageContent(pageId: string): Promise<any[]> {
  * 获取所有分类
  */
 export async function getCategories(): Promise<string[]> {
+  if (!notion) return [];
   if (!DATABASE_ID) return [];
 
   try {
@@ -136,6 +155,7 @@ export async function getCategories(): Promise<string[]> {
  * 获取所有标签
  */
 export async function getTags(): Promise<string[]> {
+  if (!notion) return [];
   if (!DATABASE_ID) return [];
 
   try {
@@ -161,16 +181,29 @@ export async function getTags(): Promise<string[]> {
 function extractPostData(page: any): NotionPost {
   const properties = page.properties;
 
+  // 获取封面图URL，确保是有效的URL或undefined
+  let coverUrl: string | undefined = undefined;
+  if (properties.CoverImage?.url && typeof properties.CoverImage.url === 'string') {
+    coverUrl = properties.CoverImage.url;
+  }
+
+  // 临时调试日志
+  console.log('提取文章数据 - Cover值:', {
+    title: getPlainText(properties.Name?.title || []),
+    coverUrl,
+    rawCover: properties.CoverImage
+  });
+
   return {
     id: page.id,
-    title: getPlainText(properties.Title?.title || properties.Name?.title || []),
-    slug: getPlainText(properties.Slug?.rich_text || []),
-    status: properties.Status?.select?.name || "Draft",
+    title: getPlainText(properties.Name?.title || []),
+    slug: getPlainText(properties.slug?.rich_text || []),
+    status: properties.Published?.checkbox ? "Published" : "Draft",
     category: properties.Category?.select?.name || "未分类",
     tags: properties.Tags?.multi_select?.map((tag: any) => tag.name) || [],
     summary: getPlainText(properties.Summary?.rich_text || []),
-    cover: properties.Cover?.files?.[0]?.file?.url || properties.Cover?.files?.[0]?.external?.url,
-    publishedAt: properties.PublishedAt?.date?.start || page.created_time,
+    cover: coverUrl,
+    publishedAt: properties.PublishDate?.date?.start || page.created_time,
     createdAt: page.created_time,
     updatedAt: page.last_edited_time,
   };
