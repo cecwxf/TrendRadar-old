@@ -19,6 +19,7 @@ import { ViewCount } from "@/components/blog/ViewCount";
 import { Comments } from "@/components/blog/Comments";
 
 export const revalidate = 3600; // ISR: 每小时重新验证
+export const dynamicParams = true; // 允许动态参数（构建时未生成的路径也能访问）
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -26,11 +27,18 @@ interface PageProps {
 
 // 生成静态参数（预渲染所有文章）
 export async function generateStaticParams() {
-  const posts = await getPosts();
+  try {
+    const posts = await getPosts();
+    console.log(`[Build] 成功获取 ${posts.length} 篇文章用于静态生成`);
 
-  return posts.map(post => ({
-    slug: post.slug,
-  }));
+    return posts.map(post => ({
+      slug: post.slug,
+    }));
+  } catch (error) {
+    console.error('[Build] generateStaticParams 失败，将使用动态渲染:', error);
+    // 返回空数组，依赖 dynamicParams = true 在运行时渲染
+    return [];
+  }
 }
 
 // 生成元数据

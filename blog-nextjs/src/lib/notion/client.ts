@@ -184,15 +184,12 @@ function extractPostData(page: any): NotionPost {
   // 获取封面图URL，确保是有效的URL或undefined
   let coverUrl: string | undefined = undefined;
   if (properties.CoverImage?.url && typeof properties.CoverImage.url === 'string') {
-    coverUrl = properties.CoverImage.url;
+    // 只接受以 http:// 或 https:// 开头的有效 URL
+    const url = properties.CoverImage.url;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      coverUrl = url;
+    }
   }
-
-  // 临时调试日志
-  console.log('提取文章数据 - Cover值:', {
-    title: getPlainText(properties.Name?.title || []),
-    coverUrl,
-    rawCover: properties.CoverImage
-  });
 
   return {
     id: page.id,
