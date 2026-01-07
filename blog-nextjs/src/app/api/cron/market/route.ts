@@ -28,12 +28,14 @@ export const maxDuration = 60; // 最长运行 60 秒
 
 export async function POST(request: NextRequest) {
   try {
-    // 验证 Cron Secret（防止未授权访问）
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
+    // 验证 Cron Secret（仅在生产环境）
+    if (process.env.NODE_ENV === "production") {
+      const authHeader = request.headers.get("authorization");
+      const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     console.log("🔄 开始更新市场数据...");
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
     try {
       const cryptoFetcher = createCryptoFetcher({
         symbols: ["BTC", "ETH", "BNB", "SOL"], // 可配置
+        proxyUrl: process.env.HTTP_PROXY || process.env.HTTPS_PROXY,
       });
 
       const cryptoItems = await cryptoFetcher.fetchPrices();
