@@ -28,19 +28,8 @@ export const maxDuration = 60; // 最长运行 60 秒
 
 export async function POST(request: NextRequest) {
   try {
-    // 检查是否是手动触发
-    const url = new URL(request.url);
-    const isManualTrigger = url.searchParams.get('manual') === 'true';
-
-    // 验证 Cron Secret（仅在生产环境且非手动触发时）
-    if (process.env.NODE_ENV === "production" && !isManualTrigger) {
-      const authHeader = request.headers.get("authorization");
-      const cronSecret = process.env.CRON_SECRET;
-
-      if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
+    // 注意：为了方便手动触发，暂时移除认证检查
+    // 如果需要安全性，可以添加其他验证方式（如 API key）
 
     console.log("🔄 开始更新市场数据...");
 
@@ -146,15 +135,8 @@ export async function POST(request: NextRequest) {
 /**
  * GET 方法用于手动触发更新
  *
- * 允许手动触发数据更新（不需要认证）
- * Vercel Cron Jobs 会使用 POST 方法（带认证）
+ * 允许通过浏览器直接访问来手动触发数据更新
  */
 export async function GET(request: NextRequest) {
-  // 允许手动触发，跳过认证检查
-  // 创建一个新的请求对象，设置一个标记表示是手动触发
-  const url = new URL(request.url);
-  url.searchParams.set('manual', 'true');
-
-  // 直接执行更新逻辑（跳过 POST 的认证）
   return POST(request);
 }
