@@ -21,13 +21,18 @@ export async function GET() {
     }
 
     // 删除所有股票数据（因为Yahoo Finance获取失败，只保留加密货币）
-    const { data: deletedStocks, error: stockError } = await supabaseAdmin
+    const { error: stockError, count } = await supabaseAdmin
       .from(TABLE_NAMES.STOCK_DATA)
-      .delete()
+      .delete({ count: 'exact' })
       .neq('id', 0); // 删除所有记录
 
     if (stockError) {
       console.error('删除股票数据失败:', stockError);
+      return NextResponse.json({
+        success: false,
+        error: stockError.message,
+        timestamp: new Date().toISOString(),
+      }, { status: 500 });
     }
 
     // 也可以选择只删除旧的数据（保留最近1小时的）
@@ -38,7 +43,7 @@ export async function GET() {
       success: true,
       message: '旧数据清理完成',
       deleted: {
-        stocks: deletedStocks?.length || 0,
+        stocks: count || 0,
       },
       timestamp: new Date().toISOString(),
     });
