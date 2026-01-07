@@ -2,6 +2,27 @@
 
 个人博客，基于 Next.js 14 App Router，使用 Notion 作为 CMS，Supabase 作为数据库。
 
+## 🚀 快速开始
+
+**选择适合你的部署指南**：
+
+### 🎯 已有 Notion Workspace？（推荐）
+👉 **[超快速部署指南](QUICKSTART_EXISTING_WORKSPACE.md)** - 只需 10 分钟！
+
+适合已经在使用 Notion 的用户，直接用现有 workspace 部署。
+
+### 📖 完整新手指南
+👉 **[详细快速开始指南](QUICKSTART.md)** - 15-20 分钟
+
+包含详细的步骤说明和截图，适合完全新手。
+
+### 📚 高级配置
+👉 **[完整部署文档](DEPLOYMENT.md)**
+
+包含所有配置选项、高级功能和问题排查。
+
+---
+
 ## 技术栈
 
 - **前端**: Next.js 14, React 19, TypeScript, Tailwind CSS
