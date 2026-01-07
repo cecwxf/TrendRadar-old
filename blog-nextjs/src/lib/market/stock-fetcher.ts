@@ -94,22 +94,18 @@ export class StockFetcher {
     }
 
     // 创建 axios 实例
-    // Yahoo Finance API 现在经常返回 401，尝试使用更完整的浏览器头
+    // Yahoo Finance v7 API 经常返回 401
+    // 尝试使用 yh-finance.p.rapidapi.com 作为备用（如果有 API key）
+    // 或者使用 Finnhub/Alpha Vantage
     this.client = axios.create({
-      baseURL: "https://query2.finance.yahoo.com",
+      baseURL: "https://query1.finance.yahoo.com",
       timeout: 30000,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Referer": "https://finance.yahoo.com/",
-        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-site",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
       },
     });
   }
@@ -157,19 +153,52 @@ export class StockFetcher {
       console.log(`📊 获取第 ${batchIndex + 1}/${batches.length} 批:`, batch);
 
       try {
-        const symbolsParam = batch.join(",");
-        console.log(`🔗 请求 URL: ${this.client.defaults.baseURL}/v7/finance/quote?symbols=${symbolsParam}`);
+        // 尝试使用 v8 chart API 作为替代方案
+        // 对每个股票单独请求以避免批量请求被拒绝
+        const quotes: any[] = [];
 
-        const response = await this.client.get<YahooQuoteResponse>("/v7/finance/quote", {
-          params: {
-            symbols: symbolsParam,
-          },
-        });
+        for (const symbol of batch) {
+          try {
+            console.log(`🔗 请求 ${symbol}...`);
 
-        console.log(`📥 API 响应状态: ${response.status}`);
+            // 使用 v8/finance/chart API，只获取最新数据点
+            const chartResponse = await this.client.get(`/v8/finance/chart/${symbol}`, {
+              params: {
+                interval: "1d",
+                range: "1d",
+              },
+            });
 
-        const quotes = response.data.quoteResponse.result;
-        console.log(`📊 第 ${batchIndex + 1} 批获取到 ${quotes?.length || 0} 条数据`);
+            const chartResult = chartResponse.data?.chart?.result?.[0];
+            if (!chartResult) {
+              console.warn(`⚠️ ${symbol} 无图表数据`);
+              continue;
+            }
+
+            const meta = chartResult.meta;
+            const quote: any = {
+              symbol: symbol,
+              longName: meta.longName,
+              shortName: meta.shortName || meta.symbol,
+              regularMarketPrice: meta.regularMarketPrice,
+              regularMarketPreviousClose: meta.chartPreviousClose || meta.previousClose,
+              regularMarketChange: meta.regularMarketPrice - (meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice),
+              regularMarketChangePercent: ((meta.regularMarketPrice - (meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice)) / (meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice)) * 100,
+              regularMarketVolume: 0,
+            };
+
+            quotes.push(quote);
+            console.log(`✓ ${symbol} 获取成功`);
+
+            // 避免请求过快
+            await this.sleep(300);
+          } catch (error: any) {
+            console.error(`❌ ${symbol} 获取失败:`, error.message);
+            continue;
+          }
+        }
+
+        console.log(`📊 第 ${batchIndex + 1} 批获取到 ${quotes.length} 条数据`);
 
           for (const quote of quotes) {
           try {

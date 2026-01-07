@@ -48,9 +48,11 @@ export function MarketBanner({ initialData }: MarketBannerProps) {
     }
   };
 
-  // 只显示 BTC 和 ETH
-  const btc = cryptoData.find((item) => item.symbol === "BTC");
-  const eth = cryptoData.find((item) => item.symbol === "ETH");
+  // 显示所有加密货币（BTC, ETH, SOL, BNB）
+  const displayCoins = ["BTC", "ETH", "SOL", "BNB"];
+  const coinsData = displayCoins
+    .map(symbol => cryptoData.find(item => item.symbol === symbol))
+    .filter((item): item is CryptoItem => item !== undefined);
 
   if (isLoading) {
     return (
@@ -63,7 +65,7 @@ export function MarketBanner({ initialData }: MarketBannerProps) {
     );
   }
 
-  if (!btc && !eth) {
+  if (coinsData.length === 0) {
     return (
       <div className="h-[100px] bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-xl flex items-center justify-center">
         <div className="text-center">
@@ -83,9 +85,10 @@ export function MarketBanner({ initialData }: MarketBannerProps) {
     <div className="h-[100px] bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/20 dark:via-indigo-950/20 dark:to-blue-950/20 rounded-xl shadow-sm hover:shadow-md transition-shadow">
       <div className="h-full flex items-center justify-between px-6">
         {/* 左侧：加密货币数据 */}
-        <div className="flex items-center gap-8">
-          {btc && <CryptoCard item={btc} />}
-          {eth && <CryptoCard item={eth} />}
+        <div className="flex items-center gap-6">
+          {coinsData.map(item => (
+            <CryptoCard key={item.symbol} item={item} />
+          ))}
         </div>
 
         {/* 右侧：查看完整仪表盘链接 */}
@@ -108,22 +111,31 @@ function CryptoCard({ item }: { item: CryptoItem }) {
   const isPositive = item.price_change_24h >= 0;
   const Icon = isPositive ? TrendingUp : TrendingDown;
 
+  // 币种配置
+  const coinConfig: Record<string, { name: string; gradient: string }> = {
+    BTC: { name: "比特币", gradient: "bg-gradient-to-br from-orange-400 to-orange-600" },
+    ETH: { name: "以太坊", gradient: "bg-gradient-to-br from-indigo-400 to-indigo-600" },
+    SOL: { name: "Solana", gradient: "bg-gradient-to-br from-purple-400 to-purple-600" },
+    BNB: { name: "币安币", gradient: "bg-gradient-to-br from-yellow-400 to-yellow-600" },
+  };
+
+  const config = coinConfig[item.symbol] || {
+    name: item.symbol,
+    gradient: "bg-gradient-to-br from-gray-400 to-gray-600"
+  };
+
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3">
       {/* 币种图标和符号 */}
       <div className="flex items-center gap-2">
         <div
-          className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-            item.symbol === "BTC"
-              ? "bg-gradient-to-br from-orange-400 to-orange-600"
-              : "bg-gradient-to-br from-indigo-400 to-indigo-600"
-          }`}
+          className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs ${config.gradient}`}
         >
           {item.symbol}
         </div>
         <div>
           <div className="text-xs text-muted-foreground font-medium">
-            {item.symbol === "BTC" ? "比特币" : "以太坊"}
+            {config.name}
           </div>
           <div className="text-xs text-muted-foreground/70">{item.symbol}</div>
         </div>
@@ -131,7 +143,7 @@ function CryptoCard({ item }: { item: CryptoItem }) {
 
       {/* 价格和涨跌幅 */}
       <div className="flex flex-col items-end">
-        <div className="text-lg font-bold tabular-nums">
+        <div className="text-base font-bold tabular-nums">
           ${item.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div
