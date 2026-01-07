@@ -6,7 +6,7 @@ import { MarketBanner } from "@/components/market/MarketBanner";
 import { SearchBar } from "@/components/blog/SearchBar";
 import type { PostListItem } from "@/types/blog";
 
-export const revalidate = 3600; // ISR: 每小时重新验证
+export const revalidate = 600; // ISR: 每10分钟重新验证（匹配Cron更新频率）
 
 export default async function Home() {
   // 并行获取文章列表和市场数据
