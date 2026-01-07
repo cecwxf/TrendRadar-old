@@ -94,17 +94,22 @@ export class StockFetcher {
     }
 
     // 创建 axios 实例
-    // 使用 query1 替代 query2，添加更多 headers 模拟浏览器
+    // Yahoo Finance API 现在经常返回 401，尝试使用更完整的浏览器头
     this.client = axios.create({
-      baseURL: "https://query1.finance.yahoo.com",
-      timeout: 20000, // 增加超时时间
+      baseURL: "https://query2.finance.yahoo.com",
+      timeout: 30000,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Referer": "https://finance.yahoo.com",
-        "Origin": "https://finance.yahoo.com",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Referer": "https://finance.yahoo.com/",
+        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"macOS"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
       },
     });
   }
@@ -138,84 +143,101 @@ export class StockFetcher {
 
     console.log(`📊 准备获取 ${symbolList.length} 只股票数据:`, symbolList);
 
-    try {
-      // 批量获取股票数据（Yahoo Finance 支持一次请求多个股票）
-      const symbolsParam = symbolList.join(",");
-      console.log(`🔗 请求 URL: ${this.client.defaults.baseURL}/v7/finance/quote?symbols=${symbolsParam}`);
+    // 分批获取，每批最多5只股票，避免触发反爬虫
+    const BATCH_SIZE = 5;
+    const batches: string[][] = [];
+    for (let i = 0; i < symbolList.length; i += BATCH_SIZE) {
+      batches.push(symbolList.slice(i, i + BATCH_SIZE));
+    }
 
-      const response = await this.client.get<YahooQuoteResponse>("/v7/finance/quote", {
-        params: {
-          symbols: symbolsParam,
-        },
-      });
+    console.log(`📦 分为 ${batches.length} 批次获取，每批最多 ${BATCH_SIZE} 只股票`);
 
-      console.log(`📥 API 响应状态: ${response.status}`);
-      console.log(`📥 API 响应数据:`, JSON.stringify(response.data, null, 2));
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`📊 获取第 ${batchIndex + 1}/${batches.length} 批:`, batch);
 
-      const quotes = response.data.quoteResponse.result;
-      console.log(`📊 获取到 ${quotes?.length || 0} 条股票数据`);
+      try {
+        const symbolsParam = batch.join(",");
+        console.log(`🔗 请求 URL: ${this.client.defaults.baseURL}/v7/finance/quote?symbols=${symbolsParam}`);
 
-      for (const quote of quotes) {
-        try {
-          const symbol = quote.symbol;
-          const symbolInfo = this.symbols[symbol];
+        const response = await this.client.get<YahooQuoteResponse>("/v7/finance/quote", {
+          params: {
+            symbols: symbolsParam,
+          },
+        });
 
-          if (!symbolInfo) continue;
+        console.log(`📥 API 响应状态: ${response.status}`);
 
-          // 获取当前价格
-          const price = quote.regularMarketPrice || quote.regularMarketPreviousClose || 0;
+        const quotes = response.data.quoteResponse.result;
+        console.log(`📊 第 ${batchIndex + 1} 批获取到 ${quotes?.length || 0} 条数据`);
 
-          if (!price) {
-            console.warn(`⚠️ ${symbol} 无法获取价格数据`);
+          for (const quote of quotes) {
+          try {
+            const symbol = quote.symbol;
+            const symbolInfo = this.symbols[symbol];
+
+            if (!symbolInfo) continue;
+
+            // 获取当前价格
+            const price = quote.regularMarketPrice || quote.regularMarketPreviousClose || 0;
+
+            if (!price) {
+              console.warn(`⚠️ ${symbol} 无法获取价格数据`);
+              continue;
+            }
+
+            // 获取价格变化
+            const previousClose = quote.regularMarketPreviousClose || price;
+            const change = quote.regularMarketChange || price - previousClose;
+            const changePercent = quote.regularMarketChangePercent || (change / previousClose) * 100;
+
+            // 获取成交量
+            const volume = quote.regularMarketVolume || 0;
+
+            // 获取完整名称
+            const name = quote.longName || quote.shortName || symbolInfo.name;
+
+            const stockItem: StockItem = {
+              symbol,
+              name,
+              price,
+              change,
+              change_percent: changePercent,
+              volume,
+              timestamp: new Date().toISOString(),
+              market: symbolInfo.market,
+              price_history: [],
+            };
+
+            result[symbol] = stockItem;
+
+            const changeSymbol = changePercent >= 0 ? "▲" : "▼";
+            console.log(
+              `✅ 获取 ${name} 成功: ${price.toFixed(2)} ${changeSymbol} ${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(2)}%`
+            );
+          } catch (error) {
+            console.error(`❌ 解析 ${quote.symbol} 数据失败:`, error);
             continue;
           }
-
-          // 获取价格变化
-          const previousClose = quote.regularMarketPreviousClose || price;
-          const change = quote.regularMarketChange || price - previousClose;
-          const changePercent = quote.regularMarketChangePercent || (change / previousClose) * 100;
-
-          // 获取成交量
-          const volume = quote.regularMarketVolume || 0;
-
-          // 获取完整名称
-          const name = quote.longName || quote.shortName || symbolInfo.name;
-
-          const stockItem: StockItem = {
-            symbol,
-            name,
-            price,
-            change,
-            change_percent: changePercent,
-            volume,
-            timestamp: new Date().toISOString(),
-            market: symbolInfo.market,
-            price_history: [],
-          };
-
-          result[symbol] = stockItem;
-
-          const changeSymbol = changePercent >= 0 ? "▲" : "▼";
-          console.log(
-            `✅ 获取 ${name} 成功: ${price.toFixed(2)} ${changeSymbol} ${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(2)}%`
-          );
-
-          // 避免请求过快
-          await this.sleep(200);
-        } catch (error) {
-          console.error(`❌ 解析 ${quote.symbol} 数据失败:`, error);
-          continue;
         }
+
+        // 批次之间延迟，避免触发频率限制
+        if (batchIndex < batches.length - 1) {
+          console.log(`⏳ 等待 1 秒后继续下一批...`);
+          await this.sleep(1000);
+        }
+      } catch (error: any) {
+        console.error(`❌ 第 ${batchIndex + 1} 批获取失败:`, {
+          batch,
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          code: error.code,
+        });
+        // 继续处理下一批
+        continue;
       }
-    } catch (error: any) {
-      console.error("❌ 批量获取股票数据失败:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        code: error.code,
-        stack: error.stack,
-      });
     }
 
     console.log(`✅ 最终返回 ${Object.keys(result).length} 只股票数据`);
