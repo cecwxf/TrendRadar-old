@@ -136,16 +136,24 @@ export class StockFetcher {
       return result;
     }
 
+    console.log(`📊 准备获取 ${symbolList.length} 只股票数据:`, symbolList);
+
     try {
       // 批量获取股票数据（Yahoo Finance 支持一次请求多个股票）
       const symbolsParam = symbolList.join(",");
+      console.log(`🔗 请求 URL: ${this.client.defaults.baseURL}/v7/finance/quote?symbols=${symbolsParam}`);
+
       const response = await this.client.get<YahooQuoteResponse>("/v7/finance/quote", {
         params: {
           symbols: symbolsParam,
         },
       });
 
+      console.log(`📥 API 响应状态: ${response.status}`);
+      console.log(`📥 API 响应数据:`, JSON.stringify(response.data, null, 2));
+
       const quotes = response.data.quoteResponse.result;
+      console.log(`📊 获取到 ${quotes?.length || 0} 条股票数据`);
 
       for (const quote of quotes) {
         try {
@@ -199,10 +207,18 @@ export class StockFetcher {
           continue;
         }
       }
-    } catch (error) {
-      console.error("❌ 批量获取股票数据失败:", error);
+    } catch (error: any) {
+      console.error("❌ 批量获取股票数据失败:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        code: error.code,
+        stack: error.stack,
+      });
     }
 
+    console.log(`✅ 最终返回 ${Object.keys(result).length} 只股票数据`);
     return result;
   }
 
