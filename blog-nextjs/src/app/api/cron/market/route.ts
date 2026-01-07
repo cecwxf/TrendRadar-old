@@ -79,6 +79,19 @@ export async function POST(request: NextRequest) {
       console.log("📊 开始获取股票数据...");
       const stockFetcher = createStockFetcher({
         usePredefinedIndices: true,
+        customStocks: [
+          // 美股个股
+          "TSLA",      // 特斯拉
+          "GOOGL",     // Google
+          "META",      // Meta
+          // 港股个股
+          "0700.HK",   // 腾讯控股
+          "9660.HK",   // 地平线机器人
+          "9988.HK",   // 阿里巴巴
+          // A股个股
+          "688047.SS", // 龙芯中科（科创板）
+          "301536.SZ", // 星宸科技（创业板）
+        ],
       });
 
       const stockItems = await stockFetcher.fetchCurrent();
