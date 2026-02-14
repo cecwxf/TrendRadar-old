@@ -85,7 +85,7 @@ class MarketDashboard:
         )
 
         print("=" * 60)
-        print("📈 敬湛飞轮精选")
+        print("📈 空间超算精选")
         print("=" * 60)
         print(f"  加载了 {len(crypto_symbols)} 个加密货币")
         print(f"  加载了 {len(custom_stocks_list)} 个自定义股票")
@@ -219,7 +219,7 @@ class MarketDashboard:
 
             # 完成
             print("\n" + "=" * 60)
-            print("✅ 敬湛飞轮精选更新完成")
+            print("✅ 空间超算精选更新完成")
             print("=" * 60)
             print(f"\n📊 数据概览:")
             print(f"  - 加密货币: {len(market_data.crypto_items)} 个")

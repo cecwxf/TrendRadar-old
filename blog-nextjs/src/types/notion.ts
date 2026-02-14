@@ -11,6 +11,7 @@ export interface NotionPost {
   tags: string[];
   summary: string;
   cover?: string;
+  pinned: boolean;
   publishedAt: string;
   createdAt: string;
   updatedAt: string;

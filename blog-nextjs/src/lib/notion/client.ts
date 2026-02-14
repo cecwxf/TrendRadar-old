@@ -200,6 +200,7 @@ function extractPostData(page: any): NotionPost {
     tags: properties.Tags?.multi_select?.map((tag: any) => tag.name) || [],
     summary: getPlainText(properties.Summary?.rich_text || []),
     cover: coverUrl,
+    pinned: properties.Pinned?.checkbox === true,
     publishedAt: properties.PublishDate?.date?.start || page.created_time,
     createdAt: page.created_time,
     updatedAt: page.last_edited_time,

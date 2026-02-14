@@ -24,7 +24,7 @@ export function Header() {
             className="flex items-center space-x-2"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="text-xl font-bold">敬湛飞轮精选</span>
+            <span className="text-xl font-bold">空间超算精选</span>
           </Link>
 
           {/* 桌面端导航和操作 */}

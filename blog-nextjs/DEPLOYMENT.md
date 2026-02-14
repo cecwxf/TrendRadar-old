@@ -54,7 +54,7 @@ NOTION_DATABASE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # 网站基础信息
 NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-NEXT_PUBLIC_SITE_TITLE=敬湛飞轮精选
+NEXT_PUBLIC_SITE_TITLE=空间超算精选
 NEXT_PUBLIC_SITE_DESCRIPTION=分享加密货币、股市投资、个人成长的见解
 
 # Giscus 评论配置

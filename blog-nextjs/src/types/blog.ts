@@ -11,6 +11,7 @@ export interface Post {
   category: string;
   tags: string[];
   cover?: string;
+  pinned?: boolean;
   publishedAt: string;
   readingTime: number;
   viewCount?: number;
@@ -38,6 +39,7 @@ export interface PostListItem {
   category: string;
   tags: string[];
   cover?: string;
+  pinned?: boolean;
   publishedAt: string;
   readingTime: number;
   viewCount?: number;

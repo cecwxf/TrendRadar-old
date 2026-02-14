@@ -1,9 +1,8 @@
 import { getPosts } from "@/lib/notion/client";
 import { notionPageToMarkdown, calculateReadingTime } from "@/lib/notion/renderer";
 import { getLatestCryptoData } from "@/lib/market/market-service";
-import { PostCard } from "@/components/blog/PostCard";
 import { MarketBanner } from "@/components/market/MarketBanner";
-import { SearchBar } from "@/components/blog/SearchBar";
+import { PostListWithArchive } from "@/components/blog/PostListWithArchive";
 import type { PostListItem } from "@/types/blog";
 
 export const revalidate = 600; // ISR: 每10分钟重新验证（匹配Cron更新频率）
@@ -31,6 +30,7 @@ export default async function Home() {
         tags: post.tags,
         cover: post.cover,
         publishedAt: post.publishedAt,
+        pinned: post.pinned,
         readingTime,
         viewCount: 0, // TODO: 从 Supabase 获取
       };
@@ -43,7 +43,7 @@ export default async function Home() {
       <section className="bg-gradient-to-b from-background to-muted/20 py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl font-bold tracking-tight mb-4">
-            敬湛飞轮精选
+            空间超算精选
           </h1>
           <p className="text-xl text-muted-foreground mb-2">
             AI SaaS 出海
@@ -81,19 +81,7 @@ export default async function Home() {
             </div>
           </div>
         ) : (
-          <>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-              <h2 className="text-3xl font-bold">最新文章</h2>
-              <div className="w-full md:w-96">
-                <SearchBar posts={posts} />
-              </div>
-            </div>
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map(post => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-          </>
+          <PostListWithArchive posts={posts} />
         )}
       </section>
     </main>

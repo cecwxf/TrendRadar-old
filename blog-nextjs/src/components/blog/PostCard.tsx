@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, Clock, Eye } from "lucide-react";
+import { Calendar, Clock, Eye, Pin } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import type { PostListItem } from "@/types/blog";
@@ -32,6 +32,12 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* 分类和标签 */}
       <div className="flex flex-wrap items-center gap-2">
+        {post.pinned && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <Pin className="h-3 w-3" />
+            置顶
+          </span>
+        )}
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           {post.category}
         </span>

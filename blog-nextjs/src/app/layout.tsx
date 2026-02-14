@@ -23,24 +23,24 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "博客 - 敬湛飞轮精选",
-    template: "%s | 敬湛飞轮精选",
+    default: "博客 - 空间超算精选",
+    template: "%s | 空间超算精选",
   },
   description: "个人博客 - AI SaaS 出海",
   keywords: ["博客", "AI", "SaaS", "出海", "Next.js", "加密货币"],
-  authors: [{ name: "敬湛飞轮精选" }],
-  creator: "敬湛飞轮精选",
+  authors: [{ name: "空间超算精选" }],
+  creator: "空间超算精选",
   openGraph: {
     type: "website",
     locale: "zh_CN",
     url: "https://your-domain.com",
-    siteName: "敬湛飞轮精选",
-    title: "敬湛飞轮精选",
+    siteName: "空间超算精选",
+    title: "空间超算精选",
     description: "个人博客 - AI SaaS 出海",
   },
   twitter: {
     card: "summary_large_image",
-    title: "敬湛飞轮精选",
+    title: "空间超算精选",
     description: "个人博客 - AI SaaS 出海",
   },
   robots: {
