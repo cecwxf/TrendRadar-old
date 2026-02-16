@@ -1,6 +1,6 @@
 import { getPosts } from "@/lib/notion/client";
 import { notionPageToMarkdown, calculateReadingTime } from "@/lib/notion/renderer";
-import { getLatestCryptoData } from "@/lib/market/market-service";
+import { getLatestCryptoData, getViewCount } from "@/lib/market/market-service";
 import { MarketBanner } from "@/components/market/MarketBanner";
 import { PostListWithArchive } from "@/components/blog/PostListWithArchive";
 import type { PostListItem } from "@/types/blog";
@@ -32,7 +32,7 @@ export default async function Home() {
         publishedAt: post.publishedAt,
         pinned: post.pinned,
         readingTime,
-        viewCount: 0, // TODO: 从 Supabase 获取
+        viewCount: await getViewCount(post.slug),
       };
     })
   );

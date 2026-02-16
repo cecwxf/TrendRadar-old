@@ -16,6 +16,7 @@ import { getViewCount } from "@/lib/market/market-service";
 import { ArticleContent } from "@/components/blog/ArticleContent";
 import { ViewTracker } from "@/components/blog/ViewTracker";
 import { ViewCount } from "@/components/blog/ViewCount";
+import { Comments } from "@/components/blog/Comments";
 
 export const revalidate = 3600; // ISR: 每小时重新验证
 export const dynamicParams = true; // 允许动态参数（构建时未生成的路径也能访问）
@@ -167,6 +168,11 @@ export default async function ArticlePage({ params }: PageProps) {
           </div>
         </footer>
 
+        {/* 评论区 */}
+        <section className="mt-16">
+          <h2 className="text-2xl font-bold mb-6">评论</h2>
+          <Comments slug={slug} />
+        </section>
       </article>
     </main>
   );
