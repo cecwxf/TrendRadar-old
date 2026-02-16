@@ -46,7 +46,7 @@ export default async function Home() {
             空间超算
           </h1>
           <p className="text-xl text-muted-foreground mb-2">
-            AI SaaS 出海
+            我们反思成长，静静等待扭转乾坤
           </p>
           <p className="text-sm text-muted-foreground">
             Ship Fast, Ship More!
