@@ -282,46 +282,36 @@ export async function incrementViewCount(articleSlug: string): Promise<boolean> 
   }
 
   try {
-    // 使用 upsert 实现：存在则更新，不存在则插入
-    const { error } = await supabaseAdmin.from(TABLE_NAMES.VIEW_STATS).upsert(
-      {
-        article_slug: articleSlug,
-        view_count: 1,
-        last_viewed_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "article_slug",
-        // 如果记录已存在，增加 view_count
-      }
-    );
+    // 先查询是否已有记录
+    const { data: existing } = await supabaseAdmin
+      .from(TABLE_NAMES.VIEW_STATS)
+      .select("view_count")
+      .eq("article_slug", articleSlug)
+      .single();
 
-    // 如果是已存在的记录，需要手动增加计数
-    if (!error) {
-      const { error: updateError } = await supabaseAdmin.rpc("increment_view_count", {
-        slug: articleSlug,
-      });
+    if (existing) {
+      // 记录已存在，view_count + 1
+      const { error } = await supabaseAdmin
+        .from(TABLE_NAMES.VIEW_STATS)
+        .update({
+          view_count: existing.view_count + 1,
+          last_viewed_at: new Date().toISOString(),
+        })
+        .eq("article_slug", articleSlug);
 
-      if (updateError) {
-        // RPC 函数可能不存在，使用备用方案
-        const { data: current } = await supabaseAdmin
-          .from(TABLE_NAMES.VIEW_STATS)
-          .select("view_count")
-          .eq("article_slug", articleSlug)
-          .single();
+      return !error;
+    } else {
+      // 记录不存在，插入新记录
+      const { error } = await supabaseAdmin
+        .from(TABLE_NAMES.VIEW_STATS)
+        .insert({
+          article_slug: articleSlug,
+          view_count: 1,
+          last_viewed_at: new Date().toISOString(),
+        });
 
-        if (current) {
-          await supabaseAdmin
-            .from(TABLE_NAMES.VIEW_STATS)
-            .update({
-              view_count: current.view_count + 1,
-              last_viewed_at: new Date().toISOString(),
-            })
-            .eq("article_slug", articleSlug);
-        }
-      }
+      return !error;
     }
-
-    return !error;
   } catch (error) {
     console.error("增加浏览量失败:", error);
     return false;
