@@ -63,7 +63,7 @@ def render_dashboard_html(
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>空间超算精选 - {market_data.date}</title>
+        <title>空间超算 - {market_data.date}</title>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -451,7 +451,7 @@ def render_dashboard_html(
         <div class="container">
             <!-- 头部 -->
             <div class="header">
-                <h1>📈 空间超算精选</h1>
+                <h1>📈 空间超算</h1>
                 <div class="subtitle">实时追踪加密货币、股票市场及AI智能分析</div>
             </div>
 

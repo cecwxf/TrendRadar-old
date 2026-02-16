@@ -225,7 +225,7 @@ NOTION_DATABASE_ID=你在第一步复制的DatabaseID
 
 # 网站信息
 NEXT_PUBLIC_SITE_URL=https://你的域名.vercel.app
-NEXT_PUBLIC_SITE_TITLE=空间超算精选
+NEXT_PUBLIC_SITE_TITLE=空间超算
 
 # 暂时禁用评论（稍后配置）
 NEXT_PUBLIC_GISCUS_REPO=placeholder/placeholder

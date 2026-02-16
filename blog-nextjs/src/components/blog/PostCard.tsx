@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, Clock, Eye, Pin } from "lucide-react";
+import { Calendar, Clock, Pin } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import type { PostListItem } from "@/types/blog";
@@ -75,12 +75,6 @@ export function PostCard({ post }: PostCardProps) {
           <Clock className="h-4 w-4" />
           <span>{post.readingTime} 分钟</span>
         </div>
-        {post.viewCount !== undefined && (
-          <div className="flex items-center gap-1">
-            <Eye className="h-4 w-4" />
-            <span>{post.viewCount} 次阅读</span>
-          </div>
-        )}
       </div>
 
       {/* 阅读更多 */}

@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Rss, Menu, X } from "lucide-react";
+import { Twitter, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export function Header() {
@@ -24,7 +24,7 @@ export function Header() {
             className="flex items-center space-x-2"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="text-xl font-bold">空间超算精选</span>
+            <span className="text-xl font-bold">空间超算</span>
           </Link>
 
           {/* 桌面端导航和操作 */}
@@ -45,16 +45,16 @@ export function Header() {
               </Link>
             </nav>
 
-            {/* RSS 订阅 */}
+            {/* X (Twitter) */}
             <a
-              href="/rss.xml"
+              href="https://x.com/metawxf"
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg p-2 hover:bg-muted transition-colors"
-              aria-label="RSS 订阅"
-              title="RSS 订阅"
+              aria-label="X (Twitter)"
+              title="X (Twitter)"
             >
-              <Rss className="h-5 w-5 text-foreground" />
+              <Twitter className="h-5 w-5 text-foreground" />
             </a>
 
             {/* 主题切换 */}
@@ -64,13 +64,13 @@ export function Header() {
           {/* 移动端操作 */}
           <div className="flex md:hidden items-center gap-2">
             <a
-              href="/rss.xml"
+              href="https://x.com/metawxf"
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg p-2 hover:bg-muted transition-colors"
-              aria-label="RSS 订阅"
+              aria-label="X (Twitter)"
             >
-              <Rss className="h-5 w-5 text-foreground" />
+              <Twitter className="h-5 w-5 text-foreground" />
             </a>
             <ThemeToggle />
             <button
