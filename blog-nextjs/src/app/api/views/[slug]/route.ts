@@ -8,7 +8,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { incrementViewCount, getViewCount } from "@/lib/market/market-service";
 
-export const runtime = "edge";
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
