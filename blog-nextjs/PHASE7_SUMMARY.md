@@ -219,7 +219,7 @@ blog-nextjs/
    NOTION_TOKEN=secret_xxx
    NOTION_DATABASE_ID=xxx
    NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-   NEXT_PUBLIC_SITE_TITLE=空间超算
+   NEXT_PUBLIC_SITE_TITLE=智展AI
    NEXT_PUBLIC_GISCUS_REPO=username/repo
    NEXT_PUBLIC_GISCUS_REPO_ID=R_xxx
    NEXT_PUBLIC_GISCUS_CATEGORY=General
@@ -320,7 +320,7 @@ export async function generateMetadata({ params }) {
         datePublished: post.publishedAt,
         author: {
           '@type': 'Person',
-          name: '空间超算',
+          name: '智展AI',
         },
       }),
     },

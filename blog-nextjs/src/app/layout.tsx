@@ -23,24 +23,24 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "空间超算",
-    template: "%s | 空间超算",
+    default: "智展AI",
+    template: "%s | 智展AI",
   },
   description: "我们反思成长，静静等待扭转乾坤",
-  keywords: ["空间超算", "反思成长"],
-  authors: [{ name: "空间超算" }],
-  creator: "空间超算",
+  keywords: ["智展AI", "反思成长"],
+  authors: [{ name: "智展AI" }],
+  creator: "智展AI",
   openGraph: {
     type: "website",
     locale: "zh_CN",
     url: "https://your-domain.com",
-    siteName: "空间超算",
-    title: "空间超算",
+    siteName: "智展AI",
+    title: "智展AI",
     description: "我们反思成长，静静等待扭转乾坤",
   },
   twitter: {
     card: "summary_large_image",
-    title: "空间超算",
+    title: "智展AI",
     description: "我们反思成长，静静等待扭转乾坤",
   },
   robots: {

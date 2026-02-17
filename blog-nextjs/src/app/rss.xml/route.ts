@@ -14,10 +14,10 @@ export const revalidate = 3600; // 每小时重新生成
 
 // RSS Feed 的基本信息（可以从环境变量读取）
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://your-domain.com";
-const SITE_TITLE = "空间超算";
+const SITE_TITLE = "智展AI";
 const SITE_DESCRIPTION = "我们反思成长，静静等待扭转乾坤";
 const SITE_LANGUAGE = "zh-CN";
-const SITE_AUTHOR = "空间超算";
+const SITE_AUTHOR = "智展AI";
 
 export async function GET() {
   try {

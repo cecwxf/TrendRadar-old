@@ -1,9 +1,9 @@
-# 🎉 项目完成总结 - 空间超算博客
+# 🎉 项目完成总结 - 智展AI博客
 
 ## 📊 项目概览
 
 ### 项目名称
-**空间超算** - 个人博客（Personal Blog）
+**智展AI** - 个人博客（Personal Blog）
 
 ### 项目描述
 从 TrendRadar 新闻聚合器成功转型为全功能个人博客，集成了 Notion CMS、金融市场数据、评论系统、搜索功能等现代化博客特性。
@@ -448,7 +448,7 @@ Route (app)             Revalidate  Expire
    NOTION_TOKEN=secret_xxx
    NOTION_DATABASE_ID=xxx
    NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-   NEXT_PUBLIC_SITE_TITLE=空间超算
+   NEXT_PUBLIC_SITE_TITLE=智展AI
    NEXT_PUBLIC_GISCUS_REPO=username/repo
    NEXT_PUBLIC_GISCUS_REPO_ID=R_xxx
    NEXT_PUBLIC_GISCUS_CATEGORY=General
