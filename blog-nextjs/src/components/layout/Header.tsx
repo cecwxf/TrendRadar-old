@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Twitter, Menu, X, Globe } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useLanguage, type Lang } from "@/components/language/LanguageProvider";
@@ -36,12 +37,22 @@ export function Header() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const { lang, setLang } = useLanguage();
   const langMenuRef = useRef<HTMLDivElement>(null);
+  const mobileLangRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
         langMenuRef.current &&
-        !langMenuRef.current.contains(e.target as Node)
+        !langMenuRef.current.contains(e.target as Node) &&
+        mobileLangRef.current &&
+        !mobileLangRef.current.contains(e.target as Node)
+      ) {
+        setLangMenuOpen(false);
+      }
+      if (
+        langMenuRef.current &&
+        !langMenuRef.current.contains(e.target as Node) &&
+        !mobileLangRef.current
       ) {
         setLangMenuOpen(false);
       }
@@ -60,6 +71,14 @@ export function Header() {
             className="flex items-center space-x-2"
             onClick={() => setMobileMenuOpen(false)}
           >
+            <Image
+              src="/logo.png"
+              alt="智展AI"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-lg"
+              priority
+            />
             <span className="text-xl font-bold">智展AI</span>
           </Link>
 
@@ -132,7 +151,7 @@ export function Header() {
           {/* 移动端操作 */}
           <div className="flex md:hidden items-center gap-2">
             {/* Mobile language selector */}
-            <div className="relative" ref={langMenuOpen ? langMenuRef : undefined}>
+            <div className="relative" ref={mobileLangRef}>
               <button
                 onClick={() => setLangMenuOpen(!langMenuOpen)}
                 className="rounded-lg p-2 hover:bg-muted transition-colors"

@@ -49,12 +49,12 @@ function LinkItem({ link }: { link: FooterLink }) {
       href={link.href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
     >
       <img
-        src={`https://www.google.com/s2/favicons?domain=${link.domain}&sz=16`}
+        src={`https://www.google.com/s2/favicons?domain=${link.domain}&sz=32`}
         alt=""
-        className="h-4 w-4 rounded-sm flex-shrink-0"
+        className="h-5 w-5 rounded-sm flex-shrink-0"
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
       />
       <span>{link.name}</span>
@@ -68,8 +68,8 @@ export function Footer() {
   return (
     <footer className="border-t border-border/40 mt-16 py-8">
       <div className="container mx-auto px-4">
-        <p className="text-[10px] text-muted-foreground/60 text-center mb-2">{SECTION_LABELS.ai[lang] || SECTION_LABELS.ai.zh}</p>
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+        <p className="text-xs text-muted-foreground/60 text-center mb-3">{SECTION_LABELS.ai[lang] || SECTION_LABELS.ai.zh}</p>
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
           {aiLinks.map((link) => (
             <LinkItem key={link.name} link={link} />
           ))}
@@ -77,8 +77,8 @@ export function Footer() {
 
         <div className="border-t border-border/30 my-3" />
 
-        <p className="text-[10px] text-muted-foreground/60 text-center mb-2">{SECTION_LABELS.finance[lang] || SECTION_LABELS.finance.zh}</p>
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+        <p className="text-xs text-muted-foreground/60 text-center mb-3">{SECTION_LABELS.finance[lang] || SECTION_LABELS.finance.zh}</p>
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
           {financeLinks.map((link) => (
             <LinkItem key={link.name} link={link} />
           ))}
@@ -86,8 +86,8 @@ export function Footer() {
 
         <div className="border-t border-border/30 my-3" />
 
-        <p className="text-[10px] text-muted-foreground/60 text-center mb-2">{SECTION_LABELS.dev[lang] || SECTION_LABELS.dev.zh}</p>
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+        <p className="text-xs text-muted-foreground/60 text-center mb-3">{SECTION_LABELS.dev[lang] || SECTION_LABELS.dev.zh}</p>
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
           {devLinks.map((link) => (
             <LinkItem key={link.name} link={link} />
           ))}
