@@ -3,7 +3,7 @@
  *
  * GET /api/market/historical
  *
- * 返回 BTC、ETH、S&P 500、上证指数近1年的日线历史价格
+ * 返回 BTC、ETH、S&P 500、上证指数、恒生指数、恒生科技近1年的日线历史价格
  */
 
 import { NextResponse } from "next/server";
@@ -120,11 +120,13 @@ async function fetchStockHistorical(symbol: string): Promise<PricePoint[]> {
 
 export async function GET() {
   try {
-    const [btc, eth, sp500, sse] = await Promise.all([
+    const [btc, eth, sp500, sse, hsi, hstech] = await Promise.all([
       fetchCryptoHistorical("bitcoin"),
       fetchCryptoHistorical("ethereum"),
       fetchStockHistorical("^GSPC"),
       fetchStockHistorical("000001.SS"),
+      fetchStockHistorical("^HSI"),
+      fetchStockHistorical("^HSTECH"),
     ]);
 
     return NextResponse.json(
@@ -133,6 +135,8 @@ export async function GET() {
         eth,
         sp500,
         sse,
+        hsi,
+        hstech,
         timestamp: new Date().toISOString(),
       },
       {
@@ -150,6 +154,8 @@ export async function GET() {
         eth: [],
         sp500: [],
         sse: [],
+        hsi: [],
+        hstech: [],
         error: "Failed to fetch historical market data",
         timestamp: new Date().toISOString(),
       },

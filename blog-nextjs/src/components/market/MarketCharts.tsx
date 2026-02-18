@@ -18,11 +18,13 @@ interface HistoricalData {
   eth: HistoricalPoint[];
   sp500: HistoricalPoint[];
   sse: HistoricalPoint[];
+  hsi: HistoricalPoint[];
+  hstech: HistoricalPoint[];
   timestamp: string;
 }
 
 interface AssetConfig {
-  key: keyof Pick<HistoricalData, "btc" | "eth" | "sp500" | "sse">;
+  key: keyof Pick<HistoricalData, "btc" | "eth" | "sp500" | "sse" | "hsi" | "hstech">;
   label: string;
   formatPrice: (price: number) => string;
 }
@@ -49,6 +51,18 @@ const ASSETS: AssetConfig[] = [
   {
     key: "sse",
     label: "A股 上证指数",
+    formatPrice: (p) =>
+      `${p.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 点`,
+  },
+  {
+    key: "hsi",
+    label: "港股 恒生指数",
+    formatPrice: (p) =>
+      `${p.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 点`,
+  },
+  {
+    key: "hstech",
+    label: "恒生科技",
     formatPrice: (p) =>
       `${p.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 点`,
   },
@@ -205,8 +219,8 @@ export function MarketCharts() {
   if (isLoading) {
     return (
       <div className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 rounded-xl p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
               className="bg-white dark:bg-gray-900/60 rounded-xl p-3 animate-pulse"
@@ -230,7 +244,7 @@ export function MarketCharts() {
 
   return (
     <div className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 rounded-xl p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {ASSETS.map((asset) => (
           <ChartCard key={asset.key} asset={asset} data={data[asset.key] || []} />
         ))}
