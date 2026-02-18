@@ -2,6 +2,7 @@ import { getPosts } from "@/lib/notion/client";
 import { notionPageToMarkdown, calculateReadingTime } from "@/lib/notion/renderer";
 import { getLatestCryptoData, getViewCount } from "@/lib/market/market-service";
 import { MarketBanner } from "@/components/market/MarketBanner";
+import { MarketCharts } from "@/components/market/MarketCharts";
 import { PostListWithArchive } from "@/components/blog/PostListWithArchive";
 import type { PostListItem } from "@/types/blog";
 
@@ -60,6 +61,11 @@ export default async function Home() {
           <MarketBanner initialData={cryptoData} />
         </section>
       )}
+
+      {/* 市场年度曲线图 */}
+      <section className="container mx-auto px-4 mt-4">
+        <MarketCharts />
+      </section>
 
       {/* 文章列表 */}
       <section className="container mx-auto px-4 py-16">
