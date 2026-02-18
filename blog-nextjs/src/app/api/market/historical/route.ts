@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import type { PricePoint } from "@/types/market";
 
-export const revalidate = 3600; // 缓存1小时
+export const revalidate = 86400; // 缓存24小时
 
 const HEADERS = {
   "User-Agent":
@@ -43,7 +43,7 @@ async function fetchCryptoHistorical(coinId: string): Promise<PricePoint[]> {
     const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=365&interval=daily`;
     const response = await fetch(url, {
       headers: HEADERS,
-      next: { revalidate: 3600 },
+      next: { revalidate: 86400 },
     });
 
     if (!response.ok) {
@@ -81,7 +81,7 @@ async function fetchStockHistorical(symbol: string): Promise<PricePoint[]> {
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
       },
-      next: { revalidate: 3600 },
+      next: { revalidate: 86400 },
     });
 
     if (!response.ok) {
@@ -141,7 +141,7 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=7200",
+          "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=172800",
         },
       }
     );
