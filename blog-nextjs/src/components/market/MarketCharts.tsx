@@ -62,9 +62,9 @@ const ASSETS: AssetConfig[] = [
   },
   {
     key: "hstech",
-    label: "恒生科技",
+    label: "恒生科技 ETF",
     formatPrice: (p) =>
-      `${p.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 点`,
+      `HK$${p.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
   },
 ];
 

@@ -126,7 +126,7 @@ export async function GET() {
       fetchStockHistorical("^GSPC"),
       fetchStockHistorical("000001.SS"),
       fetchStockHistorical("^HSI"),
-      fetchStockHistorical("^HSTECH"),
+      fetchStockHistorical("3032.HK"), // 恒生科技ETF（^HSTECH Yahoo Finance无数据）
     ]);
 
     return NextResponse.json(
