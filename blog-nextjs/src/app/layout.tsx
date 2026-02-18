@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { AIDock } from "@/components/layout/AIDock";
 import "../styles/globals.css";
 import "../styles/markdown.css";
 
@@ -64,12 +66,14 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
           <Header />
           {children}
+          <AIDock />
+          <Footer />
         </ThemeProvider>
         <SpeedInsights />
       </body>

@@ -50,7 +50,7 @@ export default async function Home() {
             我们反思成长，静静等待扭转乾坤
           </p>
           <p className="text-sm text-muted-foreground">
-            Ship Fast, Ship More!
+            We reflect and grow, quietly awaiting the moment to turn the tide.
           </p>
         </div>
       </section>
