@@ -15,27 +15,28 @@ interface NewsItem {
 }
 
 const RSS_SOURCES: RSSSource[] = [
-  // AI综合
+  // 综合 AI 资讯
   { url: "https://feeds.feedburner.com/venturebeat/SZYF", category: "综合" },
-  { url: "https://www.deeplearning.ai/feed/", category: "综合" },
-  // 大模型/研究
-  { url: "https://openai.com/news/rss", category: "大模型" },
-  { url: "https://www.anthropic.com/rss.xml", category: "大模型" },
-  // 硬件/芯片
-  { url: "https://feeds.feedburner.com/AnandTech", category: "芯片" },
-  // HuggingFace
+  { url: "https://techcrunch.com/category/artificial-intelligence/feed/", category: "综合" },
+  // 大模型 / 研究
   { url: "https://huggingface.co/blog/feed.xml", category: "大模型" },
+  { url: "https://www.artificialintelligence-news.com/feed/", category: "大模型" },
+  { url: "https://syncedreview.com/feed/", category: "大模型" },
+  // 芯片 / 硬件
+  { url: "https://feeds.feedburner.com/AnandTech", category: "芯片" },
+  { url: "https://feeds.arstechnica.com/arstechnica/technology-lab", category: "芯片" },
 ];
 
 function extractSourceName(url: string): string {
   try {
     const hostname = new URL(url).hostname.replace("www.", "").replace("feeds.feedburner.com", "");
     if (url.includes("venturebeat")) return "VentureBeat";
-    if (url.includes("deeplearning.ai")) return "DeepLearning.AI";
-    if (url.includes("openai.com")) return "OpenAI";
-    if (url.includes("anthropic.com")) return "Anthropic";
-    if (url.includes("AnandTech")) return "AnandTech";
+    if (url.includes("techcrunch")) return "TechCrunch";
     if (url.includes("huggingface")) return "HuggingFace";
+    if (url.includes("artificialintelligence-news")) return "AI News";
+    if (url.includes("syncedreview")) return "Synced";
+    if (url.includes("AnandTech")) return "AnandTech";
+    if (url.includes("arstechnica")) return "Ars Technica";
     return hostname;
   } catch {
     return "Unknown";
