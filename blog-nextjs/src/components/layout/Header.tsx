@@ -6,13 +6,49 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Twitter, Menu, X } from "lucide-react";
+import { Twitter, Menu, X, Globe } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useLanguage, type Lang } from "@/components/language/LanguageProvider";
+
+const NAV_LABELS: Record<string, Record<string, string>> = {
+  home: { zh: "首页", en: "Home", vi: "Trang chủ", de: "Startseite" },
+  market: { zh: "市场", en: "Market", vi: "Thị trường", de: "Markt" },
+};
+
+const LANG_OPTIONS: { code: Lang; label: string }[] = [
+  { code: "zh", label: "简体中文" },
+  { code: "en", label: "English" },
+  { code: "vi", label: "Tiếng Việt" },
+  { code: "de", label: "Deutsch" },
+];
+
+const LANG_SHORT: Record<Lang, string> = {
+  zh: "中文",
+  en: "EN",
+  vi: "VI",
+  de: "DE",
+};
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const { lang, setLang } = useLanguage();
+  const langMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        langMenuRef.current &&
+        !langMenuRef.current.contains(e.target as Node)
+      ) {
+        setLangMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -35,15 +71,47 @@ export function Header() {
                 href="/"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                首页
+                {NAV_LABELS.home[lang]}
               </Link>
               <Link
                 href="/market"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                市场
+                {NAV_LABELS.market[lang]}
               </Link>
             </nav>
+
+            {/* Language selector */}
+            <div className="relative" ref={langMenuRef}>
+              <button
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="flex items-center gap-1 rounded-lg p-2 hover:bg-muted transition-colors text-sm font-medium"
+                aria-label="Switch language"
+              >
+                <Globe className="h-4 w-4" />
+                <span>{LANG_SHORT[lang]}</span>
+              </button>
+              {langMenuOpen && (
+                <div className="absolute right-0 mt-1 min-w-[140px] rounded-lg border border-border bg-background shadow-lg z-50">
+                  {LANG_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.code}
+                      onClick={() => {
+                        setLang(opt.code);
+                        setLangMenuOpen(false);
+                      }}
+                      className={`block w-full px-4 py-2 text-left text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                        lang === opt.code
+                          ? "font-semibold text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* X (Twitter) */}
             <a
@@ -63,6 +131,36 @@ export function Header() {
 
           {/* 移动端操作 */}
           <div className="flex md:hidden items-center gap-2">
+            {/* Mobile language selector */}
+            <div className="relative" ref={langMenuOpen ? langMenuRef : undefined}>
+              <button
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="rounded-lg p-2 hover:bg-muted transition-colors"
+                aria-label="Switch language"
+              >
+                <Globe className="h-5 w-5" />
+              </button>
+              {langMenuOpen && (
+                <div className="absolute right-0 mt-1 min-w-[140px] rounded-lg border border-border bg-background shadow-lg z-50">
+                  {LANG_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.code}
+                      onClick={() => {
+                        setLang(opt.code);
+                        setLangMenuOpen(false);
+                      }}
+                      className={`block w-full px-4 py-2 text-left text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                        lang === opt.code
+                          ? "font-semibold text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <a
               href="https://x.com/metawxf"
               target="_blank"
@@ -96,14 +194,14 @@ export function Header() {
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                首页
+                {NAV_LABELS.home[lang]}
               </Link>
               <Link
                 href="/market"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                市场
+                {NAV_LABELS.market[lang]}
               </Link>
             </nav>
           </div>

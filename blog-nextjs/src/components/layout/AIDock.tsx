@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/components/language/LanguageProvider";
 
 interface NewsItem {
   title: string;
@@ -14,29 +15,52 @@ interface AINewsData {
   updatedAt: string;
 }
 
+const UI_TEXT: Record<string, Record<string, string>> = {
+  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于" },
+  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated" },
+  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật" },
+  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert" },
+};
+
+const CATEGORY_LABELS: Record<string, Record<string, string>> = {
+  "大模型": { zh: "大模型", en: "LLMs", vi: "Mô hình LLM", de: "KI-Modelle" },
+  "Agent": { zh: "Agent", en: "Agents", vi: "Agent AI", de: "KI-Agenten" },
+  "AI芯片": { zh: "AI芯片", en: "AI Chips", vi: "Chip AI", de: "KI-Chips" },
+};
+
+const CATEGORY_ORDER = ["大模型", "Agent", "AI芯片"];
+
 export function AIDock() {
-  const [open, setOpen] = useState(false);
+  const { lang } = useLanguage();
+  const [open, setOpen] = useState(true);
   const [data, setData] = useState<AINewsData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("");
+  const [error, setError] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("大模型");
+
+  const t = UI_TEXT[lang] || UI_TEXT.zh;
 
   useEffect(() => {
-    if (!open || data) return;
     setLoading(true);
+    setError(false);
     fetch("/api/ai-news")
       .then((res) => res.json())
       .then((json: AINewsData) => {
         setData(json);
-        const cats = Object.keys(json.categories);
-        if (cats.length > 0 && !activeTab) setActiveTab(cats[0]);
       })
-      .catch(() => {})
+      .catch(() => {
+        setError(true);
+      })
       .finally(() => setLoading(false));
-  }, [open, data, activeTab]);
+  }, []);
 
   const categories = data?.categories || {};
-  const tabs = Object.keys(categories);
+  const tabs = CATEGORY_ORDER;
   const currentItems = activeTab ? categories[activeTab] || [] : [];
+
+  function getCategoryLabel(cat: string): string {
+    return CATEGORY_LABELS[cat]?.[lang] || CATEGORY_LABELS[cat]?.zh || cat;
+  }
 
   return (
     <div className="fixed right-0 top-1/4 z-40 hidden lg:flex">
@@ -47,16 +71,19 @@ export function AIDock() {
           className="flex items-center rounded-l-lg bg-gradient-to-b from-blue-600 to-purple-600 px-1.5 py-4 text-white shadow-lg transition-all hover:px-2.5"
           style={{ writingMode: "vertical-rl" }}
         >
-          <span className="text-sm font-medium tracking-widest">AI 动态</span>
+          <span className="text-sm font-medium tracking-widest">{t.title}</span>
         </button>
       )}
 
       {/* Expanded panel */}
       {open && (
-        <div className="flex w-[300px] flex-col rounded-l-xl border-l border-t border-b border-border bg-background/95 shadow-2xl backdrop-blur">
+        <div
+          className="flex w-[300px] flex-col rounded-l-xl border-l border-t border-b border-border bg-background/95 shadow-2xl backdrop-blur"
+          style={{ overflowY: "auto", maxHeight: "calc(100vh - 100px)" }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold text-foreground">AI 动态</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t.title}</h3>
             <button
               onClick={() => setOpen(false)}
               className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -101,17 +128,20 @@ export function AIDock() {
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
-                      {tab}
+                      {getCategoryLabel(tab)}
                     </button>
                   ))}
                 </div>
               )}
 
               {/* News list */}
-              <div className="flex-1 overflow-y-auto px-3 py-2" style={{ maxHeight: "360px" }}>
+              <div
+                className="flex-1 overflow-y-auto px-3 py-2"
+                style={{ maxHeight: "calc(100vh - 200px)" }}
+              >
                 {currentItems.length === 0 ? (
                   <p className="py-8 text-center text-xs text-muted-foreground">
-                    暂无数据
+                    {t.noData}
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -139,8 +169,8 @@ export function AIDock() {
               {/* Footer */}
               {data.updatedAt && (
                 <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
-                  更新于{" "}
-                  {new Date(data.updatedAt).toLocaleString("zh-CN", {
+                  {t.updatedAt}{" "}
+                  {new Date(data.updatedAt).toLocaleString(lang === "zh" ? "zh-CN" : lang === "de" ? "de-DE" : lang === "vi" ? "vi-VN" : "en-US", {
                     month: "numeric",
                     day: "numeric",
                     hour: "2-digit",
@@ -151,10 +181,10 @@ export function AIDock() {
             </>
           )}
 
-          {/* Empty state when no data and not loading */}
-          {!loading && !data && (
+          {/* Error state */}
+          {!loading && !data && error && (
             <p className="py-8 text-center text-xs text-muted-foreground">
-              加载失败，请稍后重试
+              {t.loadFailed}
             </p>
           )}
         </div>

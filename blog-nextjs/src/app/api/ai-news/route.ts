@@ -15,16 +15,16 @@ interface NewsItem {
 }
 
 const RSS_SOURCES: RSSSource[] = [
-  // 综合 AI 资讯
-  { url: "https://feeds.feedburner.com/venturebeat/SZYF", category: "综合" },
-  { url: "https://techcrunch.com/category/artificial-intelligence/feed/", category: "综合" },
-  // 大模型 / 研究
+  // 大模型 - 开源和闭源进展
   { url: "https://huggingface.co/blog/feed.xml", category: "大模型" },
   { url: "https://www.artificialintelligence-news.com/feed/", category: "大模型" },
   { url: "https://syncedreview.com/feed/", category: "大模型" },
-  // 芯片 / 硬件
-  { url: "https://feeds.feedburner.com/AnandTech", category: "芯片" },
-  { url: "https://feeds.arstechnica.com/arstechnica/technology-lab", category: "芯片" },
+  // Agent - Claude Code / opencode / AI Agent 进展
+  { url: "https://feeds.feedburner.com/venturebeat/SZYF", category: "Agent" },
+  { url: "https://techcrunch.com/category/artificial-intelligence/feed/", category: "Agent" },
+  // AI 芯片
+  { url: "https://feeds.feedburner.com/AnandTech", category: "AI芯片" },
+  { url: "https://feeds.arstechnica.com/arstechnica/technology-lab", category: "AI芯片" },
 ];
 
 function extractSourceName(url: string): string {

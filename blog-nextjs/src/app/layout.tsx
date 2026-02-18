@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { LanguageProvider } from "@/components/language/LanguageProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AIDock } from "@/components/layout/AIDock";
@@ -70,10 +71,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
-          {children}
-          <AIDock />
-          <Footer />
+          <LanguageProvider>
+            <Header />
+            {children}
+            <AIDock />
+            <Footer />
+          </LanguageProvider>
         </ThemeProvider>
         <SpeedInsights />
       </body>

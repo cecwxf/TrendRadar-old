@@ -4,57 +4,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**TrendRadar** is a Python-based news aggregation and analysis tool that:
-- Crawls hot topics from multiple Chinese news platforms (Weibo, Zhihu, Douyin, Baidu, etc.)
-- Supports RSS feed monitoring
-- Provides keyword-based filtering and frequency analysis
-- Sends notifications via multiple channels (WeChat, Telegram, Email, Feishu, DingTalk, etc.)
-- Offers an MCP (Model Context Protocol) server for AI-powered analysis
-- Supports both local and remote (S3-compatible) storage backends
+**TrendRadar** is a two-part project:
+
+1. **Python Backend** — News aggregation and analysis tool:
+   - Crawls hot topics from multiple Chinese news platforms (Weibo, Zhihu, Douyin, Baidu, etc.)
+   - RSS feed monitoring, keyword filtering, frequency analysis
+   - Multi-channel notifications (WeChat, Telegram, Email, Feishu, DingTalk, etc.)
+   - MCP (Model Context Protocol) server for AI-powered analysis
+   - Local and remote (S3-compatible) storage backends
+
+2. **Next.js Frontend** (`blog-nextjs/`) — Blog + market dashboard:
+   - Notion CMS-backed blog with markdown rendering
+   - Real-time crypto & stock market data (Supabase + ECharts)
+   - AI news dock (right sidebar) aggregating RSS from LLM/Agent/AI chip sources
+   - Dark mode by default, Giscus comments, Vercel Speed Insights
 
 ## Development Commands
 
-### Running the Application
+### Python Backend
 
 ```bash
-# Run the main crawler and analyzer
+# Install & run
+pip install -e .
 python -m trendradar
 
-# Run the MCP server (for AI analysis)
-python -m mcp_server.server
-# or
+# MCP server
 trendradar-mcp
-
-# Run MCP server in HTTP mode (production)
 trendradar-mcp --transport http --host 0.0.0.0 --port 3333
-```
 
-### Installation
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Install in development mode
-pip install -e .
-```
-
-### Testing & Docker
-
-```bash
-# Build Docker image
+# Docker
 docker build -t trendradar .
-
-# Run Docker container
 docker run -d --name trendradar \
   -v $(pwd)/config:/app/config \
   -v $(pwd)/output:/app/output \
   trendradar
-
-# Start HTTP server for viewing reports
-./start-http.sh  # Linux/Mac
-start-http.bat   # Windows
 ```
+
+### Next.js Frontend (`blog-nextjs/`)
+
+```bash
+cd blog-nextjs
+cp .env.example .env.local  # fill in NOTION_TOKEN, NOTION_DATABASE_ID, etc.
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # production build
+npm run lint    # ESLint
+```
+
+Required env vars: `NOTION_TOKEN`, `NOTION_DATABASE_ID`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_GISCUS_*` (4 vars).
+Optional: `NEXT_PUBLIC_SUPABASE_*` (market data), `CRON_SECRET` (market cron).
 
 ## Code Architecture
 
@@ -166,6 +164,44 @@ Mode strategy is defined in `NewsAnalyzer.MODE_STRATEGIES` and executed via `_ex
 - **Push window control**: Optional time-window restrictions and once-per-day limits
 - **Content merging**: Hot news + RSS feeds can be merged into single notification
 
+### Blog-NextJS Frontend Architecture
+
+**Stack**: Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS 3 + Supabase + ECharts
+
+```
+blog-nextjs/src/
+├── app/
+│   ├── layout.tsx              # Root layout: Header + AIDock + Footer + ThemeProvider
+│   ├── page.tsx                # Home: Hero + MarketBanner + MarketCharts + PostList
+│   ├── article/[slug]/         # Dynamic article pages (Notion content)
+│   ├── market/                 # Market dashboard page
+│   └── api/
+│       ├── ai-news/route.ts    # RSS aggregator for AI Dock (3 categories)
+│       ├── market/             # Crypto & stock data endpoints
+│       ├── views/[slug]/       # View count tracking
+│       └── cron/market/        # Vercel cron for market data refresh
+├── components/
+│   ├── layout/                 # Header, Footer, AIDock, PageTransition
+│   ├── blog/                   # PostCard, SearchBar, Comments, ViewCount, DateArchive
+│   ├── market/                 # MarketBanner (ticker), MarketCharts (ECharts), MiniChart
+│   ├── theme/                  # ThemeProvider (next-themes), ThemeToggle
+│   └── ui/                     # Skeleton loader
+├── lib/
+│   ├── notion/client.ts        # Notion API: getPosts, getPostBySlug, getCategories
+│   ├── notion/renderer.ts      # notion-to-md conversion + reading time
+│   ├── market/                 # market-service, crypto-fetcher, stock-fetcher
+│   └── supabase/client.ts      # Supabase client init
+└── types/                      # blog.ts, market.ts, notion.ts
+```
+
+**Key patterns**:
+- ISR with `revalidate = 600` on homepage; 1-hour cache on AI news API
+- AI Dock (`AIDock.tsx`): right sidebar panel, fetches `/api/ai-news`, tabs for 大模型/Agent/AI芯片
+- Market data: Supabase for persistence, Yahoo Finance API for stocks, CoinGecko for crypto
+- All layout components accept `lang` prop for i18n (zh/en/vi/de)
+- Footer uses Google Favicon API (`google.com/s2/favicons`) for link icons
+- Dark mode default via `next-themes` with `defaultTheme="dark"`
+
 ## Important Implementation Notes
 
 ### When Modifying Storage
@@ -198,3 +234,10 @@ Mode strategy is defined in `NewsAnalyzer.MODE_STRATEGIES` and executed via `_ex
 - Actions mode disables browser opening and proxy usage
 - Workflow schedule in `.github/workflows/crawler.yml`
 - Supports automatic deployment to GitHub Pages
+
+### When Modifying the Blog Frontend
+- Layout components (`Header`, `Footer`, `AIDock`) are composed in `blog-nextjs/src/app/layout.tsx`
+- AIDock categories are defined in `api/ai-news/route.ts` (`RSS_SOURCES` array) and must match `CATEGORY_ORDER` in `AIDock.tsx`
+- i18n translations live inline in each component (`UI_TEXT`, `CATEGORY_LABELS` dictionaries) — there is no centralized i18n framework
+- Market data flows: Vercel Cron → `/api/cron/market` → Supabase → `/api/market/latest` → `MarketBanner`/`MarketCharts`
+- Notion CMS schema requires properties: Name, slug, Published, Category, Tags, Summary, CoverImage, PublishDate, Pinned

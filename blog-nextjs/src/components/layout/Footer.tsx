@@ -1,52 +1,100 @@
-import Link from "next/link";
+"use client";
 
-const financeLinks = [
-  { name: "Twitter/X", href: "https://x.com" },
-  { name: "Binance", href: "https://www.binance.com" },
-  { name: "OKX", href: "https://www.okx.com" },
+import { useLanguage } from "@/components/language/LanguageProvider";
+
+interface FooterLink {
+  name: string;
+  href: string;
+  domain: string;
+}
+
+const aiLinks: FooterLink[] = [
+  { name: "ChatGPT",  href: "https://chat.openai.com",       domain: "openai.com" },
+  { name: "OpenAI",   href: "https://openai.com",             domain: "openai.com" },
+  { name: "Claude",   href: "https://claude.ai",              domain: "claude.ai" },
+  { name: "Gemini",   href: "https://gemini.google.com",      domain: "gemini.google.com" },
+  { name: "DeepSeek", href: "https://chat.deepseek.com",      domain: "deepseek.com" },
+  { name: "Kimi",     href: "https://kimi.moonshot.cn",       domain: "kimi.moonshot.cn" },
+  { name: "豆包",     href: "https://www.doubao.com",         domain: "doubao.com" },
+  { name: "通义",     href: "https://tongyi.aliyun.com",      domain: "tongyi.aliyun.com" },
+  { name: "智谱GLM",  href: "https://chatglm.cn",             domain: "chatglm.cn" },
 ];
 
-const devLinks = [
-  { name: "GitHub", href: "https://github.com" },
-  { name: "HuggingFace", href: "https://huggingface.co" },
-  { name: "魔塔社区", href: "https://modelscope.cn" },
-  { name: "PyTorch", href: "https://pytorch.org" },
-  { name: "NVIDIA 开发者", href: "https://developer.nvidia.com" },
-  { name: "AMD 开发者", href: "https://rocm.docs.amd.com" },
-  { name: "地平线论坛", href: "https://developer.horizon.ai" },
-  { name: "知乎", href: "https://www.zhihu.com" },
+const financeLinks: FooterLink[] = [
+  { name: "Twitter/X", href: "https://x.com",            domain: "x.com" },
+  { name: "Binance",   href: "https://www.binance.com",   domain: "binance.com" },
+  { name: "OKX",       href: "https://www.okx.com",       domain: "okx.com" },
 ];
+
+const devLinks: FooterLink[] = [
+  { name: "GitHub",       href: "https://github.com",              domain: "github.com" },
+  { name: "HuggingFace",  href: "https://huggingface.co",          domain: "huggingface.co" },
+  { name: "魔塔社区",     href: "https://modelscope.cn",            domain: "modelscope.cn" },
+  { name: "PyTorch",      href: "https://pytorch.org",             domain: "pytorch.org" },
+  { name: "NVIDIA Dev",   href: "https://developer.nvidia.com",    domain: "developer.nvidia.com" },
+  { name: "AMD ROCm",     href: "https://rocm.docs.amd.com",       domain: "amd.com" },
+  { name: "地平线",       href: "https://developer.horizon.ai",    domain: "horizon.ai" },
+  { name: "知乎",         href: "https://www.zhihu.com",           domain: "zhihu.com" },
+];
+
+const SECTION_LABELS: Record<string, Record<string, string>> = {
+  ai: { zh: "AI 助手", en: "AI Assistants", vi: "Trợ lý AI", de: "KI-Assistenten" },
+  finance: { zh: "金融", en: "Finance", vi: "Tài chính", de: "Finanzen" },
+  dev: { zh: "开发者", en: "Developers", vi: "Nhà phát triển", de: "Entwickler" },
+};
+
+function LinkItem({ link }: { link: FooterLink }) {
+  return (
+    <a
+      href={link.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${link.domain}&sz=16`}
+        alt=""
+        className="h-4 w-4 rounded-sm flex-shrink-0"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+      />
+      <span>{link.name}</span>
+    </a>
+  );
+}
 
 export function Footer() {
+  const { lang } = useLanguage();
+
   return (
     <footer className="border-t border-border/40 mt-16 py-8">
       <div className="container mx-auto px-4">
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-4">
+        <p className="text-[10px] text-muted-foreground/60 text-center mb-2">{SECTION_LABELS.ai[lang] || SECTION_LABELS.ai.zh}</p>
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+          {aiLinks.map((link) => (
+            <LinkItem key={link.name} link={link} />
+          ))}
+        </div>
+
+        <div className="border-t border-border/30 my-3" />
+
+        <p className="text-[10px] text-muted-foreground/60 text-center mb-2">{SECTION_LABELS.finance[lang] || SECTION_LABELS.finance.zh}</p>
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
           {financeLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {link.name}
-            </Link>
+            <LinkItem key={link.name} link={link} />
           ))}
         </div>
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6">
+
+        <div className="border-t border-border/30 my-3" />
+
+        <p className="text-[10px] text-muted-foreground/60 text-center mb-2">{SECTION_LABELS.dev[lang] || SECTION_LABELS.dev.zh}</p>
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
           {devLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {link.name}
-            </Link>
+            <LinkItem key={link.name} link={link} />
           ))}
         </div>
+
+        <div className="border-t border-border/30 my-3" />
+
         <p className="text-xs text-muted-foreground text-center">
           &copy; 2025 智展AI
         </p>
