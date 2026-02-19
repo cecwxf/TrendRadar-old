@@ -116,6 +116,19 @@ COMMENT ON TABLE view_stats IS '文章浏览统计';
 COMMENT ON COLUMN view_stats.article_slug IS '文章 URL slug（唯一标识符）';
 
 -- ============================================
+-- 4.5 AI Dock 快照缓存表
+-- ============================================
+CREATE TABLE IF NOT EXISTS ai_news_cache (
+  cache_key VARCHAR(50) PRIMARY KEY,          -- 缓存键（默认 default）
+  payload JSONB NOT NULL,                     -- AI Dock 快照内容
+  updated_at TIMESTAMPTZ DEFAULT NOW()        -- 最近更新时间
+);
+
+COMMENT ON TABLE ai_news_cache IS 'AI Dock 推文快照缓存（每日更新）';
+COMMENT ON COLUMN ai_news_cache.cache_key IS '缓存主键，默认 default';
+COMMENT ON COLUMN ai_news_cache.payload IS '序列化后的 AI Dock 数据';
+
+-- ============================================
 -- 5. 自动更新 updated_at 时间戳
 -- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -148,6 +161,7 @@ ALTER TABLE crypto_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE price_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE view_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_news_cache ENABLE ROW LEVEL SECURITY;
 
 -- 允许所有人读取数据（公开访问）
 CREATE POLICY "Allow public read access on crypto_data"
@@ -164,6 +178,10 @@ CREATE POLICY "Allow public read access on price_history"
 
 CREATE POLICY "Allow public read access on view_stats"
   ON view_stats FOR SELECT
+  USING (true);
+
+CREATE POLICY "Allow public read access on ai_news_cache"
+  ON ai_news_cache FOR SELECT
   USING (true);
 
 -- 只允许认证用户写入（通过 service_role key）
@@ -189,6 +207,14 @@ CREATE POLICY "Allow public upsert on view_stats"
 CREATE POLICY "Allow public update on view_stats"
   ON view_stats FOR UPDATE
   USING (true);
+
+CREATE POLICY "Allow service role upsert on ai_news_cache"
+  ON ai_news_cache FOR INSERT
+  WITH CHECK (auth.role() = 'service_role' OR auth.role() = 'authenticated');
+
+CREATE POLICY "Allow service role update on ai_news_cache"
+  ON ai_news_cache FOR UPDATE
+  USING (auth.role() = 'service_role' OR auth.role() = 'authenticated');
 
 -- ============================================
 -- 7. 数据保留策略（自动清理旧数据）
@@ -265,6 +291,7 @@ BEGIN
   RAISE NOTICE '  - stock_data (股票数据)';
   RAISE NOTICE '  - price_history (价格历史)';
   RAISE NOTICE '  - view_stats (浏览统计)';
+  RAISE NOTICE '  - ai_news_cache (AI Dock 快照)';
   RAISE NOTICE '';
   RAISE NOTICE 'Views created:';
   RAISE NOTICE '  - latest_crypto_data';

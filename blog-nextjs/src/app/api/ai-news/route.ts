@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { supabase, supabaseAdmin, TABLE_NAMES } from "@/lib/supabase/client";
 
 export const revalidate = 86400; // daily cache
 
@@ -32,6 +33,17 @@ interface NewsItem {
   source: string;
 }
 
+interface AINewsPayload {
+  categories: Record<string, NewsItem[]>;
+  updatedAt: string;
+  refreshCycle: "daily";
+  sources: string[];
+  stats: {
+    total: number;
+    unavailable: number;
+  };
+}
+
 const TRACKED_ACCOUNTS: Record<Category, TrackedAccount[]> = {
   Agent: [
     { handle: "opencode", profileUrl: "https://x.com/opencode" },
@@ -56,6 +68,7 @@ const TRACKED_ACCOUNTS: Record<Category, TrackedAccount[]> = {
 };
 
 const CATEGORY_ORDER: Category[] = ["大模型", "Agent", "AI芯片"];
+const AI_NEWS_CACHE_KEY = "default";
 
 function buildAccountFeedCandidates(handle: string): string[] {
   return [
@@ -244,7 +257,7 @@ function buildFallbackItem(account: TrackedAccount): NewsItem {
   };
 }
 
-export async function GET() {
+async function buildLivePayload(): Promise<AINewsPayload> {
   const feedSources = buildFeedSources();
 
   const fetched = await Promise.allSettled(
@@ -280,26 +293,104 @@ export async function GET() {
   const fallbackCount = allItems.filter((item) =>
     item.title.includes("最近推文暂不可用")
   ).length;
-  const allFallback = allItems.length > 0 && fallbackCount === allItems.length;
-  const cacheControl = allFallback
+
+  return {
+    categories,
+    updatedAt: new Date().toISOString(),
+    refreshCycle: "daily",
+    sources: ["x_accounts"],
+    stats: {
+      total: allItems.length,
+      unavailable: fallbackCount,
+    },
+  };
+}
+
+function isAllFallback(payload: AINewsPayload): boolean {
+  return payload.stats.total > 0 && payload.stats.unavailable === payload.stats.total;
+}
+
+async function loadCachedPayload(): Promise<AINewsPayload | null> {
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from(TABLE_NAMES.AI_NEWS_CACHE)
+      .select("payload, updated_at")
+      .eq("cache_key", AI_NEWS_CACHE_KEY)
+      .single();
+
+    if (error || !data?.payload) return null;
+    const payload = data.payload as AINewsPayload;
+    if (!payload?.categories) return null;
+
+    return {
+      ...payload,
+      updatedAt: payload.updatedAt || data.updated_at || new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveCachedPayload(payload: AINewsPayload): Promise<void> {
+  if (!supabaseAdmin) return;
+
+  try {
+    await supabaseAdmin
+      .from(TABLE_NAMES.AI_NEWS_CACHE)
+      .upsert(
+        {
+          cache_key: AI_NEWS_CACHE_KEY,
+          payload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "cache_key" }
+      );
+  } catch {
+    // Ignore save errors to keep API availability.
+  }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const forceRefresh = searchParams.get("refresh") === "1";
+
+  const cachedPayload = await loadCachedPayload();
+  if (!forceRefresh && cachedPayload) {
+    return NextResponse.json(cachedPayload, {
+      headers: {
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=3600",
+      },
+    });
+  }
+
+  const livePayload = await buildLivePayload();
+  const liveAllFallback = isAllFallback(livePayload);
+  const cacheControl = liveAllFallback
     ? "public, s-maxage=60, stale-while-revalidate=60"
     : "public, s-maxage=86400, stale-while-revalidate=43200";
 
-  return NextResponse.json(
-    {
-      categories,
-      updatedAt: new Date().toISOString(),
-      refreshCycle: "daily",
-      sources: ["x_accounts"],
-      stats: {
-        total: allItems.length,
-        unavailable: fallbackCount,
-      },
-    },
-    {
+  if (!liveAllFallback) {
+    await saveCachedPayload(livePayload);
+    return NextResponse.json(livePayload, {
       headers: {
         "Cache-Control": cacheControl,
       },
-    }
-  );
+    });
+  }
+
+  if (cachedPayload) {
+    return NextResponse.json(cachedPayload, {
+      headers: {
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=300",
+      },
+    });
+  }
+
+  return NextResponse.json(livePayload, {
+    headers: {
+      "Cache-Control": cacheControl,
+    },
+  });
 }

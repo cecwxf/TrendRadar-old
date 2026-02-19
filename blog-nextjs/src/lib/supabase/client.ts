@@ -60,6 +60,7 @@ export const TABLE_NAMES = {
   STOCK_DATA: "stock_data",
   PRICE_HISTORY: "price_history",
   VIEW_STATS: "view_stats",
+  AI_NEWS_CACHE: "ai_news_cache",
 } as const;
 
 /**
