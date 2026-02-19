@@ -16,10 +16,10 @@ interface AINewsData {
 }
 
 const UI_TEXT: Record<string, Record<string, string>> = {
-  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于", cadence: "每日更新，每类 5 条跟踪摘要" },
-  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated", cadence: "Updated daily, 5 tracked summaries per category" },
-  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật", cadence: "Cập nhật mỗi ngày, 5 tóm tắt cho mỗi danh mục" },
-  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert", cadence: "Täglich aktualisiert, 5 Zusammenfassungen je Kategorie" },
+  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于", cadence: "每日更新，展示跟踪账号最新推文" },
+  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated", cadence: "Updated daily with latest posts from tracked accounts" },
+  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật", cadence: "Cập nhật mỗi ngày từ các tài khoản đã theo dõi" },
+  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert", cadence: "Täglich aktualisiert mit neuesten Posts der verfolgten Accounts" },
 };
 
 const CATEGORY_LABELS: Record<string, Record<string, string>> = {
