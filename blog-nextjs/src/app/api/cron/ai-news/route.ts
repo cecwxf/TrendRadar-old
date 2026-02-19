@@ -21,7 +21,7 @@ function getBaseUrl(request: NextRequest): string {
 export async function GET(request: NextRequest) {
   try {
     const baseUrl = getBaseUrl(request);
-    const url = `${baseUrl}/api/ai-news?refresh=1`;
+    const url = `${baseUrl}/api/ai-news`;
 
     const response = await fetch(url, {
       headers: {
