@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 export const revalidate = 86400; // daily cache
 
 const FETCH_TIMEOUT_MS = 12000;
+const CURL_TIMEOUT_SECONDS = 20;
+const BROWSER_UA =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Safari/537.36";
+const execFileAsync = promisify(execFile);
 
 type Category = "大模型" | "Agent" | "AI芯片";
 
@@ -172,8 +178,7 @@ async function fetchSingleFeed(url: string): Promise<string | null> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Safari/537.36",
+        "User-Agent": BROWSER_UA,
         Accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
         "Accept-Language": "en-US,en;q=0.8",
       },
@@ -184,7 +189,31 @@ async function fetchSingleFeed(url: string): Promise<string | null> {
     if (!xml || !isLikelyFeed(xml) || isNotFoundPage(xml)) return null;
     return xml;
   } catch {
-    return null;
+    // Fall back to curl when runtime fetch cannot reach target in this environment.
+    try {
+      const { stdout } = await execFileAsync(
+        "curl",
+        [
+          "--http1.1",
+          "-L",
+          "--max-time",
+          String(CURL_TIMEOUT_SECONDS),
+          "-A",
+          BROWSER_UA,
+          "-H",
+          "Accept: application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
+          "-H",
+          "Accept-Language: en-US,en;q=0.8",
+          url,
+        ],
+        { maxBuffer: 1024 * 1024 * 2 }
+      );
+      const xml = stdout || "";
+      if (!xml || !isLikelyFeed(xml) || isNotFoundPage(xml)) return null;
+      return xml;
+    } catch {
+      return null;
+    }
   } finally {
     clearTimeout(timeout);
   }
