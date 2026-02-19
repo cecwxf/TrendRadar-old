@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
         usePredefinedIndices: true,
         customStocks: [
           // 美股个股
+          "NVDA",      // NVIDIA
           "TSLA",      // 特斯拉
           "GOOGL",     // Google
           "META",      // Meta

@@ -33,7 +33,7 @@ const devLinks: FooterLink[] = [
   { name: "PyTorch",      href: "https://pytorch.org",             domain: "pytorch.org" },
   { name: "NVIDIA Dev",   href: "https://developer.nvidia.com",    domain: "developer.nvidia.com" },
   { name: "AMD ROCm",     href: "https://rocm.docs.amd.com",       domain: "amd.com" },
-  { name: "地平线",       href: "https://developer.horizon.ai",    domain: "horizon.ai" },
+  { name: "地平线开发者论坛", href: "https://developer.horizon.auto/forum", domain: "developer.horizon.auto" },
   { name: "知乎",         href: "https://www.zhihu.com",           domain: "zhihu.com" },
 ];
 

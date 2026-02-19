@@ -16,15 +16,15 @@ interface AINewsData {
 }
 
 const UI_TEXT: Record<string, Record<string, string>> = {
-  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于" },
-  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated" },
-  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật" },
-  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert" },
+  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于", cadence: "每日更新，每类 5 条跟踪摘要" },
+  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated", cadence: "Updated daily, 5 tracked summaries per category" },
+  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật", cadence: "Cập nhật mỗi ngày, 5 tóm tắt cho mỗi danh mục" },
+  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert", cadence: "Täglich aktualisiert, 5 Zusammenfassungen je Kategorie" },
 };
 
 const CATEGORY_LABELS: Record<string, Record<string, string>> = {
   "大模型": { zh: "大模型", en: "LLMs", vi: "Mô hình LLM", de: "KI-Modelle" },
-  "Agent": { zh: "Agent", en: "Agents", vi: "Agent AI", de: "KI-Agenten" },
+  "Agent": { zh: "Agents", en: "Agents", vi: "Agent AI", de: "KI-Agenten" },
   "AI芯片": { zh: "AI芯片", en: "AI Chips", vi: "Chip AI", de: "KI-Chips" },
 };
 
@@ -151,6 +151,9 @@ export function AIDock() {
                   ))}
                 </div>
               )}
+              <div className="px-3 pb-1 text-[10px] text-muted-foreground">
+                {t.cadence}
+              </div>
 
               {/* News list */}
               <div
@@ -175,7 +178,7 @@ export function AIDock() {
                             {item.title}
                           </p>
                           <span className="mt-0.5 text-[10px] text-muted-foreground">
-                            {item.source}
+                            {item.source} · {item.pubDate ? new Date(item.pubDate).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US") : ""}
                           </span>
                         </a>
                       </li>

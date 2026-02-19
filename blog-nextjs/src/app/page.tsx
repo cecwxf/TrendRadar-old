@@ -1,18 +1,20 @@
 import { getPosts } from "@/lib/notion/client";
 import { notionPageToMarkdown, calculateReadingTime } from "@/lib/notion/renderer";
-import { getLatestCryptoData, getViewCount } from "@/lib/market/market-service";
+import { getLatestCryptoData, getLatestStockData, getViewCount } from "@/lib/market/market-service";
 import { MarketBanner } from "@/components/market/MarketBanner";
 import { MarketCharts } from "@/components/market/MarketCharts";
 import { PostListWithArchive } from "@/components/blog/PostListWithArchive";
 import type { PostListItem } from "@/types/blog";
+import Image from "next/image";
 
 export const revalidate = 600; // ISR: 每10分钟重新验证（匹配Cron更新频率）
 
 export default async function Home() {
   // 并行获取文章列表和市场数据
-  const [notionPosts, cryptoData] = await Promise.all([
+  const [notionPosts, cryptoData, stockData] = await Promise.all([
     getPosts(),
     getLatestCryptoData(),
+    getLatestStockData(),
   ]);
 
   // 转换为 PostListItem 格式
@@ -43,9 +45,17 @@ export default async function Home() {
       {/* Hero 区域 */}
       <section className="bg-gradient-to-b from-background to-muted/20 py-20">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-5xl font-bold tracking-tight mb-4">
-            智展AI
-          </h1>
+          <div className="mb-4 inline-flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="智展AI Logo"
+              width={52}
+              height={52}
+              className="h-12 w-12 rounded-xl shadow-sm"
+              priority
+            />
+            <h1 className="text-5xl font-bold tracking-tight">智展AI</h1>
+          </div>
           <p className="text-xl text-muted-foreground mb-2">
             我们反思成长，静静等待扭转乾坤
           </p>
@@ -56,9 +66,12 @@ export default async function Home() {
       </section>
 
       {/* 金融横幅 - 仅在有数据时显示 */}
-      {cryptoData && cryptoData.length > 0 && (
+      {(cryptoData.length > 0 || stockData.length > 0) && (
         <section className="container mx-auto px-4 -mt-8">
-          <MarketBanner initialData={cryptoData} />
+          <MarketBanner
+            initialCryptoData={cryptoData}
+            initialStockData={stockData}
+          />
         </section>
       )}
 
