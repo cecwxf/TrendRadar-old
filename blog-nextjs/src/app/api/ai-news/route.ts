@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 export const revalidate = 86400; // daily cache
 
 const FETCH_TIMEOUT_MS = 12000;
+const JINA_TIMEOUT_MS = 12000;
 const CURL_TIMEOUT_SECONDS = 20;
 const BROWSER_UA =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Safari/537.36";
@@ -181,6 +182,74 @@ function isNotFoundPage(xml: string): boolean {
   return /User\s+"[^"]+"\s+not found|<title>Error\s*\|\s*nitter<\/title>/i.test(xml);
 }
 
+function extractTweetTextFromJina(markdown: string): string | null {
+  const lines = markdown
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const postsIdx = lines.findIndex((line) => /posts$/i.test(line));
+  const start = postsIdx >= 0 ? postsIdx + 1 : 0;
+
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === "--------------") continue;
+    if (line === "Pinned" || line === "Quote") continue;
+    if (/^Who to follow/i.test(line)) continue;
+    if (line.startsWith("[![")) continue;
+    if (/^\[(.*?)\]\(https?:\/\/.*\)$/.test(line)) continue;
+    if (line.length < 10) continue;
+    return cleanText(line);
+  }
+
+  return null;
+}
+
+function extractStatusUrlFromJina(markdown: string, handle: string): string | null {
+  const statusRegex = new RegExp(`https://x\\.com/${handle}/status/\\d+`, "i");
+  const statusMatch = markdown.match(statusRegex);
+  if (statusMatch?.[0]) return statusMatch[0];
+
+  const anyStatusMatch = markdown.match(/https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+/);
+  if (anyStatusMatch?.[0]) return anyStatusMatch[0];
+
+  return null;
+}
+
+async function fetchLatestTweetFromJina(account: TrackedAccount): Promise<NewsItem | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), JINA_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`https://r.jina.ai/http://x.com/${account.handle}`, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": BROWSER_UA,
+      },
+    });
+
+    if (!response.ok) return null;
+    const markdown = await response.text();
+    if (!markdown) return null;
+
+    const tweetText = extractTweetTextFromJina(markdown);
+    if (!tweetText) return null;
+
+    const url = extractStatusUrlFromJina(markdown, account.handle) || account.profileUrl;
+
+    return {
+      title: `@${account.handle}: ${tweetText}`,
+      url,
+      pubDate: new Date().toISOString(),
+      source: `@${account.handle}`,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchSingleFeed(url: string): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -242,6 +311,10 @@ async function fetchLatestTweet(source: AccountFeedSource): Promise<NewsItem | n
       return sortByDateDesc(items)[0];
     }
   }
+
+  // Fallback: parse timeline text from r.jina.ai mirror.
+  const jinaItem = await fetchLatestTweetFromJina(source.account);
+  if (jinaItem) return jinaItem;
 
   return null;
 }
