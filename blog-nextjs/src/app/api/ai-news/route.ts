@@ -182,27 +182,58 @@ function isNotFoundPage(xml: string): boolean {
   return /User\s+"[^"]+"\s+not found|<title>Error\s*\|\s*nitter<\/title>/i.test(xml);
 }
 
-function extractTweetTextFromJina(markdown: string): string | null {
-  const lines = markdown
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+function isJinaNoiseLine(line: string): boolean {
+  if (!line) return true;
+  if (/^-{3,}$/.test(line)) return true;
+  if (line === "Pinned" || line === "Quote") return true;
+  if (/^Who to follow/i.test(line)) return true;
+  if (line.startsWith("[![")) return true;
+  if (/^\[(.*?)\]\(https?:\/\/.*\)$/.test(line)) return true;
+  if (/^\d+[smhd]$/i.test(line)) return true;
+  if (/^\d{1,2}:\d{2}$/.test(line)) return true;
+  return false;
+}
 
+function extractTweetTextFromJina(markdown: string): string | null {
+  const lines = markdown.split("\n").map((line) => line.trim());
   const postsIdx = lines.findIndex((line) => /posts$/i.test(line));
-  const start = postsIdx >= 0 ? postsIdx + 1 : 0;
+  let start = postsIdx >= 0 ? postsIdx + 1 : 0;
+  if (start < 0) start = 0;
+
+  const chunks: string[] = [];
+  let current: string[] = [];
 
   for (let i = start; i < lines.length; i++) {
     const line = lines[i];
-    if (line === "--------------") continue;
-    if (line === "Pinned" || line === "Quote") continue;
-    if (/^Who to follow/i.test(line)) continue;
-    if (line.startsWith("[![")) continue;
-    if (/^\[(.*?)\]\(https?:\/\/.*\)$/.test(line)) continue;
-    if (line.length < 10) continue;
-    return cleanText(line);
+
+    if (/^Who to follow/i.test(line)) break;
+
+    if (!line) {
+      if (current.length > 0) {
+        chunks.push(current.join(" "));
+        current = [];
+      }
+      continue;
+    }
+
+    if (isJinaNoiseLine(line)) {
+      continue;
+    }
+
+    current.push(line);
+    if (current.join(" ").length >= 280) {
+      break;
+    }
   }
 
-  return null;
+  if (current.length > 0) {
+    chunks.push(current.join(" "));
+  }
+
+  const tweet = chunks.find((chunk) => cleanText(chunk).length >= 12);
+  if (!tweet) return null;
+
+  return cleanText(tweet).slice(0, 420);
 }
 
 function extractStatusUrlFromJina(markdown: string, handle: string): string | null {

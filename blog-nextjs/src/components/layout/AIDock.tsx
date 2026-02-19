@@ -29,7 +29,7 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
 };
 
 const CATEGORY_ORDER = ["大模型", "Agent", "AI芯片"];
-const AI_NEWS_CACHE_VERSION = "20260219-2";
+const AI_NEWS_CACHE_VERSION = "20260219-3";
 
 export function AIDock() {
   const { lang } = useLanguage();
@@ -175,7 +175,7 @@ export function AIDock() {
                           rel="noopener noreferrer"
                           className="group block rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
                         >
-                          <p className="line-clamp-2 text-xs leading-relaxed text-foreground group-hover:text-blue-500">
+                          <p className="text-xs leading-relaxed text-foreground group-hover:text-blue-500 break-words">
                             {item.title}
                           </p>
                           <span className="mt-0.5 text-[10px] text-muted-foreground">
