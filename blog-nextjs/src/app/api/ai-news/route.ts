@@ -2,18 +2,20 @@ import { NextResponse } from "next/server";
 
 export const revalidate = 86400; // daily cache
 
-const FETCH_TIMEOUT_MS = 6000;
+const FETCH_TIMEOUT_MS = 12000;
 
 type Category = "大模型" | "Agent" | "AI芯片";
 
 interface TrackedAccount {
   handle: string;
   profileUrl: string;
+  lookupHandles?: string[];
 }
 
 interface AccountFeedSource {
   category: Category;
   account: TrackedAccount;
+  lookupHandle: string;
   urls: string[];
 }
 
@@ -39,7 +41,7 @@ const TRACKED_ACCOUNTS: Record<Category, TrackedAccount[]> = {
     { handle: "Svwang1", profileUrl: "https://x.com/Svwang1" },
   ],
   "AI芯片": [
-    { handle: "SemiAnalysis", profileUrl: "https://x.com/SemiAnalysis" },
+    { handle: "metawxf", profileUrl: "https://x.com/metawxf" },
     { handle: "dylan522p", profileUrl: "https://x.com/dylan522p" },
     { handle: "jimkxa", profileUrl: "https://x.com/jimkxa" },
     { handle: "IanCutress", profileUrl: "https://x.com/IanCutress" },
@@ -51,19 +53,24 @@ const CATEGORY_ORDER: Category[] = ["大模型", "Agent", "AI芯片"];
 
 function buildAccountFeedCandidates(handle: string): string[] {
   return [
-    `https://twitrss.me/twitter_user_to_rss/?user=${encodeURIComponent(handle)}`,
     `https://nitter.net/${encodeURIComponent(handle)}/rss`,
-    `https://nitter.poast.org/${encodeURIComponent(handle)}/rss`,
   ];
 }
 
 function buildFeedSources(): AccountFeedSource[] {
   return CATEGORY_ORDER.flatMap((category) =>
-    TRACKED_ACCOUNTS[category].map((account) => ({
-      category,
-      account,
-      urls: buildAccountFeedCandidates(account.handle),
-    }))
+    TRACKED_ACCOUNTS[category].flatMap((account) => {
+      const lookupHandles = account.lookupHandles && account.lookupHandles.length > 0
+        ? account.lookupHandles
+        : [account.handle];
+
+      return lookupHandles.map((lookupHandle) => ({
+        category,
+        account,
+        lookupHandle,
+        urls: buildAccountFeedCandidates(lookupHandle),
+      }));
+    })
   );
 }
 
@@ -149,6 +156,14 @@ function sortByDateDesc(items: NewsItem[]): NewsItem[] {
   });
 }
 
+function isLikelyFeed(xml: string): boolean {
+  return /<rss[\s>]|<feed[\s>]/i.test(xml);
+}
+
+function isNotFoundPage(xml: string): boolean {
+  return /User\s+"[^"]+"\s+not found|<title>Error\s*\|\s*nitter<\/title>/i.test(xml);
+}
+
 async function fetchSingleFeed(url: string): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -157,12 +172,17 @@ async function fetchSingleFeed(url: string): Promise<string | null> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "TrendRadar/1.0 AI Dock",
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Safari/537.36",
+        Accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
+        "Accept-Language": "en-US,en;q=0.8",
       },
     });
 
     if (!response.ok) return null;
-    return await response.text();
+    const xml = await response.text();
+    if (!xml || !isLikelyFeed(xml) || isNotFoundPage(xml)) return null;
+    return xml;
   } catch {
     return null;
   } finally {
@@ -172,13 +192,15 @@ async function fetchSingleFeed(url: string): Promise<string | null> {
 
 async function fetchLatestTweet(source: AccountFeedSource): Promise<NewsItem | null> {
   for (const url of source.urls) {
-    const xml = await fetchSingleFeed(url);
-    if (!xml) continue;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const xml = await fetchSingleFeed(url);
+      if (!xml) continue;
 
-    const items = parseRSSItems(xml, source.account.handle);
-    if (items.length === 0) continue;
+      const items = parseRSSItems(xml, source.account.handle);
+      if (items.length === 0) continue;
 
-    return sortByDateDesc(items)[0];
+      return sortByDateDesc(items)[0];
+    }
   }
 
   return null;
