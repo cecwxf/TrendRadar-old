@@ -27,6 +27,8 @@ const RSS_SOURCES: RSSSource[] = [
   { url: "https://feeds.arstechnica.com/arstechnica/technology-lab", category: "AI芯片" },
 ];
 
+const SUPPORTED_LANGS = new Set(["zh", "en", "vi", "de"]);
+
 function extractSourceName(url: string): string {
   try {
     const hostname = new URL(url).hostname.replace("www.", "").replace("feeds.feedburner.com", "");
@@ -105,7 +107,38 @@ async function fetchRSS(source: RSSSource): Promise<NewsItem[]> {
   }
 }
 
-export async function GET() {
+async function translateText(text: string, targetLang: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const params = new URLSearchParams({
+      client: "gtx",
+      sl: "auto",
+      tl: targetLang,
+      dt: "t",
+    });
+    params.append("q", text);
+
+    const response = await fetch(
+      `https://translate.googleapis.com/translate_a/single?${params.toString()}`,
+      { signal: controller.signal }
+    );
+    if (!response.ok) return text;
+
+    const data = await response.json();
+    const translated = Array.isArray(data?.[0])
+      ? data[0].map((seg: string[]) => seg[0]).join("")
+      : "";
+    return translated || text;
+  } catch {
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function GET(request: Request) {
   const results = await Promise.allSettled(
     RSS_SOURCES.map((source) => fetchRSS(source))
   );
@@ -128,6 +161,29 @@ export async function GET() {
         return tb - ta;
       })
       .slice(0, 5);
+  }
+
+  const { searchParams } = new URL(request.url);
+  const requestedLang = (searchParams.get("lang") || "zh").toLowerCase();
+  const targetLang = SUPPORTED_LANGS.has(requestedLang) ? requestedLang : "zh";
+
+  if (targetLang !== "zh") {
+    const translationCache = new Map<string, Promise<string>>();
+    const translateWithCache = (title: string): Promise<string> => {
+      if (!translationCache.has(title)) {
+        translationCache.set(title, translateText(title, targetLang));
+      }
+      return translationCache.get(title)!;
+    };
+
+    for (const cat of Object.keys(categories)) {
+      categories[cat] = await Promise.all(
+        categories[cat].map(async (item) => ({
+          ...item,
+          title: await translateWithCache(item.title),
+        }))
+      );
+    }
   }
 
   return NextResponse.json({

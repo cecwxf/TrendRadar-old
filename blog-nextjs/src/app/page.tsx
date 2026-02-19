@@ -78,7 +78,7 @@ export default async function Home() {
             <div className="max-w-2xl mx-auto text-left bg-muted/50 p-6 rounded-lg">
               <h3 className="font-bold mb-2">配置步骤：</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm">
-                <li>在 Notion 创建 "Posts" 数据库</li>
+                <li>在 Notion 创建 &quot;Posts&quot; 数据库</li>
                 <li>添加属性：Title, Slug, Status, Category, Tags, Summary, Cover, PublishedAt</li>
                 <li>获取 API Key 和 Database ID</li>
                 <li>复制 .env.example 为 .env.local 并填入配置</li>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/components/language/LanguageProvider";
+import Image from "next/image";
 
 interface FooterLink {
   name: string;
@@ -37,11 +37,7 @@ const devLinks: FooterLink[] = [
   { name: "知乎",         href: "https://www.zhihu.com",           domain: "zhihu.com" },
 ];
 
-const SECTION_LABELS: Record<string, Record<string, string>> = {
-  ai: { zh: "AI 助手", en: "AI Assistants", vi: "Trợ lý AI", de: "KI-Assistenten" },
-  finance: { zh: "金融", en: "Finance", vi: "Tài chính", de: "Finanzen" },
-  dev: { zh: "开发者", en: "Developers", vi: "Nhà phát triển", de: "Entwickler" },
-};
+const allLinks: FooterLink[] = [...aiLinks, ...financeLinks, ...devLinks];
 
 function LinkItem({ link }: { link: FooterLink }) {
   return (
@@ -51,11 +47,13 @@ function LinkItem({ link }: { link: FooterLink }) {
       rel="noopener noreferrer"
       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
     >
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${link.domain}&sz=32`}
-        alt=""
-        className="h-5 w-5 rounded-sm flex-shrink-0"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+      <Image
+        src={`https://www.google.com/s2/favicons?domain=${link.domain}&sz=48`}
+        alt={`${link.name} icon`}
+        width={24}
+        height={24}
+        className="h-6 w-6 rounded-sm flex-shrink-0"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
       />
       <span>{link.name}</span>
     </a>
@@ -63,39 +61,16 @@ function LinkItem({ link }: { link: FooterLink }) {
 }
 
 export function Footer() {
-  const { lang } = useLanguage();
-
   return (
     <footer className="border-t border-border/40 mt-16 py-8">
       <div className="container mx-auto px-4">
-        <p className="text-xs text-muted-foreground/60 text-center mb-3">{SECTION_LABELS.ai[lang] || SECTION_LABELS.ai.zh}</p>
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
-          {aiLinks.map((link) => (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-rows-2 lg:grid-flow-col lg:justify-center">
+          {allLinks.map((link) => (
             <LinkItem key={link.name} link={link} />
           ))}
         </div>
 
-        <div className="border-t border-border/30 my-3" />
-
-        <p className="text-xs text-muted-foreground/60 text-center mb-3">{SECTION_LABELS.finance[lang] || SECTION_LABELS.finance.zh}</p>
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
-          {financeLinks.map((link) => (
-            <LinkItem key={link.name} link={link} />
-          ))}
-        </div>
-
-        <div className="border-t border-border/30 my-3" />
-
-        <p className="text-xs text-muted-foreground/60 text-center mb-3">{SECTION_LABELS.dev[lang] || SECTION_LABELS.dev.zh}</p>
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
-          {devLinks.map((link) => (
-            <LinkItem key={link.name} link={link} />
-          ))}
-        </div>
-
-        <div className="border-t border-border/30 my-3" />
-
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="mt-4 text-xs text-muted-foreground text-center">
           &copy; 2025 智展AI
         </p>
       </div>

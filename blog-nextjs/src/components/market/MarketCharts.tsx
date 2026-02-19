@@ -161,7 +161,7 @@ function ChartCard({ asset, data }: { asset: AssetConfig; data: HistoricalPoint[
     const handleResize = () => chart.resize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [data, asset]);
+  }, [data, asset, isPositive, lineColor]);
 
   useEffect(() => {
     return () => {

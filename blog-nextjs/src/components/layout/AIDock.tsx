@@ -41,18 +41,36 @@ export function AIDock() {
   const t = UI_TEXT[lang] || UI_TEXT.zh;
 
   useEffect(() => {
+    const controller = new AbortController();
+    let alive = true;
+
     setLoading(true);
     setError(false);
-    fetch("/api/ai-news")
-      .then((res) => res.json())
+    fetch(`/api/ai-news?lang=${lang}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch ai news");
+        return res.json();
+      })
       .then((json: AINewsData) => {
+        if (!alive) return;
         setData(json);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (!alive) return;
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(true);
+        setData(null);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+      controller.abort();
+    };
+  }, [lang]);
 
   const categories = data?.categories || {};
   const tabs = CATEGORY_ORDER;
