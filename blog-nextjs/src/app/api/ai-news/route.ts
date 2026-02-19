@@ -86,36 +86,56 @@ function normalizeTweetTitle(rawTitle: string): string {
     .trim();
 }
 
+function parseEntryLink(blockXml: string): string {
+  const alternateLink = blockXml.match(
+    /<link[^>]+rel=["']alternate["'][^>]+href=["']([^"']+)["'][^>]*\/?>/i
+  );
+  if (alternateLink?.[1]) return cleanText(alternateLink[1]);
+
+  const hrefLink = blockXml.match(/<link[^>]+href=["']([^"']+)["'][^>]*\/?>/i);
+  if (hrefLink?.[1]) return cleanText(hrefLink[1]);
+
+  const plainLink = blockXml.match(
+    /<link><!\[CDATA\[(.*?)\]\]><\/link>|<link>(.*?)<\/link>/i
+  );
+  return cleanText(plainLink ? plainLink[1] || plainLink[2] || "" : "");
+}
+
+function parseBlock(blockXml: string, handle: string): NewsItem | null {
+  const titleMatch = blockXml.match(
+    /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>(.*?)<\/title>/i
+  );
+  const dateMatch = blockXml.match(
+    /<pubDate>(.*?)<\/pubDate>|<published>(.*?)<\/published>|<updated>(.*?)<\/updated>/i
+  );
+
+  const rawTitle = cleanText(titleMatch ? titleMatch[1] || titleMatch[2] || "" : "");
+  const title = normalizeTweetTitle(rawTitle);
+  const url = parseEntryLink(blockXml);
+  const pubDate = cleanText(dateMatch ? dateMatch[1] || dateMatch[2] || dateMatch[3] || "" : "");
+
+  if (!title || !url) return null;
+
+  return {
+    title: `@${handle}: ${title}`,
+    url,
+    pubDate,
+    source: `@${handle}`,
+  };
+}
+
 function parseRSSItems(xml: string, handle: string): NewsItem[] {
   const items: NewsItem[] = [];
-  const matches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g);
+  const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/gi);
+  const entryMatches = xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi);
 
-  for (const match of matches) {
-    const itemXml = match[1];
-
-    const titleMatch = itemXml.match(
-      /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/
-    );
-    const linkMatch = itemXml.match(
-      /<link><!\[CDATA\[(.*?)\]\]><\/link>|<link>(.*?)<\/link>|<link[^>]+href="([^"]*)"[^>]*\/>/
-    );
-    const dateMatch = itemXml.match(
-      /<pubDate>(.*?)<\/pubDate>|<published>(.*?)<\/published>|<updated>(.*?)<\/updated>/
-    );
-
-    const rawTitle = cleanText(titleMatch ? titleMatch[1] || titleMatch[2] || "" : "");
-    const title = normalizeTweetTitle(rawTitle);
-    const url = cleanText(linkMatch ? linkMatch[1] || linkMatch[2] || linkMatch[3] || "" : "");
-    const pubDate = cleanText(dateMatch ? dateMatch[1] || dateMatch[2] || dateMatch[3] || "" : "");
-
-    if (!title || !url) continue;
-
-    items.push({
-      title: `@${handle}: ${title}`,
-      url,
-      pubDate,
-      source: `@${handle}`,
-    });
+  for (const match of itemMatches) {
+    const parsed = parseBlock(match[1], handle);
+    if (parsed) items.push(parsed);
+  }
+  for (const match of entryMatches) {
+    const parsed = parseBlock(match[1], handle);
+    if (parsed) items.push(parsed);
   }
 
   return items;
@@ -166,7 +186,7 @@ async function fetchLatestTweet(source: AccountFeedSource): Promise<NewsItem | n
 
 function buildFallbackItem(account: TrackedAccount): NewsItem {
   return {
-    title: `@${account.handle}: 今日暂无可用推文数据，请点击查看主页。`,
+    title: `@${account.handle}: 最近推文暂不可用，请点击查看主页。`,
     url: account.profileUrl,
     pubDate: new Date().toISOString(),
     source: `@${account.handle}`,
