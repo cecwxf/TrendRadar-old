@@ -7,6 +7,7 @@ export const revalidate = 86400; // daily cache
 const FETCH_TIMEOUT_MS = 12000;
 const JINA_TIMEOUT_MS = 12000;
 const CURL_TIMEOUT_SECONDS = 20;
+const CHIP_RECENT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const BROWSER_UA =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131 Safari/537.36";
 const execFileAsync = promisify(execFile);
@@ -31,6 +32,11 @@ interface NewsItem {
   url: string;
   pubDate: string;
   source: string;
+}
+
+interface ParsedFeedItem {
+  item: NewsItem;
+  rawTitle: string;
 }
 
 interface AINewsPayload {
@@ -128,7 +134,7 @@ function parseEntryLink(blockXml: string): string {
 
 function parseBlock(blockXml: string, handle: string): NewsItem | null {
   const titleMatch = blockXml.match(
-    /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>(.*?)<\/title>/i
+    /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i
   );
   const dateMatch = blockXml.match(
     /<pubDate>(.*?)<\/pubDate>|<published>(.*?)<\/published>|<updated>(.*?)<\/updated>/i
@@ -149,18 +155,26 @@ function parseBlock(blockXml: string, handle: string): NewsItem | null {
   };
 }
 
-function parseRSSItems(xml: string, handle: string): NewsItem[] {
-  const items: NewsItem[] = [];
+function parseRSSItems(xml: string, handle: string): ParsedFeedItem[] {
+  const items: ParsedFeedItem[] = [];
   const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/gi);
   const entryMatches = xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi);
 
   for (const match of itemMatches) {
+    const rawTitleMatch = match[1].match(
+      /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i
+    );
+    const rawTitle = cleanText(rawTitleMatch ? rawTitleMatch[1] || rawTitleMatch[2] || "" : "");
     const parsed = parseBlock(match[1], handle);
-    if (parsed) items.push(parsed);
+    if (parsed) items.push({ item: parsed, rawTitle });
   }
   for (const match of entryMatches) {
+    const rawTitleMatch = match[1].match(
+      /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i
+    );
+    const rawTitle = cleanText(rawTitleMatch ? rawTitleMatch[1] || rawTitleMatch[2] || "" : "");
     const parsed = parseBlock(match[1], handle);
-    if (parsed) items.push(parsed);
+    if (parsed) items.push({ item: parsed, rawTitle });
   }
 
   return items;
@@ -180,6 +194,22 @@ function isLikelyFeed(xml: string): boolean {
 
 function isNotFoundPage(xml: string): boolean {
   return /User\s+"[^"]+"\s+not found|<title>Error\s*\|\s*nitter<\/title>/i.test(xml);
+}
+
+function isRetweetOrReply(rawTitle: string): boolean {
+  return /^RT by @/i.test(rawTitle) || /^R to @/i.test(rawTitle);
+}
+
+function isChipRelatedText(text: string): boolean {
+  return /(chip|chips|gpu|npu|hbm|cuda|inference|semiconductor|wafer|foundry|blackwell|gaudi|instinct|mi3|mi350|tsmc|台积电|芯片|算力|半导体)/i.test(
+    text
+  );
+}
+
+function isRecentEnough(pubDate: string): boolean {
+  const ts = new Date(pubDate).getTime();
+  if (Number.isNaN(ts)) return false;
+  return Date.now() - ts <= CHIP_RECENT_WINDOW_MS;
 }
 
 function isJinaNoiseLine(line: string): boolean {
@@ -336,10 +366,23 @@ async function fetchLatestTweet(source: AccountFeedSource): Promise<NewsItem | n
       const xml = await fetchSingleFeed(url);
       if (!xml) continue;
 
-      const items = parseRSSItems(xml, source.account.handle);
-      if (items.length === 0) continue;
+      const parsedItems = parseRSSItems(xml, source.account.handle);
+      if (parsedItems.length === 0) continue;
 
-      return sortByDateDesc(items)[0];
+      const originalItems = parsedItems.filter((entry) => !isRetweetOrReply(entry.rawTitle));
+      const basePool = originalItems.length > 0 ? originalItems : parsedItems;
+
+      const categoryFilteredPool =
+        source.category === "AI芯片"
+          ? basePool.filter(
+              (entry) =>
+                isChipRelatedText(entry.item.title) &&
+                isRecentEnough(entry.item.pubDate)
+            )
+          : basePool;
+      const finalPool = categoryFilteredPool.length > 0 ? categoryFilteredPool : basePool;
+
+      return sortByDateDesc(finalPool.map((entry) => entry.item))[0];
     }
   }
 
