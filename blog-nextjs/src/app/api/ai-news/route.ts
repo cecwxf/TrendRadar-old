@@ -247,16 +247,29 @@ export async function GET() {
     });
   }
 
+  const allItems = Object.values(categories).flat();
+  const fallbackCount = allItems.filter((item) =>
+    item.title.includes("最近推文暂不可用")
+  ).length;
+  const allFallback = allItems.length > 0 && fallbackCount === allItems.length;
+  const cacheControl = allFallback
+    ? "public, s-maxage=60, stale-while-revalidate=60"
+    : "public, s-maxage=86400, stale-while-revalidate=43200";
+
   return NextResponse.json(
     {
       categories,
       updatedAt: new Date().toISOString(),
       refreshCycle: "daily",
       sources: ["x_accounts"],
+      stats: {
+        total: allItems.length,
+        unavailable: fallbackCount,
+      },
     },
     {
       headers: {
-        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200",
+        "Cache-Control": cacheControl,
       },
     }
   );

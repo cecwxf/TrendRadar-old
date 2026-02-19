@@ -29,6 +29,7 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
 };
 
 const CATEGORY_ORDER = ["大模型", "Agent", "AI芯片"];
+const AI_NEWS_CACHE_VERSION = "20260219-2";
 
 export function AIDock() {
   const { lang } = useLanguage();
@@ -46,7 +47,7 @@ export function AIDock() {
 
     setLoading(true);
     setError(false);
-    fetch(`/api/ai-news?lang=${lang}`, { signal: controller.signal })
+    fetch(`/api/ai-news?lang=${lang}&v=${AI_NEWS_CACHE_VERSION}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch ai news");
         return res.json();
