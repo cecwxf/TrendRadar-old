@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const revalidate = 3600; // 1 hour cache
+export const dynamic = "force-dynamic";
 
 interface RSSSource {
   url: string;
@@ -167,23 +168,22 @@ export async function GET(request: Request) {
   const requestedLang = (searchParams.get("lang") || "zh").toLowerCase();
   const targetLang = SUPPORTED_LANGS.has(requestedLang) ? requestedLang : "zh";
 
-  if (targetLang !== "zh") {
-    const translationCache = new Map<string, Promise<string>>();
-    const translateWithCache = (title: string): Promise<string> => {
-      if (!translationCache.has(title)) {
-        translationCache.set(title, translateText(title, targetLang));
-      }
-      return translationCache.get(title)!;
-    };
-
-    for (const cat of Object.keys(categories)) {
-      categories[cat] = await Promise.all(
-        categories[cat].map(async (item) => ({
-          ...item,
-          title: await translateWithCache(item.title),
-        }))
-      );
+  const translationCache = new Map<string, Promise<string>>();
+  const translateWithCache = (title: string): Promise<string> => {
+    const cacheKey = `${targetLang}:${title}`;
+    if (!translationCache.has(cacheKey)) {
+      translationCache.set(cacheKey, translateText(title, targetLang));
     }
+    return translationCache.get(cacheKey)!;
+  };
+
+  for (const cat of Object.keys(categories)) {
+    categories[cat] = await Promise.all(
+      categories[cat].map(async (item) => ({
+        ...item,
+        title: await translateWithCache(item.title),
+      }))
+    );
   }
 
   return NextResponse.json({
