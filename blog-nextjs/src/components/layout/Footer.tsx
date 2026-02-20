@@ -8,6 +8,11 @@ interface FooterLink {
   domain: string;
 }
 
+interface FooterSection {
+  title: string;
+  links: FooterLink[];
+}
+
 const aiLinks: FooterLink[] = [
   { name: "ChatGPT",  href: "https://chat.openai.com",       domain: "openai.com" },
   { name: "OpenAI",   href: "https://openai.com",             domain: "openai.com" },
@@ -41,15 +46,13 @@ const devLinks: FooterLink[] = [
   { name: "知乎",         href: "https://www.zhihu.com",           domain: "zhihu.com" },
 ];
 
-const allLinks: FooterLink[] = [...aiLinks, ...financeLinks, ...devLinks];
-
 function LinkItem({ link }: { link: FooterLink }) {
   return (
     <a
       href={link.href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
     >
       <Image
         src={`https://www.google.com/s2/favicons?domain=${link.domain}&sz=48`}
@@ -64,17 +67,36 @@ function LinkItem({ link }: { link: FooterLink }) {
   );
 }
 
+function LinkSection({ section }: { section: FooterSection }) {
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/40 p-4">
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{section.title}</h3>
+      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 md:grid-cols-1">
+        {section.links.map((link) => (
+          <LinkItem key={link.name} link={link} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function Footer() {
+  const sections: FooterSection[] = [
+    { title: "AI 工具", links: aiLinks },
+    { title: "行情与资讯", links: financeLinks },
+    { title: "开发者生态", links: devLinks },
+  ];
+
   return (
     <footer className="border-t border-border/40 mt-16 py-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-rows-2 lg:grid-flow-col lg:justify-center">
-          {allLinks.map((link) => (
-            <LinkItem key={link.name} link={link} />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {sections.map((section) => (
+            <LinkSection key={section.title} section={section} />
           ))}
         </div>
 
-        <p className="mt-4 text-xs text-muted-foreground text-center">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           &copy; 2025 智展AI
         </p>
       </div>
