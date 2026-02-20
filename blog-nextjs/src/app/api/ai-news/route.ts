@@ -32,6 +32,9 @@ interface NewsItem {
   url: string;
   pubDate: string;
   source: string;
+  content?: string;
+  quoted?: string;
+  images?: string[];
 }
 
 interface ParsedFeedItem {
@@ -52,24 +55,25 @@ interface AINewsPayload {
 
 const TRACKED_ACCOUNTS: Record<Category, TrackedAccount[]> = {
   Agent: [
-    { handle: "opencode", profileUrl: "https://x.com/opencode" },
-    { handle: "claudeai", profileUrl: "https://x.com/claudeai" },
-    { handle: "cursor_ai", profileUrl: "https://x.com/cursor_ai" },
-    { handle: "OpenAI", profileUrl: "https://x.com/OpenAI" },
     { handle: "OpenAIDevs", profileUrl: "https://x.com/OpenAIDevs" },
+    { handle: "AnthropicAI", profileUrl: "https://x.com/AnthropicAI" },
+    { handle: "LangChainAI", profileUrl: "https://x.com/LangChainAI" },
+    { handle: "llama_index", profileUrl: "https://x.com/llama_index" },
+    { handle: "crewAIInc", profileUrl: "https://x.com/crewAIInc" },
   ],
   "大模型": [
-    { handle: "simonw", profileUrl: "https://x.com/simonw" },
-    { handle: "polynoamial", profileUrl: "https://x.com/polynoamial" },
-    { handle: "sam_shleifer", profileUrl: "https://x.com/sam_shleifer" },
-    { handle: "Svwang1", profileUrl: "https://x.com/Svwang1" },
+    { handle: "OpenAI", profileUrl: "https://x.com/OpenAI" },
+    { handle: "GoogleDeepMind", profileUrl: "https://x.com/GoogleDeepMind" },
+    { handle: "MistralAI", profileUrl: "https://x.com/MistralAI" },
+    { handle: "AIatMeta", profileUrl: "https://x.com/AIatMeta" },
+    { handle: "xai", profileUrl: "https://x.com/xai" },
   ],
   "AI芯片": [
-    { handle: "metawxf", profileUrl: "https://x.com/metawxf" },
-    { handle: "dylan522p", profileUrl: "https://x.com/dylan522p" },
-    { handle: "jimkxa", profileUrl: "https://x.com/jimkxa" },
+    { handle: "NVIDIAAI", profileUrl: "https://x.com/NVIDIAAI" },
+    { handle: "AMD", profileUrl: "https://x.com/AMD" },
+    { handle: "Intel", profileUrl: "https://x.com/Intel" },
+    { handle: "Qualcomm", profileUrl: "https://x.com/Qualcomm" },
     { handle: "IanCutress", profileUrl: "https://x.com/IanCutress" },
-    { handle: "karlfreund", profileUrl: "https://x.com/karlfreund" },
   ],
 };
 
@@ -110,6 +114,108 @@ function cleanText(text: string): string {
     .trim();
 }
 
+function decodeHtmlEntities(text: string): string {
+  const decodeNumeric = (value: number, fallback: string): string => {
+    if (!Number.isFinite(value) || value < 0 || value > 0x10ffff) return fallback;
+    try {
+      return String.fromCodePoint(value);
+    } catch {
+      return fallback;
+    }
+  };
+
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (match: string, hex: string) =>
+      decodeNumeric(parseInt(hex, 16), match)
+    )
+    .replace(/&#(\d+);/g, (match: string, dec: string) =>
+      decodeNumeric(parseInt(dec, 10), match)
+    )
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function extractDescriptionHtml(blockXml: string): string {
+  const encodedMatch = blockXml.match(
+    /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>|<content:encoded(?:\s[^>]*)?>([\s\S]*?)<\/content:encoded>/i
+  );
+  if (encodedMatch) {
+    return (encodedMatch[1] || encodedMatch[2] || "").trim();
+  }
+
+  const descriptionMatch = blockXml.match(
+    /<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>|<description(?:\s[^>]*)?>([\s\S]*?)<\/description>/i
+  );
+  if (descriptionMatch) {
+    return (descriptionMatch[1] || descriptionMatch[2] || "").trim();
+  }
+
+  const contentMatch = blockXml.match(
+    /<content(?:\s[^>]*)?><!\[CDATA\[([\s\S]*?)\]\]><\/content>|<content(?:\s[^>]*)?>([\s\S]*?)<\/content>/i
+  );
+  return (contentMatch ? contentMatch[1] || contentMatch[2] || "" : "").trim();
+}
+
+function stripHtmlToText(html: string): string {
+  if (!html) return "";
+
+  const text = html
+    .replace(/<!\[CDATA\[|\]\]>/g, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+
+  return cleanText(decodeHtmlEntities(text));
+}
+
+function extractImageUrls(blockXml: string, descriptionHtml: string): string[] {
+  const urls = new Set<string>();
+
+  const addUrl = (value: string) => {
+    const normalized = cleanText(value);
+    if (!/^https?:\/\//i.test(normalized)) return;
+    urls.add(normalized);
+  };
+
+  const mediaContentMatches = blockXml.matchAll(
+    /<media:content[^>]*\burl=["']([^"']+)["'][^>]*>/gi
+  );
+  for (const match of mediaContentMatches) addUrl(match[1]);
+
+  const enclosureMatches = blockXml.matchAll(
+    /<enclosure[^>]*\burl=["']([^"']+)["'][^>]*>/gi
+  );
+  for (const match of enclosureMatches) {
+    const typeMatch = match[0].match(/\btype=["']([^"']+)["']/i);
+    if (typeMatch?.[1] && !/^image\//i.test(typeMatch[1])) continue;
+    addUrl(match[1]);
+  }
+
+  const htmlImageMatches = descriptionHtml.matchAll(/<img[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi);
+  for (const match of htmlImageMatches) addUrl(match[1]);
+
+  return Array.from(urls).slice(0, 4);
+}
+
+function extractQuotedText(rawTitle: string, descriptionHtml: string): string | undefined {
+  const blockQuoteMatch = descriptionHtml.match(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/i);
+  if (blockQuoteMatch?.[1]) {
+    const quoted = stripHtmlToText(blockQuoteMatch[1]).slice(0, 240);
+    if (quoted) return quoted;
+  }
+
+  const qtAuthorMatch = rawTitle.match(/^QT by @([A-Za-z0-9_]+):/i);
+  if (qtAuthorMatch?.[1]) return `@${qtAuthorMatch[1]}`;
+
+  return undefined;
+}
+
 function normalizeTweetTitle(rawTitle: string): string {
   return rawTitle
     .replace(/\s*-\s*Twitter$/i, "")
@@ -132,7 +238,7 @@ function parseEntryLink(blockXml: string): string {
   return cleanText(plainLink ? plainLink[1] || plainLink[2] || "" : "");
 }
 
-function parseBlock(blockXml: string, handle: string): NewsItem | null {
+function parseBlock(blockXml: string, handle: string): ParsedFeedItem | null {
   const titleMatch = blockXml.match(
     /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i
   );
@@ -144,14 +250,31 @@ function parseBlock(blockXml: string, handle: string): NewsItem | null {
   const title = normalizeTweetTitle(rawTitle);
   const url = parseEntryLink(blockXml);
   const pubDate = cleanText(dateMatch ? dateMatch[1] || dateMatch[2] || dateMatch[3] || "" : "");
+  const descriptionHtml = extractDescriptionHtml(blockXml);
+  const fullText = stripHtmlToText(descriptionHtml).slice(0, 900);
+  const images = extractImageUrls(blockXml, descriptionHtml);
+  const quoted = extractQuotedText(rawTitle, descriptionHtml);
+
+  const normalizedTitle = cleanText(title).toLowerCase();
+  const normalizedFullText = cleanText(fullText).toLowerCase();
+  const content =
+    fullText && normalizedFullText !== normalizedTitle
+      ? fullText
+      : undefined;
 
   if (!title || !url) return null;
 
   return {
-    title: `@${handle}: ${title}`,
-    url,
-    pubDate,
-    source: `@${handle}`,
+    rawTitle,
+    item: {
+      title: `@${handle}: ${title}`,
+      url,
+      pubDate,
+      source: `@${handle}`,
+      content,
+      quoted,
+      images: images.length > 0 ? images : undefined,
+    },
   };
 }
 
@@ -161,20 +284,12 @@ function parseRSSItems(xml: string, handle: string): ParsedFeedItem[] {
   const entryMatches = xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi);
 
   for (const match of itemMatches) {
-    const rawTitleMatch = match[1].match(
-      /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i
-    );
-    const rawTitle = cleanText(rawTitleMatch ? rawTitleMatch[1] || rawTitleMatch[2] || "" : "");
     const parsed = parseBlock(match[1], handle);
-    if (parsed) items.push({ item: parsed, rawTitle });
+    if (parsed) items.push(parsed);
   }
   for (const match of entryMatches) {
-    const rawTitleMatch = match[1].match(
-      /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i
-    );
-    const rawTitle = cleanText(rawTitleMatch ? rawTitleMatch[1] || rawTitleMatch[2] || "" : "");
     const parsed = parseBlock(match[1], handle);
-    if (parsed) items.push({ item: parsed, rawTitle });
+    if (parsed) items.push(parsed);
   }
 
   return items;
@@ -266,6 +381,38 @@ function extractTweetTextFromJina(markdown: string): string | null {
   return cleanText(tweet).slice(0, 420);
 }
 
+function extractImageUrlsFromJina(markdown: string): string[] {
+  const imageMatches = markdown.match(
+    /https?:\/\/(?:pbs\.twimg\.com|video\.twimg\.com)\/[^\s)\]]+/gi
+  );
+  if (!imageMatches) return [];
+  return Array.from(new Set(imageMatches)).slice(0, 4);
+}
+
+function extractQuotedTextFromJina(markdown: string): string | undefined {
+  const lines = markdown.split("\n").map((line) => line.trim());
+  const quoteIdx = lines.findIndex((line) => /^Quote$/i.test(line));
+  if (quoteIdx < 0) return undefined;
+
+  const quoted: string[] = [];
+  for (let i = quoteIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) {
+      if (quoted.length > 0) break;
+      continue;
+    }
+    if (/^Who to follow/i.test(line)) break;
+    if (isJinaNoiseLine(line)) continue;
+    if (/^https?:\/\//i.test(line)) continue;
+
+    quoted.push(line);
+    if (quoted.join(" ").length >= 240) break;
+  }
+
+  const text = cleanText(quoted.join(" ")).slice(0, 240);
+  return text || undefined;
+}
+
 function extractStatusUrlFromJina(markdown: string, handle: string): string | null {
   const statusRegex = new RegExp(`https://x\\.com/${handle}/status/\\d+`, "i");
   const statusMatch = markdown.match(statusRegex);
@@ -303,6 +450,9 @@ async function fetchLatestTweetFromJina(account: TrackedAccount): Promise<NewsIt
       url,
       pubDate: new Date().toISOString(),
       source: `@${account.handle}`,
+      content: tweetText,
+      quoted: extractQuotedTextFromJina(markdown),
+      images: extractImageUrlsFromJina(markdown),
     };
   } catch {
     return null;
@@ -376,7 +526,9 @@ async function fetchLatestTweet(source: AccountFeedSource): Promise<NewsItem | n
         source.category === "AI芯片"
           ? basePool.filter(
               (entry) =>
-                isChipRelatedText(entry.item.title) &&
+                isChipRelatedText(
+                  `${entry.item.title} ${entry.item.content || ""} ${entry.item.quoted || ""}`
+                ) &&
                 isRecentEnough(entry.item.pubDate)
             )
           : basePool;

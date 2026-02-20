@@ -8,6 +8,9 @@ interface NewsItem {
   url: string;
   pubDate: string;
   source: string;
+  content?: string;
+  quoted?: string;
+  images?: string[];
 }
 
 interface AINewsData {
@@ -16,10 +19,10 @@ interface AINewsData {
 }
 
 const UI_TEXT: Record<string, Record<string, string>> = {
-  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于", cadence: "每日更新，展示跟踪账号最新推文" },
-  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated", cadence: "Updated daily with latest posts from tracked accounts" },
-  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật", cadence: "Cập nhật mỗi ngày từ các tài khoản đã theo dõi" },
-  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert", cadence: "Täglich aktualisiert mit neuesten Posts der verfolgten Accounts" },
+  zh: { title: "AI 动态", noData: "暂无数据", loadFailed: "加载失败，请稍后重试", updatedAt: "更新于", cadence: "每日更新，尽量展示完整推文（含引用与图片）" },
+  en: { title: "AI Updates", noData: "No data", loadFailed: "Failed to load", updatedAt: "Updated", cadence: "Updated daily with fuller posts, including quotes and images when available" },
+  vi: { title: "Tin tức AI", noData: "Không có dữ liệu", loadFailed: "Tải thất bại", updatedAt: "Cập nhật", cadence: "Cập nhật hằng ngày với nội dung đầy đủ hơn, gồm trích dẫn và ảnh khi có" },
+  de: { title: "KI Aktuell", noData: "Keine Daten", loadFailed: "Laden fehlgeschlagen", updatedAt: "Aktualisiert", cadence: "Tägliche Updates mit mehr vollständigen Posts inkl. Zitate und Bilder falls verfügbar" },
 };
 
 const CATEGORY_LABELS: Record<string, Record<string, string>> = {
@@ -29,7 +32,7 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
 };
 
 const CATEGORY_ORDER = ["大模型", "Agent", "AI芯片"];
-const AI_NEWS_CACHE_VERSION = "20260219-3";
+const AI_NEWS_CACHE_VERSION = "20260220-2";
 
 export function AIDock() {
   const { lang } = useLanguage();
@@ -79,6 +82,10 @@ export function AIDock() {
 
   function getCategoryLabel(cat: string): string {
     return CATEGORY_LABELS[cat]?.[lang] || CATEGORY_LABELS[cat]?.zh || cat;
+  }
+
+  function normalizedText(value: string): string {
+    return value.replace(/\s+/g, " ").trim().toLowerCase();
   }
 
   return (
@@ -167,23 +174,70 @@ export function AIDock() {
                   </p>
                 ) : (
                   <ul className="space-y-2">
-                    {currentItems.map((item, i) => (
-                      <li key={i}>
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group block rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
-                        >
-                          <p className="text-xs leading-relaxed text-foreground group-hover:text-blue-500 break-words">
-                            {item.title}
-                          </p>
-                          <span className="mt-0.5 text-[10px] text-muted-foreground">
-                            {item.source} · {item.pubDate ? new Date(item.pubDate).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US") : ""}
-                          </span>
-                        </a>
-                      </li>
-                    ))}
+                    {currentItems.map((item, i) => {
+                      const titleWithoutSource = item.title.replace(/^@[A-Za-z0-9_]+:\s*/, "");
+                      const shouldShowContent =
+                        !!item.content &&
+                        normalizedText(item.content) !== normalizedText(titleWithoutSource);
+
+                      return (
+                        <li key={i}>
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group block rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
+                          >
+                            <p className="text-xs leading-relaxed text-foreground group-hover:text-blue-500 break-words">
+                              {item.title}
+                            </p>
+                            {shouldShowContent && (
+                              <p
+                                className="mt-1 text-[11px] leading-relaxed text-muted-foreground break-words"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 4,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {item.content}
+                              </p>
+                            )}
+                            {item.quoted && (
+                              <p
+                                className="mt-1 rounded border border-border bg-muted/40 px-1.5 py-1 text-[10px] leading-relaxed text-muted-foreground break-words"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                引用: {item.quoted}
+                              </p>
+                            )}
+                            {item.images && item.images.length > 0 && (
+                              <div className="mt-1.5 grid grid-cols-2 gap-1">
+                                {item.images.slice(0, 2).map((imageUrl, imageIdx) => (
+                                  <img
+                                    key={`${item.url}-img-${imageIdx}`}
+                                    src={imageUrl}
+                                    alt="tweet media"
+                                    loading="lazy"
+                                    className="h-16 w-full rounded object-cover bg-muted"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            <span className="mt-0.5 text-[10px] text-muted-foreground">
+                              {item.source} · {item.pubDate ? new Date(item.pubDate).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US") : ""}
+                            </span>
+                          </a>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
