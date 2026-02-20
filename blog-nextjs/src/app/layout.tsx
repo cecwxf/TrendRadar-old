@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LanguageProvider } from "@/components/language/LanguageProvider";
@@ -8,13 +7,6 @@ import { Footer } from "@/components/layout/Footer";
 import { AIDock } from "@/components/layout/AIDock";
 import "../styles/globals.css";
 import "../styles/markdown.css";
-
-// Inter 英文字体
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 // TODO: Add LXGW WenKai font when font file is available
 // Download from: https://github.com/lxgw/LxgwWenKai/releases
@@ -63,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className={inter.variable} suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"

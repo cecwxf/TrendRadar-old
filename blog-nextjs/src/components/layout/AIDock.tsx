@@ -11,6 +11,7 @@ interface NewsItem {
   content?: string;
   quoted?: string;
   images?: string[];
+  quoteImages?: string[];
 }
 
 interface AINewsData {
@@ -32,7 +33,7 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
 };
 
 const CATEGORY_ORDER = ["大模型", "Agent", "AI芯片"];
-const AI_NEWS_CACHE_VERSION = "20260220-2";
+const AI_NEWS_CACHE_VERSION = "20260220-3";
 
 export function AIDock() {
   const { lang } = useLanguage();
@@ -88,8 +89,37 @@ export function AIDock() {
     return value.replace(/\s+/g, " ").trim().toLowerCase();
   }
 
+  function renderImageGrid(images: string[] | undefined, keyPrefix: string, compact = false) {
+    if (!images || images.length === 0) return null;
+    const shownImages = images.slice(0, 4);
+    const gridCols = shownImages.length === 1 ? "grid-cols-1" : "grid-cols-2";
+    const imageHeightClass = compact
+      ? shownImages.length === 1
+        ? "h-24"
+        : "h-20"
+      : shownImages.length === 1
+        ? "h-44"
+        : "h-28";
+
+    return (
+      <div className={`mt-2 grid ${gridCols} gap-1.5`}>
+        {shownImages.map((imageUrl, imageIdx) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`${keyPrefix}-img-${imageIdx}`}
+            src={imageUrl}
+            alt="tweet media"
+            loading="lazy"
+            className={`${imageHeightClass} w-full rounded-md object-cover bg-muted`}
+            referrerPolicy="no-referrer"
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed right-0 top-1/4 z-40 hidden lg:flex">
+    <div className="fixed right-0 top-[8%] z-40 hidden lg:flex">
       {/* Collapsed tab */}
       {!open && (
         <button
@@ -104,8 +134,8 @@ export function AIDock() {
       {/* Expanded panel */}
       {open && (
         <div
-          className="flex w-[300px] flex-col rounded-l-xl border-l border-t border-b border-border bg-background/95 shadow-2xl backdrop-blur"
-          style={{ overflowY: "auto", maxHeight: "calc(100vh - 100px)" }}
+          className="flex w-[430px] xl:w-[480px] flex-col rounded-l-xl border-l border-t border-b border-border bg-background/95 shadow-2xl backdrop-blur"
+          style={{ overflowY: "auto", maxHeight: "calc(100vh - 64px)" }}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -166,7 +196,7 @@ export function AIDock() {
               {/* News list */}
               <div
                 className="flex-1 overflow-y-auto px-3 py-2"
-                style={{ maxHeight: "calc(100vh - 200px)" }}
+                style={{ maxHeight: "calc(100vh - 170px)" }}
               >
                 {currentItems.length === 0 ? (
                   <p className="py-8 text-center text-xs text-muted-foreground">
@@ -176,9 +206,11 @@ export function AIDock() {
                   <ul className="space-y-2">
                     {currentItems.map((item, i) => {
                       const titleWithoutSource = item.title.replace(/^@[A-Za-z0-9_]+:\s*/, "");
-                      const shouldShowContent =
-                        !!item.content &&
-                        normalizedText(item.content) !== normalizedText(titleWithoutSource);
+                      const bodyText =
+                        item.content && item.content.trim().length > 0
+                          ? item.content.trim()
+                          : titleWithoutSource;
+                      const showTitle = normalizedText(bodyText) !== normalizedText(titleWithoutSource);
 
                       return (
                         <li key={i}>
@@ -186,53 +218,45 @@ export function AIDock() {
                             href={item.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group block rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
+                            className="group block rounded-lg border border-border/70 bg-background/70 px-3 py-2.5 transition-colors hover:border-blue-500/50 hover:bg-muted/50"
                           >
-                            <p className="text-xs leading-relaxed text-foreground group-hover:text-blue-500 break-words">
-                              {item.title}
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                              <span className="font-medium text-foreground">{item.source}</span>
+                              <span>
+                                {item.pubDate
+                                  ? new Date(item.pubDate).toLocaleDateString(
+                                    lang === "zh" ? "zh-CN" : "en-US"
+                                  )
+                                  : ""}
+                              </span>
+                            </div>
+
+                            {showTitle && (
+                              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground break-words">
+                                {titleWithoutSource}
+                              </p>
+                            )}
+
+                            <p className="mt-1.5 text-[12px] leading-5 text-foreground whitespace-pre-line break-words">
+                              {bodyText}
                             </p>
-                            {shouldShowContent && (
-                              <p
-                                className="mt-1 text-[11px] leading-relaxed text-muted-foreground break-words"
-                                style={{
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 4,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {item.content}
-                              </p>
-                            )}
+
+                            {renderImageGrid(item.images, item.url, false)}
+
                             {item.quoted && (
-                              <p
-                                className="mt-1 rounded border border-border bg-muted/40 px-1.5 py-1 text-[10px] leading-relaxed text-muted-foreground break-words"
-                                style={{
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 3,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden",
-                                }}
-                              >
-                                引用: {item.quoted}
-                              </p>
-                            )}
-                            {item.images && item.images.length > 0 && (
-                              <div className="mt-1.5 grid grid-cols-2 gap-1">
-                                {item.images.slice(0, 2).map((imageUrl, imageIdx) => (
-                                  <img
-                                    key={`${item.url}-img-${imageIdx}`}
-                                    src={imageUrl}
-                                    alt="tweet media"
-                                    loading="lazy"
-                                    className="h-16 w-full rounded object-cover bg-muted"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                ))}
+                              <div className="mt-2 rounded-md border border-border bg-muted/40 px-2 py-1.5">
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  引用
+                                </p>
+                                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground whitespace-pre-line break-words">
+                                  {item.quoted}
+                                </p>
+                                {renderImageGrid(item.quoteImages, `${item.url}-quote`, true)}
                               </div>
                             )}
-                            <span className="mt-0.5 text-[10px] text-muted-foreground">
-                              {item.source} · {item.pubDate ? new Date(item.pubDate).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US") : ""}
+
+                            <span className="mt-2 inline-block text-[10px] text-blue-500/90 group-hover:text-blue-500">
+                              查看原帖
                             </span>
                           </a>
                         </li>

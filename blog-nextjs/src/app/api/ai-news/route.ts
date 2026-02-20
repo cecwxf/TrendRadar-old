@@ -35,6 +35,7 @@ interface NewsItem {
   content?: string;
   quoted?: string;
   images?: string[];
+  quoteImages?: string[];
 }
 
 interface ParsedFeedItem {
@@ -161,32 +162,108 @@ function extractDescriptionHtml(blockXml: string): string {
   return (contentMatch ? contentMatch[1] || contentMatch[2] || "" : "").trim();
 }
 
+function normalizeComparableText(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
 function stripHtmlToText(html: string): string {
   if (!html) return "";
 
-  const text = html
-    .replace(/<!\[CDATA\[|\]\]>/g, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<\/div>/gi, "\n")
-    .replace(/<[^>]+>/g, " ");
-
-  return cleanText(decodeHtmlEntities(text));
+  return decodeHtmlEntities(
+    html
+      .replace(/<!\[CDATA\[|\]\]>/g, "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|blockquote|h[1-6])>/gi, "\n")
+      .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, "$1")
+      .replace(/<img[^>]*>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
-function extractImageUrls(blockXml: string, descriptionHtml: string): string[] {
-  const urls = new Set<string>();
+function extractBlockquotes(html: string): string[] {
+  const matches = html.match(/<blockquote[\s\S]*?<\/blockquote>/gi);
+  if (!matches) return [];
+  return matches.map((block) => block.trim()).filter(Boolean);
+}
 
-  const addUrl = (value: string) => {
-    const normalized = cleanText(value);
-    if (!/^https?:\/\//i.test(normalized)) return;
-    urls.add(normalized);
-  };
+function removeBlockquotes(html: string): string {
+  return html.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, " ");
+}
+
+function normalizeMediaUrl(rawValue: string): string | null {
+  let url = decodeHtmlEntities(cleanText(rawValue))
+    .replace(/[)\]>",']+$/g, "")
+    .trim();
+  if (!url) return null;
+
+  if (url.startsWith("//")) url = `https:${url}`;
+  if (url.startsWith("/")) url = `https://nitter.net${url}`;
+  if (!/^https?:\/\//i.test(url)) return null;
+
+  const nitterPicMatch = url.match(/^https?:\/\/nitter\.net\/pic\/(.+)$/i);
+  if (nitterPicMatch?.[1]) {
+    let decoded = nitterPicMatch[1];
+    try {
+      decoded = decodeURIComponent(decoded);
+    } catch {
+      // Ignore decode failure and keep original.
+    }
+    decoded = decoded.replace(/^\/+/, "");
+
+    if (/^https?:\/\//i.test(decoded)) return decoded;
+    if (
+      /^(media|card_img|amplify_video_thumb|ext_tw_video_thumb|tweet_video_thumb)\//i.test(decoded)
+    ) {
+      return `https://pbs.twimg.com/${decoded}`;
+    }
+  }
+
+  return url;
+}
+
+function scoreImageUrl(url: string): number {
+  const lower = url.toLowerCase();
+  if (lower.includes("pbs.twimg.com/media/")) return 1;
+  if (lower.includes("pbs.twimg.com/amplify_video_thumb/")) return 2;
+  if (lower.includes("pbs.twimg.com/ext_tw_video_thumb/")) return 2;
+  if (lower.includes("pbs.twimg.com/tweet_video_thumb/")) return 2;
+  if (lower.includes("video.twimg.com/")) return 3;
+  if (lower.includes("pbs.twimg.com/card_img/")) return 4;
+  return 5;
+}
+
+function dedupeAndSortImageUrls(urls: string[]): string[] {
+  const deduped = Array.from(new Set(urls.filter(Boolean)));
+  deduped.sort((a, b) => scoreImageUrl(a) - scoreImageUrl(b));
+  return deduped;
+}
+
+function extractImageUrlsFromHtml(html: string): string[] {
+  const urls: string[] = [];
+  const imageMatches = html.matchAll(/<img[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi);
+  for (const match of imageMatches) {
+    const normalized = normalizeMediaUrl(match[1]);
+    if (normalized) urls.push(normalized);
+  }
+  return dedupeAndSortImageUrls(urls);
+}
+
+function extractImageUrlsFromXml(blockXml: string): string[] {
+  const urls: string[] = [];
 
   const mediaContentMatches = blockXml.matchAll(
     /<media:content[^>]*\burl=["']([^"']+)["'][^>]*>/gi
   );
-  for (const match of mediaContentMatches) addUrl(match[1]);
+  for (const match of mediaContentMatches) {
+    const normalized = normalizeMediaUrl(match[1]);
+    if (normalized) urls.push(normalized);
+  }
 
   const enclosureMatches = blockXml.matchAll(
     /<enclosure[^>]*\burl=["']([^"']+)["'][^>]*>/gi
@@ -194,26 +271,37 @@ function extractImageUrls(blockXml: string, descriptionHtml: string): string[] {
   for (const match of enclosureMatches) {
     const typeMatch = match[0].match(/\btype=["']([^"']+)["']/i);
     if (typeMatch?.[1] && !/^image\//i.test(typeMatch[1])) continue;
-    addUrl(match[1]);
+    const normalized = normalizeMediaUrl(match[1]);
+    if (normalized) urls.push(normalized);
   }
 
-  const htmlImageMatches = descriptionHtml.matchAll(/<img[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi);
-  for (const match of htmlImageMatches) addUrl(match[1]);
-
-  return Array.from(urls).slice(0, 4);
+  return dedupeAndSortImageUrls(urls);
 }
 
-function extractQuotedText(rawTitle: string, descriptionHtml: string): string | undefined {
-  const blockQuoteMatch = descriptionHtml.match(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/i);
-  if (blockQuoteMatch?.[1]) {
-    const quoted = stripHtmlToText(blockQuoteMatch[1]).slice(0, 240);
-    if (quoted) return quoted;
+function extractQuoteData(rawTitle: string, descriptionHtml: string): {
+  quoted?: string;
+  quoteImages?: string[];
+} {
+  const blockquotes = extractBlockquotes(descriptionHtml);
+  if (blockquotes.length === 0) {
+    const qtAuthorMatch = rawTitle.match(/^QT by @([A-Za-z0-9_]+):/i);
+    return qtAuthorMatch?.[1] ? { quoted: `@${qtAuthorMatch[1]}` } : {};
   }
 
-  const qtAuthorMatch = rawTitle.match(/^QT by @([A-Za-z0-9_]+):/i);
-  if (qtAuthorMatch?.[1]) return `@${qtAuthorMatch[1]}`;
+  const quotedText = blockquotes
+    .map((block) => stripHtmlToText(block))
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 1200);
 
-  return undefined;
+  const quoteImages = dedupeAndSortImageUrls(
+    blockquotes.flatMap((block) => extractImageUrlsFromHtml(block))
+  ).slice(0, 4);
+
+  return {
+    quoted: quotedText || undefined,
+    quoteImages: quoteImages.length > 0 ? quoteImages : undefined,
+  };
 }
 
 function normalizeTweetTitle(rawTitle: string): string {
@@ -251,16 +339,19 @@ function parseBlock(blockXml: string, handle: string): ParsedFeedItem | null {
   const url = parseEntryLink(blockXml);
   const pubDate = cleanText(dateMatch ? dateMatch[1] || dateMatch[2] || dateMatch[3] || "" : "");
   const descriptionHtml = extractDescriptionHtml(blockXml);
-  const fullText = stripHtmlToText(descriptionHtml).slice(0, 900);
-  const images = extractImageUrls(blockXml, descriptionHtml);
-  const quoted = extractQuotedText(rawTitle, descriptionHtml);
+  const mainHtml = removeBlockquotes(descriptionHtml);
+  const fullText = stripHtmlToText(mainHtml).slice(0, 2200);
+  const imagesFromMainHtml = extractImageUrlsFromHtml(mainHtml);
+  const imagesFromXml = extractImageUrlsFromXml(blockXml);
+  const images = dedupeAndSortImageUrls([
+    ...imagesFromMainHtml,
+    ...imagesFromXml,
+  ]).slice(0, 4);
+  const quoteData = extractQuoteData(rawTitle, descriptionHtml);
 
-  const normalizedTitle = cleanText(title).toLowerCase();
-  const normalizedFullText = cleanText(fullText).toLowerCase();
-  const content =
-    fullText && normalizedFullText !== normalizedTitle
-      ? fullText
-      : undefined;
+  const normalizedTitle = normalizeComparableText(title);
+  const normalizedFullText = normalizeComparableText(fullText);
+  const content = fullText && normalizedFullText !== normalizedTitle ? fullText : undefined;
 
   if (!title || !url) return null;
 
@@ -272,8 +363,9 @@ function parseBlock(blockXml: string, handle: string): ParsedFeedItem | null {
       pubDate,
       source: `@${handle}`,
       content,
-      quoted,
+      quoted: quoteData.quoted,
       images: images.length > 0 ? images : undefined,
+      quoteImages: quoteData.quoteImages,
     },
   };
 }
@@ -366,7 +458,7 @@ function extractTweetTextFromJina(markdown: string): string | null {
     }
 
     current.push(line);
-    if (current.join(" ").length >= 280) {
+    if (current.join(" ").length >= 1800) {
       break;
     }
   }
@@ -378,15 +470,20 @@ function extractTweetTextFromJina(markdown: string): string | null {
   const tweet = chunks.find((chunk) => cleanText(chunk).length >= 12);
   if (!tweet) return null;
 
-  return cleanText(tweet).slice(0, 420);
+  return cleanText(tweet).slice(0, 2200);
 }
 
 function extractImageUrlsFromJina(markdown: string): string[] {
-  const imageMatches = markdown.match(
+  const imageMatches =
+    markdown.match(
     /https?:\/\/(?:pbs\.twimg\.com|video\.twimg\.com)\/[^\s)\]]+/gi
-  );
-  if (!imageMatches) return [];
-  return Array.from(new Set(imageMatches)).slice(0, 4);
+    ) || [];
+
+  const normalized = imageMatches
+    .map((url) => normalizeMediaUrl(url))
+    .filter((url): url is string => !!url);
+
+  return dedupeAndSortImageUrls(normalized).slice(0, 4);
 }
 
 function extractQuotedTextFromJina(markdown: string): string | undefined {
@@ -406,10 +503,10 @@ function extractQuotedTextFromJina(markdown: string): string | undefined {
     if (/^https?:\/\//i.test(line)) continue;
 
     quoted.push(line);
-    if (quoted.join(" ").length >= 240) break;
+    if (quoted.join(" ").length >= 1200) break;
   }
 
-  const text = cleanText(quoted.join(" ")).slice(0, 240);
+  const text = cleanText(quoted.join(" ")).slice(0, 1200);
   return text || undefined;
 }
 

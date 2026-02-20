@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    --font-sans: "Inter", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+      "Microsoft YaHei", "Noto Sans CJK SC", "Helvetica Neue", Arial, sans-serif;
+    --font-wenkai: "LXGW WenKai", "KaiTi", serif;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
