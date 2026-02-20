@@ -18,6 +18,8 @@ const aiLinks: FooterLink[] = [
   { name: "豆包",     href: "https://www.doubao.com",         domain: "doubao.com" },
   { name: "通义",     href: "https://tongyi.aliyun.com",      domain: "tongyi.aliyun.com" },
   { name: "智谱GLM",  href: "https://chatglm.cn",             domain: "chatglm.cn" },
+  { name: "OpenClaw", href: "https://docs.openclaw.ai/",      domain: "docs.openclaw.ai" },
+  { name: "OpenRouter", href: "https://openrouter.ai/",       domain: "openrouter.ai" },
 ];
 
 const financeLinks: FooterLink[] = [
