@@ -24,13 +24,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Python Backend
 
 ```bash
-# Install & run
+# Install (uses hatchling build system)
 pip install -e .
-python -m trendradar
+
+# Run news crawler/analyzer
+python -m trendradar          # or: trendradar
+
+# Run market dashboard (crypto + stocks + AI analysis)
+python -m trendradar.market_dashboard
 
 # MCP server
 trendradar-mcp
 trendradar-mcp --transport http --host 0.0.0.0 --port 3333
+
+# Run test scripts (no test framework — standalone scripts at repo root)
+python test_dashboard.py
+python test_market_storage.py
+python test_claude_analyzer.py
+python test_feishu_card.py
+python test_full_integration.py
 
 # Docker
 docker build -t trendradar .
@@ -51,8 +63,8 @@ npm run build   # production build
 npm run lint    # ESLint
 ```
 
-Required env vars: `NOTION_TOKEN`, `NOTION_DATABASE_ID`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_GISCUS_*` (4 vars).
-Optional: `NEXT_PUBLIC_SUPABASE_*` (market data), `CRON_SECRET` (market cron).
+Required env vars: `NOTION_TOKEN`, `NOTION_DATABASE_ID`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SITE_TITLE`, `NEXT_PUBLIC_GISCUS_*` (4 vars).
+Optional: `NEXT_PUBLIC_SUPABASE_*` (market data), `CRON_SECRET` (market cron), `NEXT_PUBLIC_GA_MEASUREMENT_ID` (analytics), `SENTRY_DSN` (error monitoring).
 
 ## Code Architecture
 
@@ -62,30 +74,49 @@ The project follows a modular architecture with clear separation of concerns:
 
 ```
 trendradar/              # Main application package
-├── __main__.py          # Entry point: NewsAnalyzer orchestrates the workflow
+├── __main__.py          # Entry point: NewsAnalyzer orchestrates the news workflow
+├── market_dashboard.py  # Entry point: MarketDashboard orchestrates crypto/stock/AI workflow
 ├── context.py           # AppContext: encapsulates all config-dependent operations
 ├── core/                # Core business logic
-│   ├── config.py        # Configuration loading
-│   ├── loader.py        # Data loading utilities
+│   ├── config.py        # Multi-account config parsing and validation utilities
+│   ├── loader.py        # Config loading: merges config.yaml + env vars
 │   ├── analyzer.py      # Keyword frequency analysis
 │   ├── frequency.py     # Word matching logic
 │   └── data.py          # Data structures (NewsData, RSSData)
 ├── crawler/             # Data fetching layer
 │   ├── fetcher.py       # Platform crawling (via newsnow API)
-│   └── rss/             # RSS feed handling
+│   ├── crypto.py        # CoinGecko crypto data fetcher
+│   ├── stocks.py        # Yahoo Finance stock data fetcher
+│   └── rss/             # RSS feed handling (parser.py, fetcher.py)
 ├── storage/             # Storage abstraction layer
-│   ├── base.py          # StorageBackend interface
-│   ├── local.py         # Local file storage
+│   ├── base.py          # StorageBackend interface + RSSData
+│   ├── local.py         # Local SQLite storage
 │   ├── remote.py        # S3-compatible remote storage
-│   └── manager.py       # StorageManager: unified storage access
+│   ├── manager.py       # StorageManager: unified storage access
+│   └── market_models.py # MarketData, CryptoItem, StockItem data models
+├── analysis/            # AI-powered analysis
+│   └── claude_analyzer.py  # Claude API market analysis (analyze_market_simple)
+├── mcp/                 # Internal MCP helpers
+│   └── market_analysis.py  # Market analysis MCP integration
+├── utils/               # Shared utilities
+│   ├── url.py           # URL handling
+│   └── time.py          # Time formatting helpers
 ├── report/              # Report generation
 │   ├── generator.py     # HTML report orchestration
-│   ├── html.py          # HTML rendering
-│   └── formatter.py     # Data formatting
+│   ├── html.py          # News HTML rendering
+│   ├── formatter.py     # Data formatting for platforms
+│   ├── dashboard_html.py # Market dashboard HTML with ECharts
+│   ├── rss_html.py      # RSS content HTML rendering
+│   └── helpers.py       # Shared helpers (clean_title, html_escape)
 └── notification/        # Notification dispatch
     ├── dispatcher.py    # Multi-channel notification dispatcher
     ├── senders.py       # Individual channel senders
-    └── batch.py         # Batch notification handling
+    ├── batch.py         # Batch notification handling
+    ├── renderer.py      # Multi-platform content rendering (Feishu, etc.)
+    ├── splitter.py      # Message splitting per platform size limits
+    ├── formatters.py    # Format conversion (strip_markdown, etc.)
+    ├── push_manager.py  # PushRecordManager: once-per-day + time window control
+    └── market_renderer.py # Feishu Rich Card rendering for market data
 
 mcp_server/              # MCP server for AI analysis
 ├── server.py            # FastMCP server definition (20+ tools)
@@ -115,8 +146,9 @@ mcp_server/              # MCP server for AI analysis
 - Usage: `ctx = AppContext(config)` → `ctx.get_time()`, `ctx.generate_html()`, etc.
 
 #### 2. Storage Abstraction Layer
-- `storage/base.py` defines `StorageBackend` interface
+- `storage/base.py` defines `StorageBackend` interface + `RSSData` structure
 - `storage/manager.py` provides `StorageManager` that auto-selects backend (local/remote)
+- `storage/market_models.py` defines `MarketData`, `CryptoItem`, `StockItem` for market pipeline
 - Supports seamless switching between local SQLite and S3-compatible remote storage
 - Data stored in standardized `NewsData` and `RSSData` formats
 
@@ -136,18 +168,26 @@ Mode strategy is defined in `NewsAnalyzer.MODE_STRATEGIES` and executed via `_ex
 
 ### Data Flow
 
+**News pipeline** (`python -m trendradar`):
 1. **Crawling**: `DataFetcher` → fetches from newsnow API → `NewsData`
 2. **Storage**: `NewsData` → `StorageManager.save_news_data()` → SQLite/S3
 3. **Analysis**: Load via `AppContext.read_today_titles()` → `count_word_frequency()` → stats
 4. **Reporting**: stats → `generate_html_report()` → HTML file
 5. **Notification**: stats → `NotificationDispatcher.dispatch_all()` → multi-channel push
 
+**Market pipeline** (`python -m trendradar.market_dashboard`):
+1. **Fetching**: `crawler/crypto.py` (CoinGecko) + `crawler/stocks.py` (Yahoo Finance) → `MarketData`
+2. **Storage**: `MarketData` → `LocalStorageBackend` → SQLite
+3. **AI Analysis**: `analysis/claude_analyzer.py::analyze_market_simple()` → Claude API → market insights
+4. **Dashboard**: `report/dashboard_html.py::render_dashboard_html()` → HTML dashboard
+5. **Notification**: `notification/market_renderer.py::render_market_feishu_card()` → Feishu push
+
 ### Configuration System
 
 - **Main config**: `config/config.yaml` (platforms, keywords, notification channels, storage)
 - **Keyword filtering**: `config/frequency_words.txt` (supports word groups, filters, global filters)
 - **Environment overrides**: Many settings support environment variable overrides (e.g., `STORAGE_RETENTION_DAYS`)
-- **Config loading**: `trendradar/core/config.py::load_config()` merges YAML + env vars
+- **Config loading**: `trendradar/core/loader.py::load_config()` merges YAML + env vars
 
 ### Storage Format
 
@@ -175,22 +215,26 @@ blog-nextjs/src/
 │   ├── page.tsx                # Home: Hero + MarketBanner + MarketCharts + PostList
 │   ├── article/[slug]/         # Dynamic article pages (Notion content)
 │   ├── market/                 # Market dashboard page
+│   ├── rss.xml/route.ts        # RSS feed generation
+│   ├── robots.ts, sitemap.ts   # SEO
 │   └── api/
 │       ├── ai-news/route.ts    # RSS aggregator for AI Dock (3 categories)
-│       ├── market/             # Crypto & stock data endpoints
+│       ├── market/             # latest/ and historical/ data endpoints
 │       ├── views/[slug]/       # View count tracking
-│       └── cron/market/        # Vercel cron for market data refresh
+│       └── cron/               # Vercel crons: market/ and ai-news/
 ├── components/
 │   ├── layout/                 # Header, Footer, AIDock, PageTransition
-│   ├── blog/                   # PostCard, SearchBar, Comments, ViewCount, DateArchive
+│   ├── blog/                   # PostCard, PostListWithArchive, SearchBar, Comments, ViewCount, ViewTracker, DateArchive, ArticleContent
 │   ├── market/                 # MarketBanner (ticker), MarketCharts (ECharts), MiniChart
 │   ├── theme/                  # ThemeProvider (next-themes), ThemeToggle
+│   ├── language/               # LanguageProvider
 │   └── ui/                     # Skeleton loader
 ├── lib/
 │   ├── notion/client.ts        # Notion API: getPosts, getPostBySlug, getCategories
 │   ├── notion/renderer.ts      # notion-to-md conversion + reading time
 │   ├── market/                 # market-service, crypto-fetcher, stock-fetcher
-│   └── supabase/client.ts      # Supabase client init
+│   ├── supabase/client.ts      # Supabase client init
+│   └── utils/cn.ts             # clsx + tailwind-merge utility
 └── types/                      # blog.ts, market.ts, notion.ts
 ```
 
@@ -205,7 +249,8 @@ blog-nextjs/src/
 ## Important Implementation Notes
 
 ### When Modifying Storage
-- Always update both `NewsData`/`RSSData` structures in `core/data.py`
+- Always update both `NewsData`/`RSSData` structures in `core/data.py` and `storage/base.py`
+- Market data models live in `storage/market_models.py` (`MarketData`, `CryptoItem`, `StockItem`)
 - Update SQLite schema in `storage/local.py::LocalStorage._init_db()`
 - Ensure `StorageManager` methods support both local and remote backends
 - Test data retention cleanup logic (`_cleanup_old_data()`)
@@ -221,6 +266,9 @@ blog-nextjs/src/
 - Implement sender in `notification/senders.py`
 - Register in `NotificationDispatcher._init_senders()`
 - Add config validation in `core/config.py`
+- Content rendering in `notification/renderer.py`, format conversion in `notification/formatters.py`
+- Message splitting per platform limits in `notification/splitter.py`
+- Push dedup/scheduling via `notification/push_manager.py` (PushRecordManager)
 - Test batch splitting for large content
 
 ### Time Zone Handling
@@ -234,6 +282,13 @@ blog-nextjs/src/
 - Actions mode disables browser opening and proxy usage
 - Workflow schedule in `.github/workflows/crawler.yml`
 - Supports automatic deployment to GitHub Pages
+
+### Build System
+- Uses `pyproject.toml` with **hatchling** build backend
+- Python ≥ 3.10 required
+- CLI entry points: `trendradar` → `trendradar.__main__:main`, `trendradar-mcp` → `mcp_server.server:run_server`
+- Wheel packages both `trendradar/` and `mcp_server/`
+- No test framework configured — test files at repo root are standalone scripts (`test_dashboard.py`, etc.)
 
 ### When Modifying the Blog Frontend
 - Layout components (`Header`, `Footer`, `AIDock`) are composed in `blog-nextjs/src/app/layout.tsx`
