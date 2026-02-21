@@ -32,6 +32,12 @@ interface CoinGeckoMarketChartResponse {
   prices?: [number, number][];
 }
 
+interface CoinGeckoSimplePriceResponse {
+  bitcoin?: {
+    usd?: number;
+  };
+}
+
 function safeNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -52,10 +58,95 @@ function calcAverage(values: number[]): number | undefined {
   return values.reduce((sum, item) => sum + item, 0) / values.length;
 }
 
+async function fetchBtcClosesFromCoinGecko(): Promise<number[]> {
+  try {
+    const resp = await fetch(
+      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=250&interval=daily",
+      {
+        next: { revalidate: 300 },
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!resp.ok) {
+      return [];
+    }
+
+    const btcChart = (await resp.json()) as CoinGeckoMarketChartResponse;
+    return (btcChart.prices || [])
+      .map((entry) => safeNumber(entry[1]))
+      .filter((item): item is number => typeof item === "number");
+  } catch {
+    return [];
+  }
+}
+
+async function fetchBtcClosesFromBinance(): Promise<number[]> {
+  try {
+    const resp = await fetch(
+      "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=220",
+      {
+        next: { revalidate: 300 },
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!resp.ok) {
+      return [];
+    }
+
+    const rows = (await resp.json()) as unknown[];
+    if (!Array.isArray(rows)) {
+      return [];
+    }
+
+    return rows
+      .map((row) => (Array.isArray(row) ? safeNumber(row[4]) : undefined))
+      .filter((item): item is number => typeof item === "number");
+  } catch {
+    return [];
+  }
+}
+
+async function fetchBtcSpotFromCoinGecko(): Promise<number | undefined> {
+  try {
+    const resp = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+      {
+        next: { revalidate: 300 },
+        headers: { Accept: "application/json" },
+      }
+    );
+    if (!resp.ok) {
+      return undefined;
+    }
+    const payload = (await resp.json()) as CoinGeckoSimplePriceResponse;
+    return safeNumber(payload.bitcoin?.usd);
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchBtcSpotFromBinance(): Promise<number | undefined> {
+  try {
+    const resp = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", {
+      next: { revalidate: 300 },
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) {
+      return undefined;
+    }
+    const payload = (await resp.json()) as { price?: string | number };
+    return safeNumber(payload.price);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function fetchBlockchainMacroMetrics(): Promise<BlockchainMacroMetrics> {
   const metrics: BlockchainMacroMetrics = {};
 
-  const [globalResp, fearGreedResp, btcChartResp, tipHeightResp] = await Promise.all([
+  const [globalResp, fearGreedResp, tipHeightResp] = await Promise.all([
     fetch("https://api.coingecko.com/api/v3/global", {
       next: { revalidate: 300 },
       headers: { Accept: "application/json" },
@@ -64,13 +155,6 @@ export async function fetchBlockchainMacroMetrics(): Promise<BlockchainMacroMetr
       next: { revalidate: 300 },
       headers: { Accept: "application/json" },
     }).catch(() => null),
-    fetch(
-      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=400&interval=daily",
-      {
-        next: { revalidate: 300 },
-        headers: { Accept: "application/json" },
-      }
-    ).catch(() => null),
     fetch("https://mempool.space/api/blocks/tip/height", {
       next: { revalidate: 300 },
       headers: { Accept: "text/plain" },
@@ -100,20 +184,30 @@ export async function fetchBlockchainMacroMetrics(): Promise<BlockchainMacroMetr
     }
   }
 
-  if (btcChartResp?.ok) {
-    const btcChart = (await btcChartResp.json()) as CoinGeckoMarketChartResponse;
-    const prices = (btcChart.prices || [])
-      .map((entry) => safeNumber(entry[1]))
-      .filter((item): item is number => typeof item === "number");
+  // BTC 价格与 MA200 使用多源回退，避免单一接口限流导致 N/A。
+  let prices = await fetchBtcClosesFromCoinGecko();
+  if (prices.length < 180) {
+    prices = await fetchBtcClosesFromBinance();
+  }
 
-    if (prices.length > 0) {
-      const latest = prices[prices.length - 1];
-      const ma200d = calcAverage(prices.slice(-200));
-      metrics.btc_price_usd = latest;
-      metrics.btc_ma200d_usd = ma200d;
-      metrics.btc_price_to_ma200d =
-        typeof ma200d === "number" && ma200d > 0 ? latest / ma200d : undefined;
-    }
+  if (prices.length > 0) {
+    metrics.btc_price_usd = prices[prices.length - 1];
+    metrics.btc_ma200d_usd = calcAverage(prices.slice(-200));
+  }
+
+  if (metrics.btc_price_usd === undefined) {
+    metrics.btc_price_usd = await fetchBtcSpotFromCoinGecko();
+  }
+  if (metrics.btc_price_usd === undefined) {
+    metrics.btc_price_usd = await fetchBtcSpotFromBinance();
+  }
+
+  if (
+    typeof metrics.btc_price_usd === "number" &&
+    typeof metrics.btc_ma200d_usd === "number" &&
+    metrics.btc_ma200d_usd > 0
+  ) {
+    metrics.btc_price_to_ma200d = metrics.btc_price_usd / metrics.btc_ma200d_usd;
   }
 
   if (tipHeightResp?.ok) {
@@ -136,4 +230,3 @@ export async function fetchBlockchainMacroMetrics(): Promise<BlockchainMacroMetr
 
   return metrics;
 }
-
