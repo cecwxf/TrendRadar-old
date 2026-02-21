@@ -1,0 +1,79 @@
+/**
+ * AI 芯片排行榜类型定义
+ */
+
+export type ChipSegment = "汽车ADAS" | "座舱" | "机器人端侧推理" | "服务器侧";
+
+export interface AIChipModel {
+  id: string;
+  name: string;
+  vendor: string;
+  segment: ChipSegment;
+  parent_ticker?: string;
+  architecture?: string;
+  process_nm?: number;
+  release_date?: string;
+}
+
+export interface AIChipMetrics {
+  chip_id: string;
+  benchmark_index: number;          // 推理性能指数（0-100）
+  efficiency_index: number;         // 能效指数（0-100）
+  deployment_index: number;         // 使用量指数（相对值）
+  segment_share_percent: number;    // 赛道份额
+  composite_score: number;          // 综合评分
+  market_cap_usd?: number;          // 母公司市值
+  daily_volume?: number;            // 当日成交量
+  price_change_percent?: number;    // 24h 涨跌幅
+  latest_revenue_usd?: number;      // 最近营收（若可得）
+  timestamp: string;
+}
+
+export interface AIChipRankingItem {
+  rank: number;
+  chip: AIChipModel;
+  metrics: AIChipMetrics;
+  trend?: "up" | "down" | "stable";
+  rank_change?: number;
+}
+
+export interface AIChipSegmentRanking {
+  segment: ChipSegment;
+  top_chips: AIChipRankingItem[];
+  total_deployment_index: number;
+}
+
+export interface AIChipVendorShare {
+  vendor: string;
+  share_percent: number;
+  total_deployment_index: number;
+  chip_count: number;
+}
+
+export interface AIChipDataSource {
+  name: string;
+  type: "live" | "reference";
+  url?: string;
+  status: "ok" | "degraded";
+  note?: string;
+}
+
+export interface AIChipLeaderboard {
+  overall_rankings: AIChipRankingItem[];
+  segment_rankings: AIChipSegmentRanking[];
+  vendor_shares: AIChipVendorShare[];
+  last_updated: string;
+  data_period: {
+    start: string;
+    end: string;
+  };
+  data_sources: AIChipDataSource[];
+  failed_sources?: string[];
+}
+
+export interface AIChipLeaderboardResponse {
+  success: boolean;
+  data?: AIChipLeaderboard;
+  error?: string;
+  timestamp: string;
+}

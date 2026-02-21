@@ -17,6 +17,7 @@ const NAV_LABELS: Record<string, Record<string, string>> = {
   home: { zh: "首页", en: "Home", vi: "Trang chủ", de: "Startseite" },
   market: { zh: "市场", en: "Market", vi: "Thị trường", de: "Markt" },
   llm: { zh: "LLM排行榜", en: "LLM Rankings", vi: "Bảng xếp hạng LLM", de: "LLM-Rangliste" },
+  chips: { zh: "AI芯片榜", en: "AI Chip Rankings", vi: "Bảng chip AI", de: "KI-Chip-Ranking" },
 };
 
 const LANG_OPTIONS: { code: Lang; label: string }[] = [
@@ -104,6 +105,12 @@ export function Header() {
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {NAV_LABELS.llm[lang]}
+              </Link>
+              <Link
+                href="/chips"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {NAV_LABELS.chips[lang]}
               </Link>
             </nav>
 
@@ -235,6 +242,13 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {NAV_LABELS.llm[lang]}
+              </Link>
+              <Link
+                href="/chips"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {NAV_LABELS.chips[lang]}
               </Link>
             </nav>
           </div>
