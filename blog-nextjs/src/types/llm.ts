@@ -115,6 +115,8 @@ export interface LLMLeaderboard {
     start: string;
     end: string;
   };
+  sources?: string[];                     // 本次实际使用的数据源
+  failed_sources?: string[];              // 失败并降级的数据源
 }
 
 /**

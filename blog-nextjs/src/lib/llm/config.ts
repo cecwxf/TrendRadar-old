@@ -5,8 +5,12 @@
  */
 
 export const LLM_CONFIG = {
-  // 数据源选择: "huggingface" | "mock"
-  dataSource: (process.env.LLM_DATA_SOURCE || "huggingface") as "huggingface" | "mock",
+  // 数据源选择: "openrouter" | "hybrid" | "huggingface" | "mock"
+  dataSource: (process.env.LLM_DATA_SOURCE || "hybrid") as
+    | "openrouter"
+    | "hybrid"
+    | "huggingface"
+    | "mock",
 
   // HuggingFace 配置
   huggingface: {
@@ -24,6 +28,36 @@ export const LLM_CONFIG = {
 
     // API Token (可选，用于提高速率限制)
     apiToken: process.env.HF_API_TOKEN,
+  },
+
+  // OpenRouter 配置（覆盖更多闭源模型，如 Claude/GPT/GLM/Kimi）
+  openrouter: {
+    // API 基础 URL
+    apiBase: process.env.OR_API_BASE || "https://openrouter.ai/api/v1",
+
+    // 获取模型数量
+    modelLimit: parseInt(process.env.OR_MODEL_LIMIT || "60", 10),
+
+    // 分类维度（按使用量排序）
+    categories: (process.env.OR_CATEGORIES || "general,programming,multimodal")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+
+    // 保障纳入的关键词（避免闭源主流模型被截断）
+    pinnedKeywords: (process.env.OR_PINNED_KEYWORDS || "gemini")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+
+    // API Key（可选）
+    apiKey: process.env.OPENROUTER_API_KEY,
+  },
+
+  // 混合数据源配置
+  hybrid: {
+    // 混合模式下最多返回的模型数量
+    modelLimit: parseInt(process.env.LLM_HYBRID_MODEL_LIMIT || "80", 10),
   },
 
   // 缓存配置

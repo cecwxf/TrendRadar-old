@@ -68,6 +68,8 @@ export default function LLMLeaderboardPage() {
   data.overall_rankings.forEach((item) => {
     modelNames[item.model.id] = item.model.name;
   });
+  const sourceText = data.sources?.length ? data.sources.join(" + ") : "未标注";
+  const failedSourceText = data.failed_sources?.length ? `（降级: ${data.failed_sources.join(", ")}）` : "";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
@@ -145,8 +147,8 @@ export default function LLMLeaderboardPage() {
           </h3>
           <div className="text-sm text-blue-800 dark:text-blue-400 space-y-2">
             <p>
-              <strong>数据来源:</strong> 本排行榜数据来自 HuggingFace API，展示真实的模型下载量和使用统计。
-              如果 HuggingFace 不可用，会自动回退到模拟数据。
+              <strong>数据来源:</strong> {sourceText} {failedSourceText}。支持综合考虑开源与闭源模型，
+              包含 Claude、GPT、Gemini、GLM、Kimi 等模型系列。
             </p>
             <p>
               <strong>排名指标:</strong> 综合考虑下载量、点赞数、使用量（Token数）、请求数、平均延迟、质量评分等多维度指标。

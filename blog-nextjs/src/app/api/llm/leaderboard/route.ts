@@ -4,11 +4,11 @@
  * GET /api/llm/leaderboard
  *
  * 返回 LLM 模型排行榜数据，包括排名、使用趋势、市场份额等
- * 数据来源: HuggingFace API
+ * 数据来源: OpenRouter / HuggingFace / Hybrid / Mock（可配置）
  */
 
 import { NextResponse } from "next/server";
-import { fetchLeaderboardData } from "@/lib/llm/huggingface-fetcher";
+import { fetchLeaderboardDataByConfig } from "@/lib/llm/multi-source-fetcher";
 import { generateLeaderboardData } from "@/lib/llm/mock-data";
 import type { LLMLeaderboardResponse } from "@/types/llm";
 
@@ -16,14 +16,17 @@ export const revalidate = 3600; // 缓存 1 小时
 
 export async function GET() {
   try {
-    // 优先使用 HuggingFace 真实数据，失败时回退到模拟数据
+    // 根据配置选择数据源，失败时回退到模拟数据
     let data;
     try {
-      data = await fetchLeaderboardData();
-      console.log("✅ 成功获取 HuggingFace 数据");
-    } catch (hfError) {
-      console.warn("⚠️ HuggingFace 数据获取失败，使用模拟数据:", hfError);
-      data = generateLeaderboardData();
+      data = await fetchLeaderboardDataByConfig();
+      console.log("✅ 成功获取 LLM 排行榜真实数据");
+    } catch (sourceError) {
+      console.warn("⚠️ 真实数据源获取失败，使用模拟数据:", sourceError);
+      data = {
+        ...generateLeaderboardData(),
+        sources: ["Mock"],
+      };
     }
 
     const response: LLMLeaderboardResponse = {
