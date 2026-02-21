@@ -136,7 +136,7 @@ export default function AIChipLeaderboardPage() {
           </h3>
           <div className="text-sm text-blue-800 dark:text-blue-400 space-y-2">
             <p>
-              <strong>装机指数:</strong> 仅基于芯片装机/部署基线计算（含定点、量产和落地节奏修正），不使用资本市场信号。
+              <strong>装机指数:</strong> 仅基于装机量与量产阶段计算（量产/爬坡/试点/未量产分级），定点不直接计入装机。
             </p>
             <p>
               <strong>份额与排名:</strong> 全部按 ADAS、座舱、IOT/机器人端侧、服务器四个市场分别计算，不跨市场混排。
@@ -149,6 +149,9 @@ export default function AIChipLeaderboardPage() {
             </p>
             <p>
               <strong>市场拆分:</strong> 目前按 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场进行展示。
+            </p>
+            <p>
+              <strong>口径说明:</strong> 各市场统计窗口不完全一致，当前以 2025-01-01 以来可公开装机数据为主进行归一化。
             </p>
             {data.failed_sources && data.failed_sources.length > 0 && (
               <p>

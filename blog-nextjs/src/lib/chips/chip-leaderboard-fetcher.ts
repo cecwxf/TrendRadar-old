@@ -23,6 +23,8 @@ interface ChipBaseline extends AIChipModel {
   benchmark_index: number;
   efficiency_index: number;
   base_deployment_index: number;
+  install_base_units?: number;      // 公开可得统计周期内装机量（优先用于份额）
+  install_stage?: "mass_production" | "sop_ramp" | "pilot" | "pre_sop";
   adoption_multiplier?: number;     // 装机规模修正系数（部署优先）
   cn_secid?: string;               // 东方财富 secid，如 1.688256
   reference_revenue_usd?: number;  // 非上市主体可使用公开年报收入
@@ -90,7 +92,8 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2023-01-05",
     benchmark_index: 80,
     efficiency_index: 84,
-    base_deployment_index: 76,
+    base_deployment_index: 62,
+    install_stage: "pilot",
   },
   {
     id: "mobileye-eyeq6",
@@ -103,7 +106,8 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2024-04-01",
     benchmark_index: 77,
     efficiency_index: 81,
-    base_deployment_index: 68,
+    base_deployment_index: 71,
+    install_stage: "sop_ramp",
   },
   {
     id: "horizon-journey-6",
@@ -115,8 +119,9 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2024-04-24",
     benchmark_index: 74,
     efficiency_index: 79,
-    base_deployment_index: 68,
-    adoption_multiplier: 1.08,
+    base_deployment_index: 92,
+    install_stage: "sop_ramp",
+    adoption_multiplier: 1.06,
   },
   {
     id: "huawei-mdc-810",
@@ -128,23 +133,24 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2023-04-16",
     benchmark_index: 78,
     efficiency_index: 80,
-    base_deployment_index: 70,
+    base_deployment_index: 74,
+    install_stage: "sop_ramp",
     reference_revenue_usd: 99_000_000_000,
     market_signal_floor: 0.55,
   },
   {
-    id: "black-sesame-a2000",
-    name: "Black Sesame Huashan A2000",
+    id: "black-sesame-a1000",
+    name: "Black Sesame Huashan A1000",
     vendor: "Black Sesame",
     segment: "ADAS市场",
     parent_ticker: "2533.HK",
     architecture: "NPU Domain SoC",
     process_nm: 7,
-    release_date: "2024-04-24",
-    benchmark_index: 73,
-    efficiency_index: 76,
-    base_deployment_index: 57,
-    adoption_multiplier: 0.88,
+    release_date: "2020-06-15",
+    benchmark_index: 66,
+    efficiency_index: 71,
+    base_deployment_index: 38,
+    install_stage: "mass_production",
     market_signal_floor: 0.42,
   },
   {
@@ -157,9 +163,24 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2023-10-12",
     benchmark_index: 71,
     efficiency_index: 75,
-    base_deployment_index: 58,
+    base_deployment_index: 54,
+    install_stage: "pilot",
     reference_revenue_usd: 450_000_000,
     market_signal_floor: 0.4,
+  },
+  {
+    id: "nvidia-drive-thor",
+    name: "NVIDIA DRIVE Thor",
+    vendor: "NVIDIA",
+    segment: "ADAS市场",
+    parent_ticker: "NVDA",
+    architecture: "Blackwell",
+    process_nm: 4,
+    release_date: "2025-01-07",
+    benchmark_index: 86,
+    efficiency_index: 80,
+    base_deployment_index: 64,
+    install_stage: "pilot",
   },
   {
     id: "qualcomm-sa8295p",
@@ -172,7 +193,9 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2021-11-30",
     benchmark_index: 72,
     efficiency_index: 83,
-    base_deployment_index: 79,
+    base_deployment_index: 86,
+    install_base_units: 5_701_662,
+    install_stage: "mass_production",
   },
   {
     id: "samsung-exynos-auto-v920",
@@ -185,19 +208,8 @@ const CHIP_CATALOG: ChipBaseline[] = [
     benchmark_index: 69,
     efficiency_index: 78,
     base_deployment_index: 64,
-  },
-  {
-    id: "nvidia-drive-thor-cockpit",
-    name: "NVIDIA DRIVE Thor Cockpit",
-    vendor: "NVIDIA",
-    segment: "座舱市场",
-    parent_ticker: "NVDA",
-    architecture: "Blackwell",
-    process_nm: 4,
-    release_date: "2025-01-07",
-    benchmark_index: 86,
-    efficiency_index: 80,
-    base_deployment_index: 58,
+    install_base_units: 90_129,
+    install_stage: "mass_production",
   },
   {
     id: "amd-ryzen-embedded-v3000",
@@ -210,7 +222,9 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2024-10-09",
     benchmark_index: 73,
     efficiency_index: 74,
-    base_deployment_index: 55,
+    base_deployment_index: 66,
+    install_base_units: 468_136,
+    install_stage: "mass_production",
   },
   {
     id: "huawei-kirin-cockpit-soc",
@@ -222,48 +236,96 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2023-09-25",
     benchmark_index: 70,
     efficiency_index: 77,
-    base_deployment_index: 66,
+    base_deployment_index: 69,
+    install_base_units: 489_625,
+    install_stage: "mass_production",
     reference_revenue_usd: 99_000_000_000,
     market_signal_floor: 0.55,
   },
   {
-    id: "rockchip-rk3588m",
-    name: "Rockchip RK3588M",
-    vendor: "Rockchip",
+    id: "siengine-longying-one",
+    name: "SiEngine Longying No.1",
+    vendor: "SiEngine",
     segment: "座舱市场",
-    architecture: "ARM + NPU",
-    process_nm: 8,
-    release_date: "2023-05-08",
+    architecture: "7nm Cockpit SoC",
+    process_nm: 7,
+    release_date: "2023-03-30",
     benchmark_index: 68,
+    efficiency_index: 76,
+    base_deployment_index: 67,
+    install_base_units: 428_183,
+    install_stage: "mass_production",
+  },
+  {
+    id: "renesas-r-car-h3",
+    name: "Renesas R-Car H3",
+    vendor: "Renesas",
+    segment: "座舱市场",
+    architecture: "R-Car Gen3",
+    process_nm: 16,
+    release_date: "2021-02-18",
+    benchmark_index: 60,
+    efficiency_index: 66,
+    base_deployment_index: 58,
+    install_base_units: 185_159,
+    install_stage: "mass_production",
+  },
+  {
+    id: "semidrive-x9c-cockpit",
+    name: "SemiDrive X9C",
+    vendor: "SemiDrive",
+    segment: "座舱市场",
+    architecture: "Auto Cockpit SoC",
+    process_nm: 7,
+    release_date: "2023-09-08",
+    benchmark_index: 66,
+    efficiency_index: 73,
+    base_deployment_index: 62,
+    install_base_units: 154_886,
+    install_stage: "mass_production",
+    reference_revenue_usd: 450_000_000,
+  },
+  {
+    id: "mediatek-dimensity-auto-cockpit",
+    name: "MediaTek Dimensity Auto Cockpit",
+    vendor: "MediaTek",
+    segment: "座舱市场",
+    architecture: "Dimensity Auto",
+    process_nm: 6,
+    release_date: "2025-04-23",
+    benchmark_index: 67,
     efficiency_index: 74,
-    base_deployment_index: 60,
-    cn_secid: "1.603893",
+    base_deployment_index: 63,
+    install_base_units: 80_469,
+    install_stage: "mass_production",
   },
   {
-    id: "amlogic-a311d2-cockpit",
-    name: "Amlogic A311D2 Cockpit",
-    vendor: "Amlogic",
+    id: "ti-jacinto7-cockpit",
+    name: "Texas Instruments Jacinto 7",
+    vendor: "Texas Instruments",
     segment: "座舱市场",
-    architecture: "ARM + NPU",
-    process_nm: 12,
-    release_date: "2022-06-02",
-    benchmark_index: 65,
+    architecture: "Jacinto 7",
+    process_nm: 16,
+    release_date: "2021-07-12",
+    benchmark_index: 61,
     efficiency_index: 72,
-    base_deployment_index: 56,
-    cn_secid: "1.688099",
+    base_deployment_index: 57,
+    install_base_units: 66_192,
+    install_stage: "mass_production",
   },
   {
-    id: "allwinner-t527-cockpit",
-    name: "Allwinner T527 Cockpit",
-    vendor: "Allwinner",
+    id: "intel-cockpit-soc",
+    name: "Intel Cockpit SoC",
+    vendor: "Intel",
     segment: "座舱市场",
-    architecture: "ARM SoC",
+    architecture: "x86 Auto",
     process_nm: 12,
-    release_date: "2023-07-18",
-    benchmark_index: 62,
-    efficiency_index: 70,
-    base_deployment_index: 54,
-    cn_secid: "0.300458",
+    release_date: "2022-11-08",
+    benchmark_index: 58,
+    efficiency_index: 64,
+    base_deployment_index: 52,
+    install_base_units: 15_698,
+    install_stage: "mass_production",
   },
   {
     id: "nvidia-jetson-orin",
@@ -615,6 +677,21 @@ function clamp(value: number, min: number, max: number): number {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function installStageMultiplier(stage?: ChipBaseline["install_stage"]): number {
+  switch (stage) {
+    case "mass_production":
+      return 1;
+    case "sop_ramp":
+      return 0.55;
+    case "pilot":
+      return 0.18;
+    case "pre_sop":
+      return 0.05;
+    default:
+      return 1;
+  }
 }
 
 function uniqueTickers(): string[] {
@@ -986,10 +1063,14 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
       revenueUsd: revenue?.revenueUsd ?? chip.reference_revenue_usd,
     };
 
-    const deploymentBase = chip.base_deployment_index * (chip.adoption_multiplier ?? 1);
+    const stageMultiplier = installStageMultiplier(chip.install_stage);
+    const baseFromInstallUnits = chip.install_base_units
+      ? chip.install_base_units / 10_000
+      : chip.base_deployment_index;
+    const deploymentBase = baseFromInstallUnits * (chip.adoption_multiplier ?? 1);
     // 仅用于可观测性，不参与当前份额与排名计算。
     const marketSignal = calcMarketSignal(mergedMarket, effectiveRevenue);
-    const deploymentIndex = deploymentBase;
+    const deploymentIndex = deploymentBase * stageMultiplier;
     const qualityIndex = chip.benchmark_index * 0.65 + chip.efficiency_index * 0.35;
     const compositeScore = deploymentIndex * 0.72 + qualityIndex * 0.28;
 
@@ -1124,11 +1205,31 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
       status: "ok",
       note: "用于芯片性能/能效与装机基线构建，是当前市场份额和排名的核心依据",
     },
+    {
+      name: "Gasgoo Cockpit SoC Installations (2025 Jan-Oct)",
+      type: "reference",
+      url: "https://auto.gasgoo.com/news/202511/21I70427098C108.shtml",
+      status: "ok",
+      note: "用于座舱市场厂商装机量锚定（高通、华为、AMD、芯擎等）",
+    },
+    {
+      name: "NVIDIA DRIVE Thor Production Timeline",
+      type: "reference",
+      url: "https://nvidianews.nvidia.com/news/nvidia-drive-thor-to-power-next-generation-vehicles-with-blackwell-and-generative-ai",
+      status: "ok",
+      note: "用于 Thor 车型量产阶段判断（当前按早期导入处理）",
+    },
+    {
+      name: "Black Sesame Company Profile",
+      type: "reference",
+      url: "https://www.blacksesame.com.cn/en/list/30.html",
+      status: "ok",
+      note: "用于区分 A1000（已量产）与 A2000（发布代际）在装机口径下的权重",
+    },
   ];
 
   const now = new Date();
-  const monthAgo = new Date(now);
-  monthAgo.setDate(monthAgo.getDate() - 30);
+  const periodStart = "2025-01-01";
 
   return {
     overall_rankings: overallRankings,
@@ -1138,7 +1239,7 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
     market_vendor_shares: marketVendorShares,
     last_updated: now.toISOString(),
     data_period: {
-      start: monthAgo.toISOString().split("T")[0],
+      start: periodStart,
       end: now.toISOString().split("T")[0],
     },
     data_sources: dataSources,
