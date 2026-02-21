@@ -47,6 +47,29 @@ export interface BlockchainMarketCapItem {
 }
 
 /**
+ * 区块链宏观与周期指标
+ */
+export interface BlockchainMacroMetrics {
+  total_market_cap_usd?: number;      // 全市场总市值（USD）
+  total_volume_usd?: number;          // 全市场24h成交额（USD）
+  btc_dominance_percent?: number;     // BTC 市值占比（%）
+  eth_dominance_percent?: number;     // ETH 市值占比（%）
+  active_cryptocurrencies?: number;   // 活跃币种数量
+  markets?: number;                   // 市场/交易所数量
+  fear_greed_value?: number;          // 恐惧贪婪指数（0-100）
+  fear_greed_classification?: string; // 恐惧贪婪分类
+  fear_greed_updated_at?: string;     // 恐惧贪婪更新时间
+  btc_price_usd?: number;             // BTC 现价（USD）
+  btc_ma200d_usd?: number;            // BTC 200日均线（USD）
+  btc_price_to_ma200d?: number;       // BTC 价格 / 200日均线
+  halving_tip_height?: number;        // 当前区块高度
+  halving_next_height?: number;       // 下一减半区块高度
+  halving_blocks_remaining?: number;  // 距离减半剩余区块
+  halving_days_remaining?: number;    // 距离减半预计剩余天数
+  halving_estimated_date?: string;    // 预计减半时间（ISO）
+}
+
+/**
  * 股票数据项
  */
 export interface StockItem {

@@ -9,7 +9,8 @@ import Link from "next/link";
 import { ArrowLeft, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { getLatestCryptoData, getLatestStockData } from "@/lib/market/market-service";
 import { fetchBlockchainMarketCapLeaderboard } from "@/lib/market/blockchain-leaderboard";
-import type { BlockchainMarketCapItem } from "@/types/market";
+import { fetchBlockchainMacroMetrics } from "@/lib/market/blockchain-metrics";
+import type { BlockchainMarketCapItem, BlockchainMacroMetrics } from "@/types/market";
 import { MiniChart } from "@/components/market/MiniChart";
 
 export const metadata: Metadata = {
@@ -21,10 +22,11 @@ export const revalidate = 60; // 每分钟重新验证
 
 export default async function MarketDashboard() {
   // 获取最新数据
-  const [cryptoData, stockData, blockchainLeaderboard] = await Promise.all([
+  const [cryptoData, stockData, blockchainLeaderboard, blockchainMetrics] = await Promise.all([
     getLatestCryptoData(),
     getLatestStockData(),
     fetchBlockchainMarketCapLeaderboard(20),
+    fetchBlockchainMacroMetrics(),
   ]);
 
   const hasData =
@@ -75,6 +77,14 @@ export default async function MarketDashboard() {
           </div>
         ) : (
           <div className="space-y-12">
+            <section>
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                <span className="h-8 w-1 bg-gradient-to-b from-amber-500 to-amber-600 rounded-full" />
+                链上与周期指标
+              </h2>
+              <BlockchainMacroCards metrics={blockchainMetrics} />
+            </section>
+
             {/* 区块链市值排行榜 */}
             {blockchainLeaderboard.length > 0 && (
               <section>
@@ -156,6 +166,121 @@ function formatUsd(value: number): string {
   if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
   if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
   return `$${value.toFixed(2)}`;
+}
+
+function formatCompactNumber(value: number): string {
+  if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
+  if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
+  return value.toFixed(0);
+}
+
+function fearGreedColor(value: number): string {
+  if (value < 25) return "from-red-500 to-red-600";
+  if (value < 45) return "from-orange-500 to-orange-600";
+  if (value < 55) return "from-yellow-500 to-yellow-600";
+  if (value < 75) return "from-lime-500 to-lime-600";
+  return "from-green-500 to-green-600";
+}
+
+function BlockchainMacroCards({ metrics }: { metrics: BlockchainMacroMetrics }) {
+  const fearGreed = metrics.fear_greed_value;
+  const fearGreedWidth = typeof fearGreed === "number" ? Math.max(0, Math.min(100, fearGreed)) : 0;
+  const ratio = metrics.btc_price_to_ma200d;
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="text-xs text-muted-foreground mb-2">恐惧贪婪指数</div>
+        <div className="text-3xl font-bold tabular-nums">
+          {typeof fearGreed === "number" ? fearGreed.toFixed(0) : "N/A"}
+        </div>
+        <div className="text-sm text-muted-foreground mt-1">
+          {metrics.fear_greed_classification || "N/A"}
+        </div>
+        <div className="mt-3 h-2 w-full rounded-full bg-muted">
+          <div
+            className={`h-2 rounded-full bg-gradient-to-r ${fearGreedColor(fearGreed || 0)}`}
+            style={{ width: `${fearGreedWidth}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="text-xs text-muted-foreground mb-2">全市场总市值</div>
+        <div className="text-3xl font-bold tabular-nums">
+          {typeof metrics.total_market_cap_usd === "number"
+            ? formatUsd(metrics.total_market_cap_usd)
+            : "N/A"}
+        </div>
+        <div className="text-sm text-muted-foreground mt-2">
+          24h 成交额:{" "}
+          {typeof metrics.total_volume_usd === "number" ? formatUsd(metrics.total_volume_usd) : "N/A"}
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="text-xs text-muted-foreground mb-2">市值占比</div>
+        <div className="text-3xl font-bold tabular-nums">
+          BTC {typeof metrics.btc_dominance_percent === "number" ? metrics.btc_dominance_percent.toFixed(2) : "N/A"}%
+        </div>
+        <div className="text-sm text-muted-foreground mt-2">
+          ETH {typeof metrics.eth_dominance_percent === "number" ? metrics.eth_dominance_percent.toFixed(2) : "N/A"}%
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="text-xs text-muted-foreground mb-2">BTC 与 200日均线</div>
+        <div className="text-xl font-bold tabular-nums">
+          现价 {typeof metrics.btc_price_usd === "number" ? formatUsd(metrics.btc_price_usd) : "N/A"}
+        </div>
+        <div className="text-sm text-muted-foreground mt-2">
+          MA200D {typeof metrics.btc_ma200d_usd === "number" ? formatUsd(metrics.btc_ma200d_usd) : "N/A"}
+        </div>
+        <div
+          className={`text-sm font-medium mt-2 ${
+            typeof ratio === "number"
+              ? ratio >= 1
+                ? "text-green-600 dark:text-green-400"
+                : "text-red-600 dark:text-red-400"
+              : "text-muted-foreground"
+          }`}
+        >
+          比值 {typeof ratio === "number" ? ratio.toFixed(3) : "N/A"}
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="text-xs text-muted-foreground mb-2">比特币减半倒计时</div>
+        <div className="text-3xl font-bold tabular-nums">
+          {typeof metrics.halving_blocks_remaining === "number"
+            ? formatCompactNumber(metrics.halving_blocks_remaining)
+            : "N/A"}{" "}
+          blocks
+        </div>
+        <div className="text-sm text-muted-foreground mt-2">
+          约{" "}
+          {typeof metrics.halving_days_remaining === "number"
+            ? metrics.halving_days_remaining.toFixed(1)
+            : "N/A"}{" "}
+          天
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="text-xs text-muted-foreground mb-2">市场覆盖</div>
+        <div className="text-3xl font-bold tabular-nums">
+          {typeof metrics.active_cryptocurrencies === "number"
+            ? formatCompactNumber(metrics.active_cryptocurrencies)
+            : "N/A"}
+        </div>
+        <div className="text-sm text-muted-foreground mt-2">
+          市场数量 {typeof metrics.markets === "number" ? formatCompactNumber(metrics.markets) : "N/A"}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function BlockchainMarketCapTable({ data }: { data: BlockchainMarketCapItem[] }) {
