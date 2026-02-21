@@ -83,3 +83,4 @@ Authorization: Bearer <access_token>
 V0.2 手工验收请按：
 
 - `blog-nextjs/AGENT_MART_V02_QA.md`
+- 自动化回归命令：`npm run test:agent-mart:v02`

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test:agent-mart:v02": "node scripts/agent-mart-v02-e2e.cjs"
   },
   "dependencies": {
     "@giscus/react": "^3.1.0",

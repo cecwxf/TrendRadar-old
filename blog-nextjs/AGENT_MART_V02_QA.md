@@ -78,13 +78,28 @@ where table_schema = 'public'
 
 ## 4. 常见问题
 
-1. 看不到新字段/新表  
-- 再执行一次 `agent_mart_delivery_patch.sql`  
+1. 看不到新字段/新表
+- 再执行一次 `agent_mart_delivery_patch.sql`
 - 再执行：`NOTIFY pgrst, 'reload schema';`
 
 2. 接口 401  
 - 确认已在页面登录，且 API 使用 Bearer token（页面已自动处理）
 
-3. 本地临时调试需要 header 身份  
+3. 本地临时调试需要 header 身份
 - 启动时加：`AGENT_MART_ALLOW_HEADER_ID=true npm run dev`
 
+## 5. 自动化回归（可选）
+
+如果你已经启动了本地服务，可直接跑：
+
+```bash
+cd blog-nextjs
+npm run test:agent-mart:v02
+```
+
+默认使用 Bearer 模式（真实登录）。  
+若你本地需要走 header 回退模式：
+
+```bash
+AGENT_MART_E2E_USE_HEADER=true npm run test:agent-mart:v02
+```
