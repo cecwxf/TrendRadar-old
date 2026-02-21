@@ -12,8 +12,10 @@ import type {
   AIChipModel,
   AIChipRankingItem,
   ChipSegment,
+  AIChipMarketRanking,
   AIChipSegmentRanking,
   AIChipVendorShare,
+  AIChipMarketVendorShare,
   AIChipDataSource,
 } from "@/types/chips";
 
@@ -58,7 +60,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "nvidia-drive-orin",
     name: "NVIDIA DRIVE Orin",
     vendor: "NVIDIA",
-    segment: "汽车ADAS",
+    segment: "ADAS市场",
     parent_ticker: "NVDA",
     architecture: "Ampere",
     process_nm: 8,
@@ -71,7 +73,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "qualcomm-ride-flex",
     name: "Snapdragon Ride Flex",
     vendor: "Qualcomm",
-    segment: "汽车ADAS",
+    segment: "ADAS市场",
     parent_ticker: "QCOM",
     architecture: "Custom SoC",
     process_nm: 5,
@@ -84,7 +86,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "mobileye-eyeq6",
     name: "Mobileye EyeQ6",
     vendor: "Mobileye",
-    segment: "汽车ADAS",
+    segment: "ADAS市场",
     parent_ticker: "MBLY",
     architecture: "EyeQ",
     process_nm: 7,
@@ -97,7 +99,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "horizon-journey-6",
     name: "Horizon Journey 6",
     vendor: "Horizon Robotics",
-    segment: "汽车ADAS",
+    segment: "ADAS市场",
     architecture: "BPU",
     process_nm: 7,
     release_date: "2024-04-24",
@@ -109,7 +111,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "qualcomm-sa8295p",
     name: "Snapdragon Cockpit SA8295P",
     vendor: "Qualcomm",
-    segment: "座舱",
+    segment: "座舱市场",
     parent_ticker: "QCOM",
     architecture: "Kryo + Adreno + NPU",
     process_nm: 5,
@@ -122,7 +124,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "samsung-exynos-auto-v920",
     name: "Exynos Auto V920",
     vendor: "Samsung",
-    segment: "座舱",
+    segment: "座舱市场",
     architecture: "ARM SoC",
     process_nm: 5,
     release_date: "2023-12-01",
@@ -134,7 +136,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "nvidia-drive-thor-cockpit",
     name: "NVIDIA DRIVE Thor Cockpit",
     vendor: "NVIDIA",
-    segment: "座舱",
+    segment: "座舱市场",
     parent_ticker: "NVDA",
     architecture: "Blackwell",
     process_nm: 4,
@@ -147,7 +149,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "amd-ryzen-embedded-v3000",
     name: "AMD Ryzen Embedded V3000",
     vendor: "AMD",
-    segment: "座舱",
+    segment: "座舱市场",
     parent_ticker: "AMD",
     architecture: "Zen 3",
     process_nm: 6,
@@ -160,7 +162,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "nvidia-jetson-orin",
     name: "NVIDIA Jetson Orin",
     vendor: "NVIDIA",
-    segment: "机器人端侧推理",
+    segment: "IOT/机器人端侧市场",
     parent_ticker: "NVDA",
     architecture: "Ampere",
     process_nm: 8,
@@ -173,7 +175,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "intel-core-ultra-npu",
     name: "Intel Core Ultra NPU",
     vendor: "Intel",
-    segment: "机器人端侧推理",
+    segment: "IOT/机器人端侧市场",
     parent_ticker: "INTC",
     architecture: "Meteor Lake NPU",
     process_nm: 7,
@@ -186,7 +188,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "qualcomm-rb5",
     name: "Qualcomm RB5",
     vendor: "Qualcomm",
-    segment: "机器人端侧推理",
+    segment: "IOT/机器人端侧市场",
     parent_ticker: "QCOM",
     architecture: "QRB5165",
     process_nm: 7,
@@ -199,7 +201,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "hailo-8",
     name: "Hailo-8",
     vendor: "Hailo",
-    segment: "机器人端侧推理",
+    segment: "IOT/机器人端侧市场",
     architecture: "Edge AI Accelerator",
     process_nm: 16,
     release_date: "2020-01-07",
@@ -211,7 +213,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "nvidia-blackwell-b200",
     name: "NVIDIA Blackwell B200",
     vendor: "NVIDIA",
-    segment: "服务器侧",
+    segment: "服务器市场",
     parent_ticker: "NVDA",
     architecture: "Blackwell",
     process_nm: 4,
@@ -224,7 +226,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "amd-mi300x",
     name: "AMD Instinct MI300X",
     vendor: "AMD",
-    segment: "服务器侧",
+    segment: "服务器市场",
     parent_ticker: "AMD",
     architecture: "CDNA 3",
     process_nm: 5,
@@ -237,7 +239,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "intel-gaudi-3",
     name: "Intel Gaudi 3",
     vendor: "Intel",
-    segment: "服务器侧",
+    segment: "服务器市场",
     parent_ticker: "INTC",
     architecture: "Gaudi",
     process_nm: 5,
@@ -250,7 +252,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "google-tpu-v6e",
     name: "Google TPU v6e",
     vendor: "Google",
-    segment: "服务器侧",
+    segment: "服务器市场",
     parent_ticker: "GOOGL",
     architecture: "TPU",
     process_nm: 4,
@@ -263,7 +265,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
     id: "aws-trainium2",
     name: "AWS Trainium2",
     vendor: "AWS",
-    segment: "服务器侧",
+    segment: "服务器市场",
     parent_ticker: "AMZN",
     architecture: "Trainium",
     process_nm: 5,
@@ -274,7 +276,7 @@ const CHIP_CATALOG: ChipBaseline[] = [
   },
 ];
 
-const SEGMENT_ORDER: ChipSegment[] = ["汽车ADAS", "座舱", "机器人端侧推理", "服务器侧"];
+const SEGMENT_ORDER: ChipSegment[] = ["ADAS市场", "座舱市场", "IOT/机器人端侧市场", "服务器市场"];
 
 function stableUnit(value: string): number {
   let hash = 0;
@@ -488,6 +490,64 @@ function trendById(id: string): { trend: "up" | "down" | "stable"; rankChange: n
   return { trend: "down", rankChange: -delta };
 }
 
+function buildVendorShares(rankings: AIChipRankingItem[]): AIChipVendorShare[] {
+  const vendorStats = new Map<string, { deployment: number; count: number }>();
+  rankings.forEach((item) => {
+    const current = vendorStats.get(item.chip.vendor) || { deployment: 0, count: 0 };
+    current.deployment += item.metrics.deployment_index || 0;
+    current.count += 1;
+    vendorStats.set(item.chip.vendor, current);
+  });
+
+  const totalDeployment = Array.from(vendorStats.values()).reduce(
+    (sum, item) => sum + item.deployment,
+    0
+  );
+
+  return Array.from(vendorStats.entries())
+    .map(([vendor, stat]) => ({
+      vendor,
+      share_percent: totalDeployment > 0 ? round2((stat.deployment / totalDeployment) * 100) : 0,
+      total_deployment_index: round2(stat.deployment),
+      chip_count: stat.count,
+    }))
+    .sort((a, b) => b.share_percent - a.share_percent);
+}
+
+function buildMarketRankings(rankings: AIChipRankingItem[]): AIChipMarketRanking[] {
+  return SEGMENT_ORDER.map((market) => {
+    const marketRows = rankings
+      .filter((item) => item.chip.segment === market)
+      .sort((a, b) => b.metrics.composite_score - a.metrics.composite_score)
+      .map((item, index) => ({ ...item, rank: index + 1 }));
+
+    const totalDeployment = marketRows.reduce(
+      (sum, item) => sum + (item.metrics.deployment_index || 0),
+      0
+    );
+
+    return {
+      market,
+      market_label: market,
+      top_chips: marketRows,
+      total_deployment_index: round2(totalDeployment),
+    };
+  }).filter((item) => item.top_chips.length > 0);
+}
+
+function buildMarketVendorShares(
+  rankings: AIChipRankingItem[]
+): AIChipMarketVendorShare[] {
+  return SEGMENT_ORDER.map((market) => {
+    const marketRows = rankings.filter((item) => item.chip.segment === market);
+    return {
+      market,
+      market_label: market,
+      vendor_shares: buildVendorShares(marketRows),
+    };
+  }).filter((item) => item.vendor_shares.length > 0);
+}
+
 export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   const tickers = uniqueTickers();
   const [yahooResult, secResult] = await Promise.all([
@@ -496,10 +556,10 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   ]);
 
   const bySegmentTotalDeployment: Record<ChipSegment, number> = {
-    汽车ADAS: 0,
-    座舱: 0,
-    机器人端侧推理: 0,
-    服务器侧: 0,
+    ADAS市场: 0,
+    座舱市场: 0,
+    "IOT/机器人端侧市场": 0,
+    服务器市场: 0,
   };
 
   const baseRows = CHIP_CATALOG.map((chip) => {
@@ -586,27 +646,9 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
     };
   });
 
-  const vendorStats = new Map<string, { deployment: number; count: number }>();
-  overallRankings.forEach((item) => {
-    const current = vendorStats.get(item.chip.vendor) || { deployment: 0, count: 0 };
-    current.deployment += item.metrics.deployment_index || 0;
-    current.count += 1;
-    vendorStats.set(item.chip.vendor, current);
-  });
-
-  const totalDeployment = Array.from(vendorStats.values()).reduce(
-    (sum, item) => sum + item.deployment,
-    0
-  );
-
-  const vendorShares: AIChipVendorShare[] = Array.from(vendorStats.entries())
-    .map(([vendor, stat]) => ({
-      vendor,
-      share_percent: totalDeployment > 0 ? round2((stat.deployment / totalDeployment) * 100) : 0,
-      total_deployment_index: round2(stat.deployment),
-      chip_count: stat.count,
-    }))
-    .sort((a, b) => b.share_percent - a.share_percent);
+  const marketRankings = buildMarketRankings(overallRankings);
+  const vendorShares = buildVendorShares(overallRankings);
+  const marketVendorShares = buildMarketVendorShares(overallRankings);
 
   const failedSources: string[] = [];
   if (!yahooResult.ok) {
@@ -646,8 +688,10 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
 
   return {
     overall_rankings: overallRankings,
+    market_rankings: marketRankings,
     segment_rankings: segmentRankings,
     vendor_shares: vendorShares,
+    market_vendor_shares: marketVendorShares,
     last_updated: now.toISOString(),
     data_period: {
       start: monthAgo.toISOString().split("T")[0],

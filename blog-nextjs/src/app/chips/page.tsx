@@ -74,7 +74,7 @@ export default function AIChipLeaderboardPage() {
             AI 芯片使用排行榜
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            覆盖汽车 ADAS、座舱、机器人端侧推理、服务器侧芯片
+            覆盖 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500">
             数据周期: {data.data_period.start} 至 {data.data_period.end} | 最后更新:{" "}
@@ -84,16 +84,16 @@ export default function AIChipLeaderboardPage() {
 
         <div className="flex flex-wrap justify-center gap-4">
           <a
-            href="#chip-leaderboard"
+            href="#chip-market-rankings"
             className="px-4 py-2 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 rounded-lg hover:bg-cyan-200 dark:hover:bg-cyan-900/50 transition-colors"
           >
-            综合排名
+            分市场排行
           </a>
           <a
-            href="#chip-vendor-share"
+            href="#chip-market-vendor-share"
             className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
           >
-            厂商份额
+            分市场份额
           </a>
           <a
             href="#chip-segments"
@@ -103,12 +103,24 @@ export default function AIChipLeaderboardPage() {
           </a>
         </div>
 
-        <div id="chip-leaderboard">
-          <ChipRankingTable rankings={data.overall_rankings} />
+        <div id="chip-market-rankings" className="space-y-6">
+          {data.market_rankings.map((marketRanking) => (
+            <ChipRankingTable
+              key={marketRanking.market}
+              rankings={marketRanking.top_chips}
+              title={`${marketRanking.market_label} AI芯片排行`}
+            />
+          ))}
         </div>
 
-        <div id="chip-vendor-share">
-          <ChipVendorShare data={data.vendor_shares} />
+        <div id="chip-market-vendor-share" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {data.market_vendor_shares.map((item) => (
+            <ChipVendorShare
+              key={item.market}
+              data={item.vendor_shares}
+              title={`${item.market_label} 厂商份额（按使用指数）`}
+            />
+          ))}
         </div>
 
         <div id="chip-segments">
@@ -124,13 +136,16 @@ export default function AIChipLeaderboardPage() {
               <strong>使用指数:</strong> 基于芯片部署基线、厂商市值/流动性、最近营收信号综合计算。
             </p>
             <p>
-              <strong>份额:</strong> 赛道份额按同赛道芯片的使用指数归一化计算；厂商份额按全榜使用指数汇总。
+              <strong>份额:</strong> 厂商份额与排名均按市场拆分计算，避免不同资本市场直接混排。
             </p>
             <p>
               <strong>性能与能效:</strong> 参考公开评测与公开规格构建统一指数（0-100）。
             </p>
             <p>
               <strong>数据源状态:</strong> {sourceSummary}
+            </p>
+            <p>
+              <strong>市场拆分:</strong> 目前按 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场进行展示。
             </p>
             {data.failed_sources && data.failed_sources.length > 0 && (
               <p>

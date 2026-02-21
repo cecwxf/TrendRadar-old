@@ -2,7 +2,7 @@
  * AI 芯片排行榜类型定义
  */
 
-export type ChipSegment = "汽车ADAS" | "座舱" | "机器人端侧推理" | "服务器侧";
+export type ChipSegment = "ADAS市场" | "座舱市场" | "IOT/机器人端侧市场" | "服务器市场";
 
 export interface AIChipModel {
   id: string;
@@ -43,11 +43,24 @@ export interface AIChipSegmentRanking {
   total_deployment_index: number;
 }
 
+export interface AIChipMarketRanking {
+  market: ChipSegment;
+  market_label: string;
+  top_chips: AIChipRankingItem[];
+  total_deployment_index: number;
+}
+
 export interface AIChipVendorShare {
   vendor: string;
   share_percent: number;
   total_deployment_index: number;
   chip_count: number;
+}
+
+export interface AIChipMarketVendorShare {
+  market: ChipSegment;
+  market_label: string;
+  vendor_shares: AIChipVendorShare[];
 }
 
 export interface AIChipDataSource {
@@ -60,8 +73,10 @@ export interface AIChipDataSource {
 
 export interface AIChipLeaderboard {
   overall_rankings: AIChipRankingItem[];
+  market_rankings: AIChipMarketRanking[];
   segment_rankings: AIChipSegmentRanking[];
   vendor_shares: AIChipVendorShare[];
+  market_vendor_shares: AIChipMarketVendorShare[];
   last_updated: string;
   data_period: {
     start: string;

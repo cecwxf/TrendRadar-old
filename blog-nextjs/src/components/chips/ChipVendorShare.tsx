@@ -4,12 +4,16 @@ import type { AIChipVendorShare } from "@/types/chips";
 
 interface ChipVendorShareProps {
   data: AIChipVendorShare[];
+  title?: string;
 }
 
-export function ChipVendorShare({ data }: ChipVendorShareProps) {
+export function ChipVendorShare({
+  data,
+  title = "厂商份额（按使用指数）",
+}: ChipVendorShareProps) {
   return (
     <div className="bg-white dark:bg-gray-900/60 rounded-xl shadow-sm p-6">
-      <h2 className="text-lg font-semibold mb-4">厂商份额（按使用指数）</h2>
+      <h2 className="text-lg font-semibold mb-4">{title}</h2>
 
       <div className="space-y-3">
         {data.map((item) => (
