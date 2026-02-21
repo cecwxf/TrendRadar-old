@@ -23,6 +23,9 @@ interface ChipBaseline extends AIChipModel {
   benchmark_index: number;
   efficiency_index: number;
   base_deployment_index: number;
+  cn_secid?: string;               // 东方财富 secid，如 1.688256
+  reference_revenue_usd?: number;  // 非上市主体可使用公开年报收入
+  market_signal_floor?: number;    // 缺少公开资本市场数据时的最低市场信号
 }
 
 interface YahooQuoteItem {
@@ -46,6 +49,12 @@ interface YahooSignal {
 
 interface RevenueSignal {
   revenueUsd?: number;
+}
+
+interface CnSignal {
+  marketCapUsd?: number;
+  volume?: number;
+  changePercent?: number;
 }
 
 interface RevenueEntry {
@@ -108,6 +117,48 @@ const CHIP_CATALOG: ChipBaseline[] = [
     base_deployment_index: 62,
   },
   {
+    id: "huawei-mdc-810",
+    name: "Huawei MDC 810",
+    vendor: "Huawei",
+    segment: "ADAS市场",
+    architecture: "Ascend + MCU Domain Controller",
+    process_nm: 7,
+    release_date: "2023-04-16",
+    benchmark_index: 78,
+    efficiency_index: 80,
+    base_deployment_index: 70,
+    reference_revenue_usd: 99_000_000_000,
+    market_signal_floor: 0.55,
+  },
+  {
+    id: "black-sesame-a2000",
+    name: "Black Sesame Huashan A2000",
+    vendor: "Black Sesame",
+    segment: "ADAS市场",
+    parent_ticker: "2533.HK",
+    architecture: "NPU Domain SoC",
+    process_nm: 7,
+    release_date: "2024-04-24",
+    benchmark_index: 73,
+    efficiency_index: 76,
+    base_deployment_index: 61,
+    market_signal_floor: 0.42,
+  },
+  {
+    id: "semidrive-x9u",
+    name: "SemiDrive X9U",
+    vendor: "SemiDrive",
+    segment: "ADAS市场",
+    architecture: "Auto SoC + NPU",
+    process_nm: 7,
+    release_date: "2023-10-12",
+    benchmark_index: 71,
+    efficiency_index: 75,
+    base_deployment_index: 58,
+    reference_revenue_usd: 450_000_000,
+    market_signal_floor: 0.4,
+  },
+  {
     id: "qualcomm-sa8295p",
     name: "Snapdragon Cockpit SA8295P",
     vendor: "Qualcomm",
@@ -159,6 +210,59 @@ const CHIP_CATALOG: ChipBaseline[] = [
     base_deployment_index: 55,
   },
   {
+    id: "huawei-kirin-cockpit-soc",
+    name: "Huawei Kirin Cockpit SoC",
+    vendor: "Huawei",
+    segment: "座舱市场",
+    architecture: "Kirin + NPU",
+    process_nm: 7,
+    release_date: "2023-09-25",
+    benchmark_index: 70,
+    efficiency_index: 77,
+    base_deployment_index: 66,
+    reference_revenue_usd: 99_000_000_000,
+    market_signal_floor: 0.55,
+  },
+  {
+    id: "rockchip-rk3588m",
+    name: "Rockchip RK3588M",
+    vendor: "Rockchip",
+    segment: "座舱市场",
+    architecture: "ARM + NPU",
+    process_nm: 8,
+    release_date: "2023-05-08",
+    benchmark_index: 68,
+    efficiency_index: 74,
+    base_deployment_index: 60,
+    cn_secid: "1.603893",
+  },
+  {
+    id: "amlogic-a311d2-cockpit",
+    name: "Amlogic A311D2 Cockpit",
+    vendor: "Amlogic",
+    segment: "座舱市场",
+    architecture: "ARM + NPU",
+    process_nm: 12,
+    release_date: "2022-06-02",
+    benchmark_index: 65,
+    efficiency_index: 72,
+    base_deployment_index: 56,
+    cn_secid: "1.688099",
+  },
+  {
+    id: "allwinner-t527-cockpit",
+    name: "Allwinner T527 Cockpit",
+    vendor: "Allwinner",
+    segment: "座舱市场",
+    architecture: "ARM SoC",
+    process_nm: 12,
+    release_date: "2023-07-18",
+    benchmark_index: 62,
+    efficiency_index: 70,
+    base_deployment_index: 54,
+    cn_secid: "0.300458",
+  },
+  {
     id: "nvidia-jetson-orin",
     name: "NVIDIA Jetson Orin",
     vendor: "NVIDIA",
@@ -208,6 +312,100 @@ const CHIP_CATALOG: ChipBaseline[] = [
     benchmark_index: 66,
     efficiency_index: 86,
     base_deployment_index: 57,
+  },
+  {
+    id: "cambricon-mlu220",
+    name: "Cambricon MLU220",
+    vendor: "Cambricon",
+    segment: "IOT/机器人端侧市场",
+    architecture: "MLU",
+    process_nm: 16,
+    release_date: "2020-08-11",
+    benchmark_index: 64,
+    efficiency_index: 75,
+    base_deployment_index: 58,
+    cn_secid: "1.688256",
+  },
+  {
+    id: "huawei-ascend-310b",
+    name: "Huawei Ascend 310B",
+    vendor: "Huawei",
+    segment: "IOT/机器人端侧市场",
+    architecture: "Ascend",
+    process_nm: 7,
+    release_date: "2023-07-07",
+    benchmark_index: 75,
+    efficiency_index: 83,
+    base_deployment_index: 72,
+    reference_revenue_usd: 99_000_000_000,
+    market_signal_floor: 0.55,
+  },
+  {
+    id: "rockchip-rk3588-edge",
+    name: "Rockchip RK3588 Edge",
+    vendor: "Rockchip",
+    segment: "IOT/机器人端侧市场",
+    architecture: "ARM + NPU",
+    process_nm: 8,
+    release_date: "2022-01-10",
+    benchmark_index: 67,
+    efficiency_index: 76,
+    base_deployment_index: 62,
+    cn_secid: "1.603893",
+  },
+  {
+    id: "allwinner-v853",
+    name: "Allwinner V853",
+    vendor: "Allwinner",
+    segment: "IOT/机器人端侧市场",
+    architecture: "Vision + NPU SoC",
+    process_nm: 22,
+    release_date: "2022-08-12",
+    benchmark_index: 61,
+    efficiency_index: 78,
+    base_deployment_index: 55,
+    cn_secid: "0.300458",
+  },
+  {
+    id: "amlogic-a311d2-edge",
+    name: "Amlogic A311D2 Edge",
+    vendor: "Amlogic",
+    segment: "IOT/机器人端侧市场",
+    architecture: "ARM + NPU",
+    process_nm: 12,
+    release_date: "2021-04-20",
+    benchmark_index: 63,
+    efficiency_index: 73,
+    base_deployment_index: 57,
+    cn_secid: "1.688099",
+  },
+  {
+    id: "sophgo-bm1684x",
+    name: "SOPHGO BM1684X",
+    vendor: "SOPHGO",
+    segment: "IOT/机器人端侧市场",
+    architecture: "TPU-like Accelerator",
+    process_nm: 12,
+    release_date: "2022-11-05",
+    benchmark_index: 66,
+    efficiency_index: 77,
+    base_deployment_index: 56,
+    reference_revenue_usd: 300_000_000,
+    market_signal_floor: 0.38,
+  },
+  {
+    id: "unisoc-v8821",
+    name: "UNISOC V8821",
+    vendor: "UNISOC",
+    segment: "IOT/机器人端侧市场",
+    architecture: "AI ISP + NPU",
+    process_nm: 12,
+    release_date: "2024-01-16",
+    benchmark_index: 60,
+    efficiency_index: 71,
+    base_deployment_index: 53,
+    reference_revenue_usd: 1_500_000_000,
+    market_signal_floor: 0.42,
   },
   {
     id: "nvidia-blackwell-b200",
@@ -274,6 +472,128 @@ const CHIP_CATALOG: ChipBaseline[] = [
     efficiency_index: 82,
     base_deployment_index: 73,
   },
+  {
+    id: "cambricon-mlu370-x8",
+    name: "Cambricon MLU370-X8",
+    vendor: "Cambricon",
+    segment: "服务器市场",
+    architecture: "MLU",
+    process_nm: 7,
+    release_date: "2022-06-10",
+    benchmark_index: 79,
+    efficiency_index: 74,
+    base_deployment_index: 61,
+    cn_secid: "1.688256",
+  },
+  {
+    id: "huawei-ascend-910b",
+    name: "Huawei Ascend 910B",
+    vendor: "Huawei",
+    segment: "服务器市场",
+    architecture: "Ascend",
+    process_nm: 7,
+    release_date: "2023-08-22",
+    benchmark_index: 89,
+    efficiency_index: 81,
+    base_deployment_index: 78,
+    reference_revenue_usd: 99_000_000_000,
+    market_signal_floor: 0.55,
+  },
+  {
+    id: "hygon-dcu-k100",
+    name: "Hygon DCU K100",
+    vendor: "Hygon",
+    segment: "服务器市场",
+    architecture: "GPGPU/DCU",
+    process_nm: 7,
+    release_date: "2024-06-28",
+    benchmark_index: 76,
+    efficiency_index: 72,
+    base_deployment_index: 59,
+    cn_secid: "1.688041",
+  },
+  {
+    id: "baidu-kunlun-2",
+    name: "Baidu Kunlun II",
+    vendor: "Baidu",
+    segment: "服务器市场",
+    parent_ticker: "BIDU",
+    architecture: "XPU",
+    process_nm: 7,
+    release_date: "2021-08-18",
+    benchmark_index: 80,
+    efficiency_index: 75,
+    base_deployment_index: 64,
+  },
+  {
+    id: "alibaba-hanguang-800",
+    name: "Alibaba Hanguang 800",
+    vendor: "Alibaba",
+    segment: "服务器市场",
+    parent_ticker: "BABA",
+    architecture: "Inference ASIC",
+    process_nm: 12,
+    release_date: "2019-09-25",
+    benchmark_index: 77,
+    efficiency_index: 73,
+    base_deployment_index: 60,
+  },
+  {
+    id: "biren-br104",
+    name: "Biren BR104",
+    vendor: "Biren",
+    segment: "服务器市场",
+    architecture: "GPGPU",
+    process_nm: 7,
+    release_date: "2022-08-09",
+    benchmark_index: 82,
+    efficiency_index: 71,
+    base_deployment_index: 57,
+    reference_revenue_usd: 300_000_000,
+    market_signal_floor: 0.4,
+  },
+  {
+    id: "moore-threads-mtt-s4000",
+    name: "Moore Threads MTT S4000",
+    vendor: "Moore Threads",
+    segment: "服务器市场",
+    architecture: "GPGPU",
+    process_nm: 12,
+    release_date: "2023-03-30",
+    benchmark_index: 74,
+    efficiency_index: 69,
+    base_deployment_index: 55,
+    reference_revenue_usd: 250_000_000,
+    market_signal_floor: 0.38,
+  },
+  {
+    id: "iluvatar-mr-v50",
+    name: "Iluvatar MR-V50",
+    vendor: "Iluvatar CoreX",
+    segment: "服务器市场",
+    architecture: "GPGPU",
+    process_nm: 12,
+    release_date: "2023-11-15",
+    benchmark_index: 75,
+    efficiency_index: 70,
+    base_deployment_index: 54,
+    reference_revenue_usd: 220_000_000,
+    market_signal_floor: 0.37,
+  },
+  {
+    id: "enflame-cloudblazer-t20",
+    name: "Enflame CloudBlazer T20",
+    vendor: "Enflame",
+    segment: "服务器市场",
+    architecture: "AI Accelerator",
+    process_nm: 7,
+    release_date: "2024-04-03",
+    benchmark_index: 78,
+    efficiency_index: 72,
+    base_deployment_index: 56,
+    reference_revenue_usd: 280_000_000,
+    market_signal_floor: 0.4,
+  },
 ];
 
 const SEGMENT_ORDER: ChipSegment[] = ["ADAS市场", "座舱市场", "IOT/机器人端侧市场", "服务器市场"];
@@ -297,6 +617,12 @@ function round2(value: number): number {
 function uniqueTickers(): string[] {
   return Array.from(
     new Set(CHIP_CATALOG.map((item) => item.parent_ticker).filter((item): item is string => Boolean(item)))
+  );
+}
+
+function uniqueCnSecIds(): string[] {
+  return Array.from(
+    new Set(CHIP_CATALOG.map((item) => item.cn_secid).filter((item): item is string => Boolean(item)))
   );
 }
 
@@ -337,6 +663,79 @@ async function fetchYahooSignals(
   } catch {
     return { data: {}, ok: false };
   }
+}
+
+function parseEastmoneyNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function normalizeEastmoneyChange(raw?: number): number | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (Math.abs(raw) > 1000) {
+    return raw / 100;
+  }
+  return raw;
+}
+
+async function fetchCnSignals(
+  secIds: string[]
+): Promise<{ data: Record<string, CnSignal>; ok: boolean }> {
+  if (secIds.length === 0) {
+    return { data: {}, ok: false };
+  }
+
+  const fxCnyToUsd = 7.2;
+  const result: Record<string, CnSignal> = {};
+
+  const tasks = secIds.map(async (secid) => {
+    try {
+      const url = new URL("https://push2.eastmoney.com/api/qt/stock/get");
+      url.searchParams.set("secid", secid);
+      url.searchParams.set("fields", "f43,f47,f116,f170");
+
+      const resp = await fetch(url.toString(), {
+        next: { revalidate: 3600 },
+      });
+
+      if (!resp.ok) {
+        return;
+      }
+
+      const payload = (await resp.json()) as {
+        data?: {
+          f47?: number | string;   // volume (hands)
+          f116?: number | string;  // market cap (CNY)
+          f170?: number | string;  // change percent
+        };
+      };
+
+      const marketCapCny = parseEastmoneyNumber(payload.data?.f116);
+      const volumeHands = parseEastmoneyNumber(payload.data?.f47);
+      const change = parseEastmoneyNumber(payload.data?.f170);
+
+      result[secid] = {
+        marketCapUsd: marketCapCny ? marketCapCny / fxCnyToUsd : undefined,
+        volume: volumeHands ? volumeHands * 100 : undefined,
+        changePercent: normalizeEastmoneyChange(change),
+      };
+    } catch {
+      // ignore single symbol failure
+    }
+  });
+
+  await Promise.all(tasks);
+  return { data: result, ok: Object.keys(result).length > 0 };
 }
 
 function parseDateLike(dateStr?: string): number {
@@ -550,9 +949,11 @@ function buildMarketVendorShares(
 
 export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   const tickers = uniqueTickers();
-  const [yahooResult, secResult] = await Promise.all([
+  const cnSecIds = uniqueCnSecIds();
+  const [yahooResult, secResult, cnResult] = await Promise.all([
     fetchYahooSignals(tickers),
     fetchSecRevenueSignals(tickers),
+    fetchCnSignals(cnSecIds),
   ]);
 
   const bySegmentTotalDeployment: Record<ChipSegment, number> = {
@@ -565,9 +966,21 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   const baseRows = CHIP_CATALOG.map((chip) => {
     const ticker = chip.parent_ticker?.toUpperCase();
     const yahoo = ticker ? yahooResult.data[ticker] : undefined;
+    const cn = chip.cn_secid ? cnResult.data[chip.cn_secid] : undefined;
     const revenue = ticker ? secResult.data[ticker] : undefined;
+    const mergedMarket = {
+      marketCap: yahoo?.marketCap ?? cn?.marketCapUsd,
+      volume: yahoo?.volume ?? cn?.volume,
+      changePercent: yahoo?.changePercent ?? cn?.changePercent,
+    };
+    const effectiveRevenue: RevenueSignal = {
+      revenueUsd: revenue?.revenueUsd ?? chip.reference_revenue_usd,
+    };
 
-    const marketSignal = calcMarketSignal(yahoo, revenue);
+    let marketSignal = calcMarketSignal(mergedMarket, effectiveRevenue);
+    if (chip.market_signal_floor !== undefined) {
+      marketSignal = Math.max(marketSignal, chip.market_signal_floor);
+    }
     const deploymentIndex = chip.base_deployment_index * (0.75 + 0.5 * marketSignal);
     const qualityIndex = chip.benchmark_index * 0.65 + chip.efficiency_index * 0.35;
     const compositeScore = deploymentIndex * 0.62 + qualityIndex * 0.38;
@@ -576,8 +989,8 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
 
     return {
       chip,
-      yahoo,
-      revenue,
+      mergedMarket,
+      revenue: effectiveRevenue,
       deploymentIndex,
       qualityIndex,
       compositeScore,
@@ -616,9 +1029,9 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
           deployment_index: round2(row.deploymentIndex),
           segment_share_percent: round2(row.segmentSharePercent),
           composite_score: round2(row.compositeScore),
-          market_cap_usd: row.yahoo?.marketCap,
-          daily_volume: row.yahoo?.volume,
-          price_change_percent: row.yahoo?.changePercent,
+          market_cap_usd: row.mergedMarket?.marketCap,
+          daily_volume: row.mergedMarket?.volume,
+          price_change_percent: row.mergedMarket?.changePercent,
           latest_revenue_usd: row.revenue?.revenueUsd,
           timestamp: new Date().toISOString(),
         },
@@ -657,6 +1070,9 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   if (!secResult.ok) {
     failedSources.push("SEC XBRL Company Facts");
   }
+  if (!cnResult.ok) {
+    failedSources.push("Eastmoney A-share Quote");
+  }
 
   const dataSources: AIChipDataSource[] = [
     {
@@ -674,11 +1090,18 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
       note: "用于最近营收信号（US GAAP / IFRS 标签自动匹配）",
     },
     {
-      name: "MLCommons + Vendor Public Specs",
+      name: "Eastmoney A-share Quote",
+      type: "live",
+      url: "https://push2.eastmoney.com/api/qt/stock/get",
+      status: cnResult.ok ? "ok" : "degraded",
+      note: "用于 A 股公司（如寒武纪）市值与成交量信号",
+    },
+    {
+      name: "MLCommons + Vendor Public Specs + Company Reports",
       type: "reference",
       url: "https://mlcommons.org/benchmarks/inference-datacenter/",
       status: "ok",
-      note: "用于芯片级推理性能与能效基线（本地维护）",
+      note: "用于芯片级推理性能与能效基线，并补充非上市主体公开营收信号（如华为）",
     },
   ];
 

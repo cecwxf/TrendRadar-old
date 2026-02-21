@@ -77,6 +77,9 @@ export default function AIChipLeaderboardPage() {
             覆盖 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500">
+            已纳入华为、寒武纪、黑芝麻、芯驰、瑞芯微、晶晨、全志、海光等国内厂商（按可获得公开数据计算）
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
             数据周期: {data.data_period.start} 至 {data.data_period.end} | 最后更新:{" "}
             {new Date(data.last_updated).toLocaleString("zh-CN")}
           </p>
