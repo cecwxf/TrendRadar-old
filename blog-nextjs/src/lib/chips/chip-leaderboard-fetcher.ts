@@ -256,6 +256,42 @@ const CHIP_CATALOG: ChipBaseline[] = [
     install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
+    id: "nvidia-jetson-orin-serve-gen3",
+    name: "NVIDIA Jetson Orin (Serve Gen3)",
+    vendor: "NVIDIA",
+    segment: "IOT/机器人端侧市场",
+    parent_ticker: "NVDA",
+    architecture: "Jetson Orin",
+    process_nm: 8,
+    release_date: "2025-12-12",
+    benchmark_index: 85,
+    efficiency_index: 81,
+    install_units: 2000,
+    install_period_start: "2025-10-01",
+    install_period_end: "2025-12-12",
+    install_scope: "美国人行道配送机器人，已部署>2,000台；按单机单模组口径折算 Jetson Orin 装机量下限",
+    install_source_name: "Serve Robotics 2,000 Robots + NVIDIA Serve Case Study",
+    install_source_url: "https://www.globenewswire.com/de/news-release/2025/12/12/3204583/0/en/Serve-Robotics-Builds-2-000-Autonomous-Delivery-Robots-Creating-Largest-Sidewalk-Delivery-Fleet-in-the-U-S.html",
+  },
+  {
+    id: "nvidia-jetson-moxi",
+    name: "NVIDIA Jetson (Diligent Moxi)",
+    vendor: "NVIDIA",
+    segment: "IOT/机器人端侧市场",
+    parent_ticker: "NVDA",
+    architecture: "Jetson",
+    process_nm: 8,
+    release_date: "2026-01-20",
+    benchmark_index: 80,
+    efficiency_index: 82,
+    install_units: 100,
+    install_period_start: "2025-01-01",
+    install_period_end: "2026-01-20",
+    install_scope: "医疗院内机器人，近100台 Moxi；公告明确为 NVIDIA Jetson 平台",
+    install_source_name: "Serve Acquisition of Diligent (Moxi + Jetson)",
+    install_source_url: "https://www.globenewswire.com/news-release/2026/01/20/3222303/0/en/serve-robotics-to-acquire-diligent-robotics-expanding-physical-ai-platform-beyond-the-sidewalk.html",
+  },
+  {
     id: "nvidia-hopper-colossus",
     name: "NVIDIA Hopper GPUs (xAI Colossus)",
     vendor: "NVIDIA",
@@ -430,13 +466,34 @@ function buildDataSources(): AIChipDataSource[] {
     }
   });
 
-  return Array.from(sourceMap.values()).map((item) => ({
+  const sources: AIChipDataSource[] = Array.from(sourceMap.values()).map((item) => ({
     name: item.name,
-    type: "reference" as const,
+    type: "reference",
     url: item.url,
-    status: "ok" as const,
+    status: "ok",
     note: item.note,
   }));
+
+  const extraSources: AIChipDataSource[] = [
+    {
+      name: "NVIDIA Serve Robotics Customer Story",
+      type: "reference",
+      url: "https://www.nvidia.com/en-us/autonomous-machines/customer-stories/serve-robotics/",
+      status: "ok",
+      note: "用于确认 Serve 第三代机器人采用 Jetson Orin 平台",
+    },
+  ];
+
+  extraSources.forEach((source) => {
+    const exists = sources.some(
+      (item) => item.name === source.name && item.url === source.url
+    );
+    if (!exists) {
+      sources.push(source);
+    }
+  });
+
+  return sources;
 }
 
 function calcPeriod(): { start: string; end: string } {

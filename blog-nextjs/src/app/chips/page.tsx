@@ -153,6 +153,9 @@ export default function AIChipLeaderboardPage() {
             <p>
               <strong>口径说明:</strong> 若某市场暂无可核验原始装机量，将显示“暂无数据”而不是估算值。
             </p>
+            <p>
+              <strong>机器人端侧说明:</strong> 机器人芯片按公开“已部署机器人数量”采用单机单芯片下限折算，来源链接可在每行查看。
+            </p>
             {data.failed_sources && data.failed_sources.length > 0 && (
               <p>
                 <strong>降级源:</strong> {data.failed_sources.join(", ")}

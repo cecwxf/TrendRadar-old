@@ -90,6 +90,17 @@ export function ChipRankingTable({
                         {item.metrics.install_period_start} ~ {item.metrics.install_period_end}
                       </span>
                     )}
+                    {item.metrics.install_source_url && (
+                      <a
+                        href={item.metrics.install_source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                        title={item.metrics.install_source_name}
+                      >
+                        source
+                      </a>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm">{item.chip.vendor}</td>
