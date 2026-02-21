@@ -77,7 +77,7 @@ export default function AIChipLeaderboardPage() {
             覆盖 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500">
-            已纳入华为、寒武纪、黑芝麻、芯驰、瑞芯微、晶晨、全志、海光等国内厂商（按可获得公开数据计算）
+            仅纳入具备公开可核验原始装机量的芯片；无公开装机量原始数字的厂商暂不入榜
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500">
             数据周期: {data.data_period.start} 至 {data.data_period.end} | 最后更新:{" "}
@@ -121,7 +121,7 @@ export default function AIChipLeaderboardPage() {
             <ChipVendorShare
               key={item.market}
               data={item.vendor_shares}
-              title={`${item.market_label} 厂商份额（按装机指数）`}
+              title={`${item.market_label} 厂商份额（按装机量）`}
             />
           ))}
         </div>
@@ -136,13 +136,13 @@ export default function AIChipLeaderboardPage() {
           </h3>
           <div className="text-sm text-blue-800 dark:text-blue-400 space-y-2">
             <p>
-              <strong>装机指数:</strong> 仅基于装机量与量产阶段计算（量产/爬坡/试点/未量产分级），定点不直接计入装机。
+              <strong>装机量:</strong> 仅统计可公开核验的原始装机数字（颗/套），无原始数字不入榜。
             </p>
             <p>
               <strong>份额与排名:</strong> 全部按 ADAS、座舱、IOT/机器人端侧、服务器四个市场分别计算，不跨市场混排。
             </p>
             <p>
-              <strong>性能与能效:</strong> 作为技术能力参考展示，不直接决定装机份额。
+              <strong>性能与能效:</strong> 仅用于同装机量时的次级参考，不用于替代装机量。
             </p>
             <p>
               <strong>辅助数据源状态:</strong> {sourceSummary}
@@ -151,7 +151,7 @@ export default function AIChipLeaderboardPage() {
               <strong>市场拆分:</strong> 目前按 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场进行展示。
             </p>
             <p>
-              <strong>口径说明:</strong> 各市场统计窗口不完全一致，当前以 2025-01-01 以来可公开装机数据为主进行归一化。
+              <strong>口径说明:</strong> 若某市场暂无可核验原始装机量，将显示“暂无数据”而不是估算值。
             </p>
             {data.failed_sources && data.failed_sources.length > 0 && (
               <p>

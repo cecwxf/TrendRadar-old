@@ -19,9 +19,15 @@ export interface AIChipMetrics {
   chip_id: string;
   benchmark_index: number;          // 推理性能指数（0-100）
   efficiency_index: number;         // 能效指数（0-100）
-  deployment_index: number;         // 装机指数（相对值）
+  deployment_index: number;         // 装机量（颗/套）
   segment_share_percent: number;    // 分市场装机份额
-  composite_score: number;          // 质量参考分（不用于份额计算）
+  composite_score: number;          // 质量参考分（仅同量级时用于并列排序）
+  install_units?: number;           // 原始装机量（颗/套）
+  install_period_start?: string;    // 装机统计周期开始
+  install_period_end?: string;      // 装机统计周期结束
+  install_scope?: string;           // 统计口径
+  install_source_name?: string;     // 装机来源名称
+  install_source_url?: string;      // 装机来源链接
   market_cap_usd?: number;          // 仅辅助披露：母公司市值
   daily_volume?: number;            // 仅辅助披露：当日成交量
   price_change_percent?: number;    // 仅辅助披露：24h 涨跌幅

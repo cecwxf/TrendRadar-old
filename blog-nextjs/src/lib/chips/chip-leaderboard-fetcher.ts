@@ -1,10 +1,10 @@
 /**
- * AI 芯片排行榜数据聚合器
+ * AI 芯片排行榜数据聚合器（真实装机量严格模式）
  *
- * 数据源策略：
- * - 装机基线：按细分市场维护芯片部署基线（本地维护）
- * - 性能能效：MLCommons + 厂商公开规格
- * - 辅助披露：Yahoo / SEC / Eastmoney（不参与排名与份额计算）
+ * 规则：
+ * 1) 仅使用可公开核验的芯片装机量原始数字。
+ * 2) 无装机量原始数字的芯片不纳入排名与份额。
+ * 3) 资本市场数据不参与计算。
  */
 
 import type {
@@ -22,55 +22,18 @@ import type {
 interface ChipBaseline extends AIChipModel {
   benchmark_index: number;
   efficiency_index: number;
-  base_deployment_index: number;
-  install_base_units?: number;      // 公开可得统计周期内装机量（优先用于份额）
-  install_stage?: "mass_production" | "sop_ramp" | "pilot" | "pre_sop";
-  adoption_multiplier?: number;     // 装机规模修正系数（部署优先）
-  cn_secid?: string;               // 东方财富 secid，如 1.688256
-  reference_revenue_usd?: number;  // 非上市主体可使用公开年报收入
-  market_signal_floor?: number;    // 兼容字段：不参与当前排名与份额计算
-}
-
-interface YahooQuoteItem {
-  symbol?: string;
-  marketCap?: number;
-  regularMarketVolume?: number;
-  regularMarketChangePercent?: number;
-}
-
-interface YahooQuoteResponse {
-  quoteResponse?: {
-    result?: YahooQuoteItem[];
-  };
-}
-
-interface YahooSignal {
-  marketCap?: number;
-  volume?: number;
-  changePercent?: number;
-}
-
-interface RevenueSignal {
-  revenueUsd?: number;
-}
-
-interface CnSignal {
-  marketCapUsd?: number;
-  volume?: number;
-  changePercent?: number;
-}
-
-interface RevenueEntry {
-  val?: number;
-  form?: string;
-  end?: string;
-  filed?: string;
+  install_units: number;
+  install_period_start: string;
+  install_period_end: string;
+  install_scope: string;
+  install_source_name: string;
+  install_source_url: string;
 }
 
 const CHIP_CATALOG: ChipBaseline[] = [
   {
-    id: "nvidia-drive-orin",
-    name: "NVIDIA DRIVE Orin",
+    id: "nvidia-drive-orin-x",
+    name: "NVIDIA DRIVE Orin-X",
     vendor: "NVIDIA",
     segment: "ADAS市场",
     parent_ticker: "NVDA",
@@ -79,108 +42,45 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2022-03-22",
     benchmark_index: 88,
     efficiency_index: 82,
-    base_deployment_index: 84,
+    install_units: 343092,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-01-31",
+    install_scope: "中国乘用车前装，智驾域控芯片",
+    install_source_name: "Gasgoo 2025-01 智驾域控芯片装机量",
+    install_source_url: "https://auto.gasgoo.com/news/202503/17I70420610C110.shtml",
   },
   {
-    id: "qualcomm-ride-flex",
-    name: "Snapdragon Ride Flex",
-    vendor: "Qualcomm",
+    id: "tesla-fsd-chip",
+    name: "Tesla FSD SoC",
+    vendor: "Tesla",
     segment: "ADAS市场",
-    parent_ticker: "QCOM",
-    architecture: "Custom SoC",
-    process_nm: 5,
-    release_date: "2023-01-05",
-    benchmark_index: 80,
-    efficiency_index: 84,
-    base_deployment_index: 62,
-    install_stage: "pilot",
+    architecture: "Tesla FSD",
+    release_date: "2023-01-01",
+    benchmark_index: 79,
+    efficiency_index: 76,
+    install_units: 67532,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-01-31",
+    install_scope: "中国乘用车前装，智驾域控芯片",
+    install_source_name: "Gasgoo 2025-01 智驾域控芯片装机量",
+    install_source_url: "https://auto.gasgoo.com/news/202503/17I70420610C110.shtml",
   },
   {
-    id: "mobileye-eyeq6",
-    name: "Mobileye EyeQ6",
-    vendor: "Mobileye",
-    segment: "ADAS市场",
-    parent_ticker: "MBLY",
-    architecture: "EyeQ",
-    process_nm: 7,
-    release_date: "2024-04-01",
-    benchmark_index: 77,
-    efficiency_index: 81,
-    base_deployment_index: 71,
-    install_stage: "sop_ramp",
-  },
-  {
-    id: "horizon-journey-6",
-    name: "Horizon Journey 6",
-    vendor: "Horizon Robotics",
-    segment: "ADAS市场",
-    architecture: "BPU",
-    process_nm: 7,
-    release_date: "2024-04-24",
-    benchmark_index: 74,
-    efficiency_index: 79,
-    base_deployment_index: 92,
-    install_stage: "sop_ramp",
-    adoption_multiplier: 1.06,
-  },
-  {
-    id: "huawei-mdc-810",
-    name: "Huawei MDC 810",
+    id: "huawei-ascend-610-adas",
+    name: "Huawei Ascend 610",
     vendor: "Huawei",
     segment: "ADAS市场",
-    architecture: "Ascend + MCU Domain Controller",
+    architecture: "Ascend",
     process_nm: 7,
-    release_date: "2023-04-16",
-    benchmark_index: 78,
-    efficiency_index: 80,
-    base_deployment_index: 74,
-    install_stage: "sop_ramp",
-    reference_revenue_usd: 99_000_000_000,
-    market_signal_floor: 0.55,
-  },
-  {
-    id: "black-sesame-a1000",
-    name: "Black Sesame Huashan A1000",
-    vendor: "Black Sesame",
-    segment: "ADAS市场",
-    parent_ticker: "2533.HK",
-    architecture: "NPU Domain SoC",
-    process_nm: 7,
-    release_date: "2020-06-15",
-    benchmark_index: 66,
-    efficiency_index: 71,
-    base_deployment_index: 38,
-    install_stage: "mass_production",
-    market_signal_floor: 0.42,
-  },
-  {
-    id: "semidrive-x9u",
-    name: "SemiDrive X9U",
-    vendor: "SemiDrive",
-    segment: "ADAS市场",
-    architecture: "Auto SoC + NPU",
-    process_nm: 7,
-    release_date: "2023-10-12",
-    benchmark_index: 71,
-    efficiency_index: 75,
-    base_deployment_index: 54,
-    install_stage: "pilot",
-    reference_revenue_usd: 450_000_000,
-    market_signal_floor: 0.4,
-  },
-  {
-    id: "nvidia-drive-thor",
-    name: "NVIDIA DRIVE Thor",
-    vendor: "NVIDIA",
-    segment: "ADAS市场",
-    parent_ticker: "NVDA",
-    architecture: "Blackwell",
-    process_nm: 4,
-    release_date: "2025-01-07",
-    benchmark_index: 86,
-    efficiency_index: 80,
-    base_deployment_index: 64,
-    install_stage: "pilot",
+    release_date: "2023-01-01",
+    benchmark_index: 81,
+    efficiency_index: 79,
+    install_units: 42721,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-01-31",
+    install_scope: "中国乘用车前装，智驾域控芯片",
+    install_source_name: "Gasgoo 2025-01 智驾域控芯片装机量",
+    install_source_url: "https://auto.gasgoo.com/news/202503/17I70420610C110.shtml",
   },
   {
     id: "qualcomm-sa8295p",
@@ -193,27 +93,33 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2021-11-30",
     benchmark_index: 72,
     efficiency_index: 83,
-    base_deployment_index: 86,
-    install_base_units: 5_701_662,
-    install_stage: "mass_production",
+    install_units: 5701662,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
-    id: "samsung-exynos-auto-v920",
-    name: "Exynos Auto V920",
-    vendor: "Samsung",
+    id: "huawei-kirin-cockpit-soc",
+    name: "Huawei Cockpit SoC",
+    vendor: "Huawei",
     segment: "座舱市场",
-    architecture: "ARM SoC",
-    process_nm: 5,
-    release_date: "2023-12-01",
-    benchmark_index: 69,
-    efficiency_index: 78,
-    base_deployment_index: 64,
-    install_base_units: 90_129,
-    install_stage: "mass_production",
+    architecture: "Kirin + NPU",
+    process_nm: 7,
+    release_date: "2023-09-25",
+    benchmark_index: 70,
+    efficiency_index: 77,
+    install_units: 489625,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "amd-ryzen-embedded-v3000",
-    name: "AMD Ryzen Embedded V3000",
+    name: "AMD Cockpit SoC",
     vendor: "AMD",
     segment: "座舱市场",
     parent_ticker: "AMD",
@@ -222,25 +128,12 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2024-10-09",
     benchmark_index: 73,
     efficiency_index: 74,
-    base_deployment_index: 66,
-    install_base_units: 468_136,
-    install_stage: "mass_production",
-  },
-  {
-    id: "huawei-kirin-cockpit-soc",
-    name: "Huawei Kirin Cockpit SoC",
-    vendor: "Huawei",
-    segment: "座舱市场",
-    architecture: "Kirin + NPU",
-    process_nm: 7,
-    release_date: "2023-09-25",
-    benchmark_index: 70,
-    efficiency_index: 77,
-    base_deployment_index: 69,
-    install_base_units: 489_625,
-    install_stage: "mass_production",
-    reference_revenue_usd: 99_000_000_000,
-    market_signal_floor: 0.55,
+    install_units: 468136,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "siengine-longying-one",
@@ -252,9 +145,12 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2023-03-30",
     benchmark_index: 68,
     efficiency_index: 76,
-    base_deployment_index: 67,
-    install_base_units: 428_183,
-    install_stage: "mass_production",
+    install_units: 428183,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "renesas-r-car-h3",
@@ -266,9 +162,12 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2021-02-18",
     benchmark_index: 60,
     efficiency_index: 66,
-    base_deployment_index: 58,
-    install_base_units: 185_159,
-    install_stage: "mass_production",
+    install_units: 185159,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "semidrive-x9c-cockpit",
@@ -280,10 +179,29 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2023-09-08",
     benchmark_index: 66,
     efficiency_index: 73,
-    base_deployment_index: 62,
-    install_base_units: 154_886,
-    install_stage: "mass_production",
-    reference_revenue_usd: 450_000_000,
+    install_units: 154886,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
+  },
+  {
+    id: "samsung-exynos-auto-v920",
+    name: "Exynos Auto V920",
+    vendor: "Samsung",
+    segment: "座舱市场",
+    architecture: "ARM SoC",
+    process_nm: 5,
+    release_date: "2023-12-01",
+    benchmark_index: 69,
+    efficiency_index: 78,
+    install_units: 90129,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "mediatek-dimensity-auto-cockpit",
@@ -295,9 +213,12 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2025-04-23",
     benchmark_index: 67,
     efficiency_index: 74,
-    base_deployment_index: 63,
-    install_base_units: 80_469,
-    install_stage: "mass_production",
+    install_units: 80469,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "ti-jacinto7-cockpit",
@@ -309,355 +230,100 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2021-07-12",
     benchmark_index: 61,
     efficiency_index: 72,
-    base_deployment_index: 57,
-    install_base_units: 66_192,
-    install_stage: "mass_production",
+    install_units: 66192,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
     id: "intel-cockpit-soc",
     name: "Intel Cockpit SoC",
     vendor: "Intel",
     segment: "座舱市场",
+    parent_ticker: "INTC",
     architecture: "x86 Auto",
     process_nm: 12,
     release_date: "2022-11-08",
     benchmark_index: 58,
     efficiency_index: 64,
-    base_deployment_index: 52,
-    install_base_units: 15_698,
-    install_stage: "mass_production",
+    install_units: 15698,
+    install_period_start: "2025-01-01",
+    install_period_end: "2025-10-31",
+    install_scope: "中国乘用车前装，座舱域控芯片",
+    install_source_name: "Gasgoo 2025-01~10 座舱域控芯片装机量",
+    install_source_url: "https://m.gasgoo.com/news/70438602.html",
   },
   {
-    id: "nvidia-jetson-orin",
-    name: "NVIDIA Jetson Orin",
-    vendor: "NVIDIA",
-    segment: "IOT/机器人端侧市场",
-    parent_ticker: "NVDA",
-    architecture: "Ampere",
-    process_nm: 8,
-    release_date: "2022-09-20",
-    benchmark_index: 85,
-    efficiency_index: 81,
-    base_deployment_index: 82,
-  },
-  {
-    id: "intel-core-ultra-npu",
-    name: "Intel Core Ultra NPU",
-    vendor: "Intel",
-    segment: "IOT/机器人端侧市场",
-    parent_ticker: "INTC",
-    architecture: "Meteor Lake NPU",
-    process_nm: 7,
-    release_date: "2023-12-14",
-    benchmark_index: 71,
-    efficiency_index: 77,
-    base_deployment_index: 66,
-  },
-  {
-    id: "qualcomm-rb5",
-    name: "Qualcomm RB5",
-    vendor: "Qualcomm",
-    segment: "IOT/机器人端侧市场",
-    parent_ticker: "QCOM",
-    architecture: "QRB5165",
-    process_nm: 7,
-    release_date: "2020-06-16",
-    benchmark_index: 68,
-    efficiency_index: 79,
-    base_deployment_index: 63,
-  },
-  {
-    id: "hailo-8",
-    name: "Hailo-8",
-    vendor: "Hailo",
-    segment: "IOT/机器人端侧市场",
-    architecture: "Edge AI Accelerator",
-    process_nm: 16,
-    release_date: "2020-01-07",
-    benchmark_index: 66,
-    efficiency_index: 86,
-    base_deployment_index: 57,
-  },
-  {
-    id: "cambricon-mlu220",
-    name: "Cambricon MLU220",
-    vendor: "Cambricon",
-    segment: "IOT/机器人端侧市场",
-    architecture: "MLU",
-    process_nm: 16,
-    release_date: "2020-08-11",
-    benchmark_index: 64,
-    efficiency_index: 75,
-    base_deployment_index: 58,
-    cn_secid: "1.688256",
-  },
-  {
-    id: "huawei-ascend-310b",
-    name: "Huawei Ascend 310B",
-    vendor: "Huawei",
-    segment: "IOT/机器人端侧市场",
-    architecture: "Ascend",
-    process_nm: 7,
-    release_date: "2023-07-07",
-    benchmark_index: 75,
-    efficiency_index: 83,
-    base_deployment_index: 72,
-    reference_revenue_usd: 99_000_000_000,
-    market_signal_floor: 0.55,
-  },
-  {
-    id: "rockchip-rk3588-edge",
-    name: "Rockchip RK3588 Edge",
-    vendor: "Rockchip",
-    segment: "IOT/机器人端侧市场",
-    architecture: "ARM + NPU",
-    process_nm: 8,
-    release_date: "2022-01-10",
-    benchmark_index: 67,
-    efficiency_index: 76,
-    base_deployment_index: 62,
-    cn_secid: "1.603893",
-  },
-  {
-    id: "allwinner-v853",
-    name: "Allwinner V853",
-    vendor: "Allwinner",
-    segment: "IOT/机器人端侧市场",
-    architecture: "Vision + NPU SoC",
-    process_nm: 22,
-    release_date: "2022-08-12",
-    benchmark_index: 61,
-    efficiency_index: 78,
-    base_deployment_index: 55,
-    cn_secid: "0.300458",
-  },
-  {
-    id: "amlogic-a311d2-edge",
-    name: "Amlogic A311D2 Edge",
-    vendor: "Amlogic",
-    segment: "IOT/机器人端侧市场",
-    architecture: "ARM + NPU",
-    process_nm: 12,
-    release_date: "2021-04-20",
-    benchmark_index: 63,
-    efficiency_index: 73,
-    base_deployment_index: 57,
-    cn_secid: "1.688099",
-  },
-  {
-    id: "sophgo-bm1684x",
-    name: "SOPHGO BM1684X",
-    vendor: "SOPHGO",
-    segment: "IOT/机器人端侧市场",
-    architecture: "TPU-like Accelerator",
-    process_nm: 12,
-    release_date: "2022-11-05",
-    benchmark_index: 66,
-    efficiency_index: 77,
-    base_deployment_index: 56,
-    reference_revenue_usd: 300_000_000,
-    market_signal_floor: 0.38,
-  },
-  {
-    id: "unisoc-v8821",
-    name: "UNISOC V8821",
-    vendor: "UNISOC",
-    segment: "IOT/机器人端侧市场",
-    architecture: "AI ISP + NPU",
-    process_nm: 12,
-    release_date: "2024-01-16",
-    benchmark_index: 60,
-    efficiency_index: 71,
-    base_deployment_index: 53,
-    reference_revenue_usd: 1_500_000_000,
-    market_signal_floor: 0.42,
-  },
-  {
-    id: "nvidia-blackwell-b200",
-    name: "NVIDIA Blackwell B200",
+    id: "nvidia-hopper-colossus",
+    name: "NVIDIA Hopper GPUs (xAI Colossus)",
     vendor: "NVIDIA",
     segment: "服务器市场",
     parent_ticker: "NVDA",
-    architecture: "Blackwell",
-    process_nm: 4,
-    release_date: "2024-03-18",
-    benchmark_index: 97,
-    efficiency_index: 85,
-    base_deployment_index: 96,
+    architecture: "Hopper",
+    release_date: "2024-10-28",
+    benchmark_index: 95,
+    efficiency_index: 83,
+    install_units: 200000,
+    install_period_start: "2025-02-17",
+    install_period_end: "2025-02-17",
+    install_scope: "xAI Colossus 已公开运行规模",
+    install_source_name: "xAI Colossus 官方披露",
+    install_source_url: "https://x.ai/colossus",
   },
   {
-    id: "amd-mi300x",
-    name: "AMD Instinct MI300X",
+    id: "intel-data-center-gpu-max-aurora",
+    name: "Intel Data Center GPU Max 1550 (Aurora)",
+    vendor: "Intel",
+    segment: "服务器市场",
+    parent_ticker: "INTC",
+    architecture: "Xe-HPC",
+    release_date: "2023-11-17",
+    benchmark_index: 82,
+    efficiency_index: 75,
+    install_units: 63744,
+    install_period_start: "2023-11-17",
+    install_period_end: "2023-11-17",
+    install_scope: "Aurora 超算已安装加速卡",
+    install_source_name: "Argonne ALCF Aurora 系统介绍",
+    install_source_url: "https://www.alcf.anl.gov/aurora",
+  },
+  {
+    id: "amd-mi300a-el-capitan",
+    name: "AMD Instinct MI300A (El Capitan)",
     vendor: "AMD",
     segment: "服务器市场",
     parent_ticker: "AMD",
     architecture: "CDNA 3",
     process_nm: 5,
-    release_date: "2023-12-06",
+    release_date: "2024-11-14",
     benchmark_index: 90,
     efficiency_index: 80,
-    base_deployment_index: 81,
+    install_units: 44544,
+    install_period_start: "2024-11-14",
+    install_period_end: "2024-11-14",
+    install_scope: "El Capitan 超算已安装 APU 数量",
+    install_source_name: "LLNL El Capitan Hardware Overview",
+    install_source_url: "https://hpc.llnl.gov/documentation/user-guides/using-el-capitan-systems/hardware-overview",
   },
   {
-    id: "intel-gaudi-3",
-    name: "Intel Gaudi 3",
-    vendor: "Intel",
+    id: "amd-mi250x-frontier",
+    name: "AMD Instinct MI250X (Frontier)",
+    vendor: "AMD",
     segment: "服务器市场",
-    parent_ticker: "INTC",
-    architecture: "Gaudi",
-    process_nm: 5,
-    release_date: "2024-04-09",
+    parent_ticker: "AMD",
+    architecture: "CDNA 2",
+    process_nm: 6,
+    release_date: "2022-06-01",
     benchmark_index: 84,
-    efficiency_index: 78,
-    base_deployment_index: 69,
-  },
-  {
-    id: "google-tpu-v6e",
-    name: "Google TPU v6e",
-    vendor: "Google",
-    segment: "服务器市场",
-    parent_ticker: "GOOGL",
-    architecture: "TPU",
-    process_nm: 4,
-    release_date: "2024-10-30",
-    benchmark_index: 92,
-    efficiency_index: 84,
-    base_deployment_index: 77,
-  },
-  {
-    id: "aws-trainium2",
-    name: "AWS Trainium2",
-    vendor: "AWS",
-    segment: "服务器市场",
-    parent_ticker: "AMZN",
-    architecture: "Trainium",
-    process_nm: 5,
-    release_date: "2024-12-03",
-    benchmark_index: 88,
-    efficiency_index: 82,
-    base_deployment_index: 73,
-  },
-  {
-    id: "cambricon-mlu370-x8",
-    name: "Cambricon MLU370-X8",
-    vendor: "Cambricon",
-    segment: "服务器市场",
-    architecture: "MLU",
-    process_nm: 7,
-    release_date: "2022-06-10",
-    benchmark_index: 79,
     efficiency_index: 74,
-    base_deployment_index: 61,
-    cn_secid: "1.688256",
-  },
-  {
-    id: "huawei-ascend-910b",
-    name: "Huawei Ascend 910B",
-    vendor: "Huawei",
-    segment: "服务器市场",
-    architecture: "Ascend",
-    process_nm: 7,
-    release_date: "2023-08-22",
-    benchmark_index: 89,
-    efficiency_index: 81,
-    base_deployment_index: 78,
-    reference_revenue_usd: 99_000_000_000,
-    market_signal_floor: 0.55,
-  },
-  {
-    id: "hygon-dcu-k100",
-    name: "Hygon DCU K100",
-    vendor: "Hygon",
-    segment: "服务器市场",
-    architecture: "GPGPU/DCU",
-    process_nm: 7,
-    release_date: "2024-06-28",
-    benchmark_index: 76,
-    efficiency_index: 72,
-    base_deployment_index: 59,
-    cn_secid: "1.688041",
-  },
-  {
-    id: "baidu-kunlun-2",
-    name: "Baidu Kunlun II",
-    vendor: "Baidu",
-    segment: "服务器市场",
-    parent_ticker: "BIDU",
-    architecture: "XPU",
-    process_nm: 7,
-    release_date: "2021-08-18",
-    benchmark_index: 80,
-    efficiency_index: 75,
-    base_deployment_index: 64,
-  },
-  {
-    id: "alibaba-hanguang-800",
-    name: "Alibaba Hanguang 800",
-    vendor: "Alibaba",
-    segment: "服务器市场",
-    parent_ticker: "BABA",
-    architecture: "Inference ASIC",
-    process_nm: 12,
-    release_date: "2019-09-25",
-    benchmark_index: 77,
-    efficiency_index: 73,
-    base_deployment_index: 60,
-  },
-  {
-    id: "biren-br104",
-    name: "Biren BR104",
-    vendor: "Biren",
-    segment: "服务器市场",
-    architecture: "GPGPU",
-    process_nm: 7,
-    release_date: "2022-08-09",
-    benchmark_index: 82,
-    efficiency_index: 71,
-    base_deployment_index: 57,
-    reference_revenue_usd: 300_000_000,
-    market_signal_floor: 0.4,
-  },
-  {
-    id: "moore-threads-mtt-s4000",
-    name: "Moore Threads MTT S4000",
-    vendor: "Moore Threads",
-    segment: "服务器市场",
-    architecture: "GPGPU",
-    process_nm: 12,
-    release_date: "2023-03-30",
-    benchmark_index: 74,
-    efficiency_index: 69,
-    base_deployment_index: 55,
-    reference_revenue_usd: 250_000_000,
-    market_signal_floor: 0.38,
-  },
-  {
-    id: "iluvatar-mr-v50",
-    name: "Iluvatar MR-V50",
-    vendor: "Iluvatar CoreX",
-    segment: "服务器市场",
-    architecture: "GPGPU",
-    process_nm: 12,
-    release_date: "2023-11-15",
-    benchmark_index: 75,
-    efficiency_index: 70,
-    base_deployment_index: 54,
-    reference_revenue_usd: 220_000_000,
-    market_signal_floor: 0.37,
-  },
-  {
-    id: "enflame-cloudblazer-t20",
-    name: "Enflame CloudBlazer T20",
-    vendor: "Enflame",
-    segment: "服务器市场",
-    architecture: "AI Accelerator",
-    process_nm: 7,
-    release_date: "2024-04-03",
-    benchmark_index: 78,
-    efficiency_index: 72,
-    base_deployment_index: 56,
-    reference_revenue_usd: 280_000_000,
-    market_signal_floor: 0.4,
+    install_units: 39424,
+    install_period_start: "2022-06-01",
+    install_period_end: "2022-06-01",
+    install_scope: "Frontier 超算加速卡总数（9856 nodes × 4）",
+    install_source_name: "OLCF Frontier User Guide",
+    install_source_url: "https://docs.olcf.ornl.gov/systems/frontier_user_guide.html",
   },
 ];
 
@@ -671,289 +337,8 @@ function stableUnit(value: string): number {
   return (hash % 1000) / 1000;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-function installStageMultiplier(stage?: ChipBaseline["install_stage"]): number {
-  switch (stage) {
-    case "mass_production":
-      return 1;
-    case "sop_ramp":
-      return 0.55;
-    case "pilot":
-      return 0.18;
-    case "pre_sop":
-      return 0.05;
-    default:
-      return 1;
-  }
-}
-
-function uniqueTickers(): string[] {
-  return Array.from(
-    new Set(CHIP_CATALOG.map((item) => item.parent_ticker).filter((item): item is string => Boolean(item)))
-  );
-}
-
-function uniqueCnSecIds(): string[] {
-  return Array.from(
-    new Set(CHIP_CATALOG.map((item) => item.cn_secid).filter((item): item is string => Boolean(item)))
-  );
-}
-
-async function fetchYahooSignals(
-  tickers: string[]
-): Promise<{ data: Record<string, YahooSignal>; ok: boolean }> {
-  if (tickers.length === 0) {
-    return { data: {}, ok: false };
-  }
-
-  try {
-    const symbols = tickers.join(",");
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}`,
-      {
-        next: { revalidate: 3600 },
-      }
-    );
-
-    if (!response.ok) {
-      return { data: {}, ok: false };
-    }
-
-    const payload = (await response.json()) as YahooQuoteResponse;
-    const result: Record<string, YahooSignal> = {};
-    (payload.quoteResponse?.result || []).forEach((row) => {
-      if (!row.symbol) {
-        return;
-      }
-      result[row.symbol.toUpperCase()] = {
-        marketCap: row.marketCap,
-        volume: row.regularMarketVolume,
-        changePercent: row.regularMarketChangePercent,
-      };
-    });
-
-    return { data: result, ok: Object.keys(result).length > 0 };
-  } catch {
-    return { data: {}, ok: false };
-  }
-}
-
-function parseEastmoneyNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return undefined;
-}
-
-function normalizeEastmoneyChange(raw?: number): number | undefined {
-  if (raw === undefined) {
-    return undefined;
-  }
-  if (Math.abs(raw) > 1000) {
-    return raw / 100;
-  }
-  return raw;
-}
-
-async function fetchCnSignals(
-  secIds: string[]
-): Promise<{ data: Record<string, CnSignal>; ok: boolean }> {
-  if (secIds.length === 0) {
-    return { data: {}, ok: false };
-  }
-
-  const fxCnyToUsd = 7.2;
-  const result: Record<string, CnSignal> = {};
-
-  const tasks = secIds.map(async (secid) => {
-    try {
-      const url = new URL("https://push2.eastmoney.com/api/qt/stock/get");
-      url.searchParams.set("secid", secid);
-      url.searchParams.set("fields", "f43,f47,f116,f170");
-
-      const resp = await fetch(url.toString(), {
-        next: { revalidate: 3600 },
-      });
-
-      if (!resp.ok) {
-        return;
-      }
-
-      const payload = (await resp.json()) as {
-        data?: {
-          f47?: number | string;   // volume (hands)
-          f116?: number | string;  // market cap (CNY)
-          f170?: number | string;  // change percent
-        };
-      };
-
-      const marketCapCny = parseEastmoneyNumber(payload.data?.f116);
-      const volumeHands = parseEastmoneyNumber(payload.data?.f47);
-      const change = parseEastmoneyNumber(payload.data?.f170);
-
-      result[secid] = {
-        marketCapUsd: marketCapCny ? marketCapCny / fxCnyToUsd : undefined,
-        volume: volumeHands ? volumeHands * 100 : undefined,
-        changePercent: normalizeEastmoneyChange(change),
-      };
-    } catch {
-      // ignore single symbol failure
-    }
-  });
-
-  await Promise.all(tasks);
-  return { data: result, ok: Object.keys(result).length > 0 };
-}
-
-function parseDateLike(dateStr?: string): number {
-  if (!dateStr) {
-    return 0;
-  }
-  const ts = Date.parse(dateStr);
-  return Number.isFinite(ts) ? ts : 0;
-}
-
-function pickLatestRevenue(entries: RevenueEntry[]): number | undefined {
-  const filtered = entries.filter((entry) => typeof entry.val === "number" && Number.isFinite(entry.val));
-  if (filtered.length === 0) {
-    return undefined;
-  }
-
-  const scoringForms = new Set(["10-Q", "10-K", "20-F", "6-K"]);
-  filtered.sort((a, b) => {
-    const aFiled = parseDateLike(a.filed);
-    const bFiled = parseDateLike(b.filed);
-    if (aFiled !== bFiled) {
-      return bFiled - aFiled;
-    }
-
-    const aEnd = parseDateLike(a.end);
-    const bEnd = parseDateLike(b.end);
-    if (aEnd !== bEnd) {
-      return bEnd - aEnd;
-    }
-
-    const aScore = a.form && scoringForms.has(a.form) ? 1 : 0;
-    const bScore = b.form && scoringForms.has(b.form) ? 1 : 0;
-    return bScore - aScore;
-  });
-
-  return filtered[0].val;
-}
-
-async function fetchSecRevenueSignals(
-  tickers: string[]
-): Promise<{ data: Record<string, RevenueSignal>; ok: boolean }> {
-  if (tickers.length === 0) {
-    return { data: {}, ok: false };
-  }
-
-  const userAgent = process.env.CHIPS_SEC_USER_AGENT || "TrendRadar/1.0 chips-data contact@trendradar.local";
-
-  try {
-    const tickerResp = await fetch("https://www.sec.gov/files/company_tickers.json", {
-      headers: {
-        "User-Agent": userAgent,
-        Accept: "application/json",
-      },
-      next: { revalidate: 24 * 3600 },
-    });
-
-    if (!tickerResp.ok) {
-      return { data: {}, ok: false };
-    }
-
-    const tickerPayload = (await tickerResp.json()) as Record<
-      string,
-      { ticker?: string; cik_str?: number }
-    >;
-
-    const tickerToCik = new Map<string, string>();
-    Object.values(tickerPayload).forEach((row) => {
-      if (!row.ticker || !row.cik_str) {
-        return;
-      }
-      tickerToCik.set(
-        row.ticker.toUpperCase(),
-        row.cik_str.toString().padStart(10, "0")
-      );
-    });
-
-    const tasks = tickers.map(async (ticker) => {
-      const cik = tickerToCik.get(ticker.toUpperCase());
-      if (!cik) {
-        return { ticker, revenueUsd: undefined };
-      }
-
-      try {
-        const factsResp = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, {
-          headers: {
-            "User-Agent": userAgent,
-            Accept: "application/json",
-          },
-          next: { revalidate: 24 * 3600 },
-        });
-
-        if (!factsResp.ok) {
-          return { ticker, revenueUsd: undefined };
-        }
-
-        const facts = (await factsResp.json()) as {
-          facts?: {
-            "us-gaap"?: Record<string, { units?: { USD?: RevenueEntry[] } }>;
-            "ifrs-full"?: Record<string, { units?: { USD?: RevenueEntry[] } }>;
-          };
-        };
-
-        const usGaap = facts.facts?.["us-gaap"] || {};
-        const ifrsFull = facts.facts?.["ifrs-full"] || {};
-
-        const candidates: RevenueEntry[] = [
-          ...(usGaap.RevenueFromContractWithCustomerExcludingAssessedTax?.units?.USD || []),
-          ...(usGaap.Revenues?.units?.USD || []),
-          ...(usGaap.SalesRevenueNet?.units?.USD || []),
-          ...(ifrsFull.Revenue?.units?.USD || []),
-          ...(ifrsFull.RevenueFromContractsWithCustomers?.units?.USD || []),
-        ];
-
-        return { ticker, revenueUsd: pickLatestRevenue(candidates) };
-      } catch {
-        return { ticker, revenueUsd: undefined };
-      }
-    });
-
-    const all = await Promise.all(tasks);
-    const result: Record<string, RevenueSignal> = {};
-    all.forEach((item) => {
-      result[item.ticker.toUpperCase()] = { revenueUsd: item.revenueUsd };
-    });
-
-    const hasRevenue = Object.values(result).some((row) => typeof row.revenueUsd === "number");
-    return { data: result, ok: hasRevenue };
-  } catch {
-    return { data: {}, ok: false };
-  }
-}
-
-function calcMarketSignal(yahoo?: YahooSignal, revenue?: RevenueSignal): number {
-  const mcapNorm = yahoo?.marketCap ? clamp(Math.log10(yahoo.marketCap) / 12, 0, 1.5) : 0.38;
-  const volNorm = yahoo?.volume ? clamp(Math.log10(yahoo.volume + 1) / 9, 0, 1.3) : 0.24;
-  const revNorm = revenue?.revenueUsd ? clamp(Math.log10(revenue.revenueUsd) / 11, 0, 1.5) : 0.32;
-
-  return mcapNorm * 0.45 + volNorm * 0.2 + revNorm * 0.35;
 }
 
 function trendById(id: string): { trend: "up" | "down" | "stable"; rankChange: number } {
@@ -1017,12 +402,10 @@ function buildMarketRankings(rankings: AIChipRankingItem[]): AIChipMarketRanking
       top_chips: marketRows,
       total_deployment_index: round2(totalDeployment),
     };
-  }).filter((item) => item.top_chips.length > 0);
+  });
 }
 
-function buildMarketVendorShares(
-  rankings: AIChipRankingItem[]
-): AIChipMarketVendorShare[] {
+function buildMarketVendorShares(rankings: AIChipRankingItem[]): AIChipMarketVendorShare[] {
   return SEGMENT_ORDER.map((market) => {
     const marketRows = rankings.filter((item) => item.chip.segment === market);
     return {
@@ -1030,18 +413,43 @@ function buildMarketVendorShares(
       market_label: market,
       vendor_shares: buildVendorShares(marketRows),
     };
-  }).filter((item) => item.vendor_shares.length > 0);
+  });
+}
+
+function buildDataSources(): AIChipDataSource[] {
+  const sourceMap = new Map<string, { name: string; url: string; note: string }>();
+
+  CHIP_CATALOG.forEach((chip) => {
+    const key = `${chip.install_source_name}::${chip.install_source_url}`;
+    if (!sourceMap.has(key)) {
+      sourceMap.set(key, {
+        name: chip.install_source_name,
+        url: chip.install_source_url,
+        note: chip.install_scope,
+      });
+    }
+  });
+
+  return Array.from(sourceMap.values()).map((item) => ({
+    name: item.name,
+    type: "reference" as const,
+    url: item.url,
+    status: "ok" as const,
+    note: item.note,
+  }));
+}
+
+function calcPeriod(): { start: string; end: string } {
+  const starts = CHIP_CATALOG.map((item) => item.install_period_start).sort();
+  const ends = CHIP_CATALOG.map((item) => item.install_period_end).sort();
+
+  return {
+    start: starts[0],
+    end: ends[ends.length - 1],
+  };
 }
 
 export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
-  const tickers = uniqueTickers();
-  const cnSecIds = uniqueCnSecIds();
-  const [yahooResult, secResult, cnResult] = await Promise.all([
-    fetchYahooSignals(tickers),
-    fetchSecRevenueSignals(tickers),
-    fetchCnSignals(cnSecIds),
-  ]);
-
   const bySegmentTotalDeployment: Record<ChipSegment, number> = {
     ADAS市场: 0,
     座舱市场: 0,
@@ -1050,37 +458,14 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   };
 
   const baseRows = CHIP_CATALOG.map((chip) => {
-    const ticker = chip.parent_ticker?.toUpperCase();
-    const yahoo = ticker ? yahooResult.data[ticker] : undefined;
-    const cn = chip.cn_secid ? cnResult.data[chip.cn_secid] : undefined;
-    const revenue = ticker ? secResult.data[ticker] : undefined;
-    const mergedMarket = {
-      marketCap: yahoo?.marketCap ?? cn?.marketCapUsd,
-      volume: yahoo?.volume ?? cn?.volume,
-      changePercent: yahoo?.changePercent ?? cn?.changePercent,
-    };
-    const effectiveRevenue: RevenueSignal = {
-      revenueUsd: revenue?.revenueUsd ?? chip.reference_revenue_usd,
-    };
-
-    const stageMultiplier = installStageMultiplier(chip.install_stage);
-    const baseFromInstallUnits = chip.install_base_units
-      ? chip.install_base_units / 10_000
-      : chip.base_deployment_index;
-    const deploymentBase = baseFromInstallUnits * (chip.adoption_multiplier ?? 1);
-    // 仅用于可观测性，不参与当前份额与排名计算。
-    const marketSignal = calcMarketSignal(mergedMarket, effectiveRevenue);
-    const deploymentIndex = deploymentBase * stageMultiplier;
+    const deploymentIndex = chip.install_units;
     const qualityIndex = chip.benchmark_index * 0.65 + chip.efficiency_index * 0.35;
-    const compositeScore = deploymentIndex * 0.72 + qualityIndex * 0.28;
+    const compositeScore = deploymentIndex * 0.9 + qualityIndex * 0.1;
 
     bySegmentTotalDeployment[chip.segment] += deploymentIndex;
 
     return {
       chip,
-      mergedMarket,
-      revenue: effectiveRevenue,
-      marketSignal,
       deploymentIndex,
       qualityIndex,
       compositeScore,
@@ -1125,10 +510,12 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
           deployment_index: round2(row.deploymentIndex),
           segment_share_percent: round2(row.segmentSharePercent),
           composite_score: round2(row.compositeScore),
-          market_cap_usd: row.mergedMarket?.marketCap,
-          daily_volume: row.mergedMarket?.volume,
-          price_change_percent: row.mergedMarket?.changePercent,
-          latest_revenue_usd: row.revenue?.revenueUsd,
+          install_units: row.chip.install_units,
+          install_period_start: row.chip.install_period_start,
+          install_period_end: row.chip.install_period_end,
+          install_scope: row.chip.install_scope,
+          install_source_name: row.chip.install_source_name,
+          install_source_url: row.chip.install_source_url,
           timestamp: new Date().toISOString(),
         },
         trend: trendInfo.trend,
@@ -1139,13 +526,7 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   const segmentRankings: AIChipSegmentRanking[] = SEGMENT_ORDER.map((segment) => {
     const rows = overallRankings
       .filter((item) => item.chip.segment === segment)
-      .sort((a, b) => {
-        const depDiff = b.metrics.deployment_index - a.metrics.deployment_index;
-        if (depDiff !== 0) {
-          return depDiff;
-        }
-        return b.metrics.composite_score - a.metrics.composite_score;
-      })
+      .sort((a, b) => b.metrics.deployment_index - a.metrics.deployment_index)
       .slice(0, 5)
       .map((item, index) => ({ ...item, rank: index + 1 }));
 
@@ -1161,88 +542,16 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
     };
   });
 
-  const marketRankings = buildMarketRankings(overallRankings);
-  const vendorShares = buildVendorShares(overallRankings);
-  const marketVendorShares = buildMarketVendorShares(overallRankings);
-
-  const failedSources: string[] = [];
-  if (!yahooResult.ok) {
-    failedSources.push("Yahoo Finance Quote");
-  }
-  if (!secResult.ok) {
-    failedSources.push("SEC XBRL Company Facts");
-  }
-  if (!cnResult.ok) {
-    failedSources.push("Eastmoney A-share Quote");
-  }
-
-  const dataSources: AIChipDataSource[] = [
-    {
-      name: "Yahoo Finance Quote",
-      type: "live",
-      url: "https://query1.finance.yahoo.com/v7/finance/quote",
-      status: yahooResult.ok ? "ok" : "degraded",
-      note: "用于母公司市值、成交量、24h 涨跌等辅助披露，不参与排序与份额计算",
-    },
-    {
-      name: "SEC XBRL Company Facts",
-      type: "live",
-      url: "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
-      status: secResult.ok ? "ok" : "degraded",
-      note: "用于最近营收辅助披露（US GAAP / IFRS 标签自动匹配），不参与排序与份额计算",
-    },
-    {
-      name: "Eastmoney A-share Quote",
-      type: "live",
-      url: "https://push2.eastmoney.com/api/qt/stock/get",
-      status: cnResult.ok ? "ok" : "degraded",
-      note: "用于 A 股公司（如寒武纪）实时行情辅助披露，不参与排序与份额计算",
-    },
-    {
-      name: "MLCommons + Vendor Public Specs + Company Reports",
-      type: "reference",
-      url: "https://mlcommons.org/benchmarks/inference-datacenter/",
-      status: "ok",
-      note: "用于芯片性能/能效与装机基线构建，是当前市场份额和排名的核心依据",
-    },
-    {
-      name: "Gasgoo Cockpit SoC Installations (2025 Jan-Oct)",
-      type: "reference",
-      url: "https://auto.gasgoo.com/news/202511/21I70427098C108.shtml",
-      status: "ok",
-      note: "用于座舱市场厂商装机量锚定（高通、华为、AMD、芯擎等）",
-    },
-    {
-      name: "NVIDIA DRIVE Thor Production Timeline",
-      type: "reference",
-      url: "https://nvidianews.nvidia.com/news/nvidia-drive-thor-to-power-next-generation-vehicles-with-blackwell-and-generative-ai",
-      status: "ok",
-      note: "用于 Thor 车型量产阶段判断（当前按早期导入处理）",
-    },
-    {
-      name: "Black Sesame Company Profile",
-      type: "reference",
-      url: "https://www.blacksesame.com.cn/en/list/30.html",
-      status: "ok",
-      note: "用于区分 A1000（已量产）与 A2000（发布代际）在装机口径下的权重",
-    },
-  ];
-
   const now = new Date();
-  const periodStart = "2025-01-01";
 
   return {
     overall_rankings: overallRankings,
-    market_rankings: marketRankings,
+    market_rankings: buildMarketRankings(overallRankings),
     segment_rankings: segmentRankings,
-    vendor_shares: vendorShares,
-    market_vendor_shares: marketVendorShares,
+    vendor_shares: buildVendorShares(overallRankings),
+    market_vendor_shares: buildMarketVendorShares(overallRankings),
     last_updated: now.toISOString(),
-    data_period: {
-      start: periodStart,
-      end: now.toISOString().split("T")[0],
-    },
-    data_sources: dataSources,
-    ...(failedSources.length > 0 ? { failed_sources: failedSources } : {}),
+    data_period: calcPeriod(),
+    data_sources: buildDataSources(),
   };
 }

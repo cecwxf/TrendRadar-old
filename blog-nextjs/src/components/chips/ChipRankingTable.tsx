@@ -48,7 +48,7 @@ export function ChipRankingTable({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">芯片</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">厂商</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">赛道</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">装机指数</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">装机量</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">赛道份额</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">性能</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">能效</th>
@@ -56,6 +56,13 @@ export function ChipRankingTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            {rankings.length === 0 && (
+              <tr>
+                <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={9}>
+                  暂无可核验装机量数据
+                </td>
+              </tr>
+            )}
             {rankings.map((item) => (
               <tr
                 key={item.chip.id}
@@ -78,6 +85,11 @@ export function ChipRankingTable({
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {item.chip.architecture || "N/A"}
+                    {item.metrics.install_period_start && item.metrics.install_period_end && (
+                      <span className="ml-2">
+                        {item.metrics.install_period_start} ~ {item.metrics.install_period_end}
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm">{item.chip.vendor}</td>

@@ -7,15 +7,28 @@ interface ChipVendorShareProps {
   title?: string;
 }
 
+function formatNumber(num: number): string {
+  if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
+  if (num >= 1e9) return `${(num / 1e9).toFixed(1)}B`;
+  if (num >= 1e6) return `${(num / 1e6).toFixed(1)}M`;
+  if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`;
+  return num.toFixed(0);
+}
+
 export function ChipVendorShare({
   data,
-  title = "厂商份额（按装机指数）",
+  title = "厂商份额（按装机量）",
 }: ChipVendorShareProps) {
   return (
     <div className="bg-white dark:bg-gray-900/60 rounded-xl shadow-sm p-6">
       <h2 className="text-lg font-semibold mb-4">{title}</h2>
 
       <div className="space-y-3">
+        {data.length === 0 && (
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            暂无可核验装机量数据
+          </div>
+        )}
         {data.map((item) => (
           <div key={item.vendor} className="space-y-1">
             <div className="flex items-center justify-between text-sm">
@@ -33,7 +46,7 @@ export function ChipVendorShare({
               />
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              装机指数: {item.total_deployment_index.toFixed(2)} | 芯片数: {item.chip_count}
+              装机量: {formatNumber(item.total_deployment_index)} | 芯片数: {item.chip_count}
             </div>
           </div>
         ))}
