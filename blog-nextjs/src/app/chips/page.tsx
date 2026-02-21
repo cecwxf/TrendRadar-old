@@ -71,7 +71,7 @@ export default function AIChipLeaderboardPage() {
       <div className="container mx-auto px-4 py-8 space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-blue-700 bg-clip-text text-transparent">
-            AI 芯片使用排行榜
+            AI 芯片装机排行榜
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             覆盖 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场
@@ -121,7 +121,7 @@ export default function AIChipLeaderboardPage() {
             <ChipVendorShare
               key={item.market}
               data={item.vendor_shares}
-              title={`${item.market_label} 厂商份额（按使用指数）`}
+              title={`${item.market_label} 厂商份额（按装机指数）`}
             />
           ))}
         </div>
@@ -136,16 +136,16 @@ export default function AIChipLeaderboardPage() {
           </h3>
           <div className="text-sm text-blue-800 dark:text-blue-400 space-y-2">
             <p>
-              <strong>使用指数:</strong> 基于芯片部署基线、厂商市值/流动性、最近营收信号综合计算。
+              <strong>装机指数:</strong> 仅基于芯片装机/部署基线计算（含定点、量产和落地节奏修正），不使用资本市场信号。
             </p>
             <p>
-              <strong>份额:</strong> 厂商份额与排名均按市场拆分计算，避免不同资本市场直接混排。
+              <strong>份额与排名:</strong> 全部按 ADAS、座舱、IOT/机器人端侧、服务器四个市场分别计算，不跨市场混排。
             </p>
             <p>
-              <strong>性能与能效:</strong> 参考公开评测与公开规格构建统一指数（0-100）。
+              <strong>性能与能效:</strong> 作为技术能力参考展示，不直接决定装机份额。
             </p>
             <p>
-              <strong>数据源状态:</strong> {sourceSummary}
+              <strong>辅助数据源状态:</strong> {sourceSummary}
             </p>
             <p>
               <strong>市场拆分:</strong> 目前按 ADAS市场、座舱市场、IOT/机器人端侧市场、服务器市场进行展示。

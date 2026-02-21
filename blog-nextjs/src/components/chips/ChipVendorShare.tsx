@@ -9,7 +9,7 @@ interface ChipVendorShareProps {
 
 export function ChipVendorShare({
   data,
-  title = "厂商份额（按使用指数）",
+  title = "厂商份额（按装机指数）",
 }: ChipVendorShareProps) {
   return (
     <div className="bg-white dark:bg-gray-900/60 rounded-xl shadow-sm p-6">
@@ -33,7 +33,7 @@ export function ChipVendorShare({
               />
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              使用指数: {item.total_deployment_index.toFixed(2)} | 芯片数: {item.chip_count}
+              装机指数: {item.total_deployment_index.toFixed(2)} | 芯片数: {item.chip_count}
             </div>
           </div>
         ))}

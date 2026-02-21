@@ -2,9 +2,9 @@
  * AI 芯片排行榜数据聚合器
  *
  * 数据源策略：
- * - 实时信号：Yahoo Finance（市值、成交量、涨跌）
- * - 官方财务：SEC XBRL（最近营收）
- * - 芯片级基线：MLCommons + 厂商公开规格（本地维护）
+ * - 装机基线：按细分市场维护芯片部署基线（本地维护）
+ * - 性能能效：MLCommons + 厂商公开规格
+ * - 辅助披露：Yahoo / SEC / Eastmoney（不参与排名与份额计算）
  */
 
 import type {
@@ -23,9 +23,10 @@ interface ChipBaseline extends AIChipModel {
   benchmark_index: number;
   efficiency_index: number;
   base_deployment_index: number;
+  adoption_multiplier?: number;     // 装机规模修正系数（部署优先）
   cn_secid?: string;               // 东方财富 secid，如 1.688256
   reference_revenue_usd?: number;  // 非上市主体可使用公开年报收入
-  market_signal_floor?: number;    // 缺少公开资本市场数据时的最低市场信号
+  market_signal_floor?: number;    // 兼容字段：不参与当前排名与份额计算
 }
 
 interface YahooQuoteItem {
@@ -114,7 +115,8 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2024-04-24",
     benchmark_index: 74,
     efficiency_index: 79,
-    base_deployment_index: 62,
+    base_deployment_index: 68,
+    adoption_multiplier: 1.08,
   },
   {
     id: "huawei-mdc-810",
@@ -141,7 +143,8 @@ const CHIP_CATALOG: ChipBaseline[] = [
     release_date: "2024-04-24",
     benchmark_index: 73,
     efficiency_index: 76,
-    base_deployment_index: 61,
+    base_deployment_index: 57,
+    adoption_multiplier: 0.88,
     market_signal_floor: 0.42,
   },
   {
@@ -917,7 +920,13 @@ function buildMarketRankings(rankings: AIChipRankingItem[]): AIChipMarketRanking
   return SEGMENT_ORDER.map((market) => {
     const marketRows = rankings
       .filter((item) => item.chip.segment === market)
-      .sort((a, b) => b.metrics.composite_score - a.metrics.composite_score)
+      .sort((a, b) => {
+        const depDiff = b.metrics.deployment_index - a.metrics.deployment_index;
+        if (depDiff !== 0) {
+          return depDiff;
+        }
+        return b.metrics.composite_score - a.metrics.composite_score;
+      })
       .map((item, index) => ({ ...item, rank: index + 1 }));
 
     const totalDeployment = marketRows.reduce(
@@ -977,13 +986,12 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
       revenueUsd: revenue?.revenueUsd ?? chip.reference_revenue_usd,
     };
 
-    let marketSignal = calcMarketSignal(mergedMarket, effectiveRevenue);
-    if (chip.market_signal_floor !== undefined) {
-      marketSignal = Math.max(marketSignal, chip.market_signal_floor);
-    }
-    const deploymentIndex = chip.base_deployment_index * (0.75 + 0.5 * marketSignal);
+    const deploymentBase = chip.base_deployment_index * (chip.adoption_multiplier ?? 1);
+    // 仅用于可观测性，不参与当前份额与排名计算。
+    const marketSignal = calcMarketSignal(mergedMarket, effectiveRevenue);
+    const deploymentIndex = deploymentBase;
     const qualityIndex = chip.benchmark_index * 0.65 + chip.efficiency_index * 0.35;
-    const compositeScore = deploymentIndex * 0.62 + qualityIndex * 0.38;
+    const compositeScore = deploymentIndex * 0.72 + qualityIndex * 0.28;
 
     bySegmentTotalDeployment[chip.segment] += deploymentIndex;
 
@@ -991,6 +999,7 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
       chip,
       mergedMarket,
       revenue: effectiveRevenue,
+      marketSignal,
       deploymentIndex,
       qualityIndex,
       compositeScore,
@@ -1007,7 +1016,13 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   });
 
   const overallRankings: AIChipRankingItem[] = withShare
-    .sort((a, b) => b.compositeScore - a.compositeScore)
+    .sort((a, b) => {
+      const depDiff = b.deploymentIndex - a.deploymentIndex;
+      if (depDiff !== 0) {
+        return depDiff;
+      }
+      return b.compositeScore - a.compositeScore;
+    })
     .map((row, index) => {
       const trendInfo = trendById(row.chip.id);
       return {
@@ -1043,7 +1058,13 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
   const segmentRankings: AIChipSegmentRanking[] = SEGMENT_ORDER.map((segment) => {
     const rows = overallRankings
       .filter((item) => item.chip.segment === segment)
-      .sort((a, b) => b.metrics.composite_score - a.metrics.composite_score)
+      .sort((a, b) => {
+        const depDiff = b.metrics.deployment_index - a.metrics.deployment_index;
+        if (depDiff !== 0) {
+          return depDiff;
+        }
+        return b.metrics.composite_score - a.metrics.composite_score;
+      })
       .slice(0, 5)
       .map((item, index) => ({ ...item, rank: index + 1 }));
 
@@ -1080,28 +1101,28 @@ export async function fetchAIChipLeaderboardData(): Promise<AIChipLeaderboard> {
       type: "live",
       url: "https://query1.finance.yahoo.com/v7/finance/quote",
       status: yahooResult.ok ? "ok" : "degraded",
-      note: "用于母公司市值、成交量、24h 涨跌等实时市场信号",
+      note: "用于母公司市值、成交量、24h 涨跌等辅助披露，不参与排序与份额计算",
     },
     {
       name: "SEC XBRL Company Facts",
       type: "live",
       url: "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
       status: secResult.ok ? "ok" : "degraded",
-      note: "用于最近营收信号（US GAAP / IFRS 标签自动匹配）",
+      note: "用于最近营收辅助披露（US GAAP / IFRS 标签自动匹配），不参与排序与份额计算",
     },
     {
       name: "Eastmoney A-share Quote",
       type: "live",
       url: "https://push2.eastmoney.com/api/qt/stock/get",
       status: cnResult.ok ? "ok" : "degraded",
-      note: "用于 A 股公司（如寒武纪）市值与成交量信号",
+      note: "用于 A 股公司（如寒武纪）实时行情辅助披露，不参与排序与份额计算",
     },
     {
       name: "MLCommons + Vendor Public Specs + Company Reports",
       type: "reference",
       url: "https://mlcommons.org/benchmarks/inference-datacenter/",
       status: "ok",
-      note: "用于芯片级推理性能与能效基线，并补充非上市主体公开营收信号（如华为）",
+      note: "用于芯片性能/能效与装机基线构建，是当前市场份额和排名的核心依据",
     },
   ];
 

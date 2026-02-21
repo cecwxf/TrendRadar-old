@@ -48,11 +48,10 @@ export function ChipRankingTable({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">芯片</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">厂商</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">赛道</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">使用指数</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">装机指数</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">赛道份额</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">性能</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">能效</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">市值</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">趋势</th>
             </tr>
           </thead>
@@ -94,9 +93,6 @@ export function ChipRankingTable({
                 </td>
                 <td className="px-4 py-3 text-right text-sm tabular-nums">
                   {item.metrics.efficiency_index.toFixed(1)}
-                </td>
-                <td className="px-4 py-3 text-right text-sm tabular-nums">
-                  {formatNumber(item.metrics.market_cap_usd)}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`text-lg font-bold ${trendClass(item.trend)}`}>

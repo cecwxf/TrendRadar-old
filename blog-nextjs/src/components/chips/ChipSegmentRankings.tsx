@@ -22,7 +22,7 @@ export function ChipSegmentRankings({ data }: ChipSegmentRankingsProps) {
                 {segment.segment}
               </h3>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                总使用指数 {segment.total_deployment_index.toFixed(2)}
+                总装机指数 {segment.total_deployment_index.toFixed(2)}
               </span>
             </div>
 
