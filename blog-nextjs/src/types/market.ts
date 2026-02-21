@@ -26,6 +26,27 @@ export interface CryptoItem {
 }
 
 /**
+ * 区块链市值榜数据项
+ */
+export interface BlockchainMarketCapItem {
+  rank: number;                 // 市值排名
+  id: string;                   // CoinGecko id
+  symbol: string;               // 币种符号
+  name: string;                 // 币种名称
+  image?: string;               // 图标
+  price: number;                // 当前价格（USD）
+  market_cap: number;           // 市值（USD）
+  fully_diluted_valuation: number; // 完全稀释估值（USD）
+  volume_24h: number;           // 24h 成交额（USD）
+  price_change_24h: number;     // 24h 涨跌幅（%）
+  circulating_supply: number;   // 流通量
+  total_supply: number;         // 总供应量
+  max_supply: number;           // 最大供应量
+  last_updated: string;         // 更新时间
+  source: string;               // 数据源
+}
+
+/**
  * 股票数据项
  */
 export interface StockItem {

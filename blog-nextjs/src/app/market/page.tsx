@@ -8,6 +8,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { getLatestCryptoData, getLatestStockData } from "@/lib/market/market-service";
+import { fetchBlockchainMarketCapLeaderboard } from "@/lib/market/blockchain-leaderboard";
+import type { BlockchainMarketCapItem } from "@/types/market";
 import { MiniChart } from "@/components/market/MiniChart";
 
 export const metadata: Metadata = {
@@ -19,12 +21,14 @@ export const revalidate = 60; // 每分钟重新验证
 
 export default async function MarketDashboard() {
   // 获取最新数据
-  const [cryptoData, stockData] = await Promise.all([
+  const [cryptoData, stockData, blockchainLeaderboard] = await Promise.all([
     getLatestCryptoData(),
     getLatestStockData(),
+    fetchBlockchainMarketCapLeaderboard(20),
   ]);
 
-  const hasData = cryptoData.length > 0 || stockData.length > 0;
+  const hasData =
+    cryptoData.length > 0 || stockData.length > 0 || blockchainLeaderboard.length > 0;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -71,6 +75,17 @@ export default async function MarketDashboard() {
           </div>
         ) : (
           <div className="space-y-12">
+            {/* 区块链市值排行榜 */}
+            {blockchainLeaderboard.length > 0 && (
+              <section>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <span className="h-8 w-1 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full" />
+                  区块链市值排行榜
+                </h2>
+                <BlockchainMarketCapTable data={blockchainLeaderboard} />
+              </section>
+            )}
+
             {/* 加密货币区域 */}
             {cryptoData.length > 0 && (
               <section>
@@ -126,11 +141,97 @@ export default async function MarketDashboard() {
         {/* 数据更新时间 */}
         {hasData && (
           <div className="mt-12 text-center text-sm text-muted-foreground">
-            数据每分钟自动更新 · 最后更新: {new Date().toLocaleString("zh-CN")}
+            区块链市值榜每5分钟更新 · 其他市场数据每分钟更新 · 最后更新:{" "}
+            {new Date().toLocaleString("zh-CN")}
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function formatUsd(value: number): string {
+  if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+  return `$${value.toFixed(2)}`;
+}
+
+function BlockchainMarketCapTable({ data }: { data: BlockchainMarketCapItem[] }) {
+  return (
+    <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                排名
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                项目
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                价格
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                市值
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                24h涨跌
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                24h成交额
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {data.map((item) => {
+              const isPositive = item.price_change_24h >= 0;
+              return (
+                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 text-sm font-semibold tabular-nums">#{item.rank}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {item.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.image} alt={item.symbol} className="h-6 w-6 rounded-full" />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-muted" />
+                      )}
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-xs text-muted-foreground">{item.symbol}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm tabular-nums">
+                    {formatUsd(item.price)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm font-medium tabular-nums">
+                    {formatUsd(item.market_cap)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right text-sm font-medium tabular-nums ${
+                      isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {isPositive ? "+" : ""}
+                    {item.price_change_24h.toFixed(2)}%
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm tabular-nums">
+                    {formatUsd(item.volume_24h)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-4 py-3 text-xs text-muted-foreground border-t">
+        数据源: CoinGecko · 口径: 按流通市值（USD）降序
+      </div>
+    </div>
   );
 }
 
