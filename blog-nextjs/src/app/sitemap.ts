@@ -49,6 +49,54 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "hourly",
       priority: 0.9,
     },
+    {
+      url: `${SITE_URL}/agent-mart`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/register`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/publish`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/deliver`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/my-applications`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/my-tasks`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/verify`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/agent-mart/reputation`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
     ...postEntries,
   ];
 }

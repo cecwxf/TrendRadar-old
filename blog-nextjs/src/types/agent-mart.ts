@@ -1,0 +1,176 @@
+export type MartUserRole = "buyer" | "agent";
+
+export type MartTaskStatus =
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "DELIVERED"
+  | "VERIFYING"
+  | "CLOSED"
+  | "CANCELLED";
+
+export type ApplicationStatus =
+  | "PENDING"
+  | "SHORTLISTED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "WITHDRAWN";
+
+export type VerificationResult = "APPROVED" | "REJECTED";
+
+export interface MartUser {
+  id: string;
+  role: MartUserRole;
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentProfile {
+  user_id: string;
+  headline: string | null;
+  skills: string[];
+  tools: string[];
+  bio: string | null;
+  reputation_score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MartTask {
+  id: string;
+  buyer_user_id: string;
+  title: string;
+  description: string;
+  budget_min: number | null;
+  budget_max: number | null;
+  currency: string;
+  eta_days: number | null;
+  tech_stack: string[];
+  acceptance_json: {
+    ci_required?: boolean;
+    checklist?: string[];
+    notes?: string;
+  } | null;
+  status: MartTaskStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskApplication {
+  id: string;
+  task_id: string;
+  agent_user_id: string;
+  bid_amount: number;
+  eta_days: number;
+  plan: string;
+  assumptions: string | null;
+  confidence: number | null;
+  status: ApplicationStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeliveryEvidence {
+  pr_url: string;
+  repo_full_name: string;
+  pr_number: number;
+  commit_sha: string;
+  self_check: string;
+  ci_evidence?: {
+    ci_url?: string;
+  };
+  logs?: {
+    log_url?: string;
+  };
+  artifacts?: Array<{
+    name?: string;
+    hash?: string;
+    url?: string;
+  }>;
+}
+
+export interface TaskDelivery {
+  id: string;
+  task_id: string;
+  application_id: string | null;
+  agent_user_id: string;
+  evidence_json: DeliveryEvidence;
+  created_at: string;
+}
+
+export interface TaskVerification {
+  id: string;
+  task_id: string;
+  delivery_id: string;
+  buyer_user_id: string;
+  result: VerificationResult;
+  comment: string | null;
+  reject_reason: string | null;
+  change_requests: string[];
+  created_at: string;
+}
+
+export interface AgentReputationRecentRecord {
+  delivery_id: string;
+  task_id: string;
+  task_title: string | null;
+  pr_url: string | null;
+  submitted_at: string;
+  verification_result: VerificationResult | null;
+  reject_reason: string | null;
+  change_requests: string[];
+}
+
+export interface AgentReputationSummary {
+  agent_user_id: string;
+  total_deliveries: number;
+  verified_deliveries: number;
+  approved_deliveries: number;
+  rejected_deliveries: number;
+  pass_rate: number;
+  avg_rework_count: number;
+  avg_delivery_hours: number | null;
+  closed_tasks: number;
+  recent_records: AgentReputationRecentRecord[];
+}
+
+export interface CreateTaskInput {
+  buyerUserId: string;
+  title: string;
+  description: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  currency?: string;
+  etaDays?: number;
+  techStack?: string[];
+  acceptance?: {
+    ciRequired?: boolean;
+    checklist?: string[];
+    notes?: string;
+  };
+}
+
+export interface CreateApplicationInput {
+  taskId: string;
+  agentUserId: string;
+  bidAmount: number;
+  etaDays: number;
+  plan: string;
+  assumptions?: string;
+  confidence?: number;
+}
+
+export interface SubmitDeliveryInput {
+  taskId: string;
+  agentUserId: string;
+  evidence: DeliveryEvidence;
+}
+
+export interface TaskQueryFilters {
+  status?: MartTaskStatus;
+  tech?: string;
+  minBudget?: number;
+  maxBudget?: number;
+  q?: string;
+  limit?: number;
+}
