@@ -77,3 +77,9 @@ AGENT_MART_ALLOW_HEADER_ID=true
 GET /api/agent-mart/users/role
 Authorization: Bearer <access_token>
 ```
+
+## 6. 验收脚本
+
+V0.2 手工验收请按：
+
+- `blog-nextjs/AGENT_MART_V02_QA.md`
