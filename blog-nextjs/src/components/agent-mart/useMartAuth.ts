@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
+function getEmailRedirectTo(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return `${window.location.origin}/agent-mart`;
+}
+
 export function useMartAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +87,9 @@ export function useMartAuth() {
     const { data, error: signUpError } = await client.auth.signUp({
       email: emailInput,
       password,
+      options: {
+        emailRedirectTo: getEmailRedirectTo(),
+      },
     });
 
     if (signUpError) {
@@ -97,6 +105,29 @@ export function useMartAuth() {
     }
 
     return { success: true, notice: "注册并登录成功" } satisfies AuthActionResult;
+  };
+
+  const resendSignUpConfirmation = async (emailInput: string) => {
+    setError(null);
+    const client = getSupabaseBrowserClient();
+
+    const { error: resendError } = await client.auth.resend({
+      type: "signup",
+      email: emailInput,
+      options: {
+        emailRedirectTo: getEmailRedirectTo(),
+      },
+    });
+
+    if (resendError) {
+      setError(resendError.message);
+      return { success: false, error: resendError.message } satisfies AuthActionResult;
+    }
+
+    return {
+      success: true,
+      notice: "验证邮件已重新发送，请使用最新邮件中的链接。",
+    } satisfies AuthActionResult;
   };
 
   const signOut = async () => {
@@ -124,6 +155,7 @@ export function useMartAuth() {
     authHeaders,
     signInWithPassword,
     signUpWithPassword,
+    resendSignUpConfirmation,
     signOut,
   };
 }

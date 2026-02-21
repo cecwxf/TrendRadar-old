@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { MartAuthState } from "@/components/agent-mart/useMartAuth";
 
 interface AuthPanelProps {
@@ -17,10 +17,30 @@ export function AuthPanel({
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pendingVerifyEmail, setPendingVerifyEmail] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const modeLabel = useMemo(() => (mode === "signin" ? "登录" : "注册"), [mode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const errorCode = hashParams.get("error_code");
+    const errorDescription = hashParams.get("error_description");
+
+    if (errorCode === "otp_expired") {
+      setNotice("邮箱验证链接已过期，请点击“重新发送验证邮件”。");
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      return;
+    }
+
+    if (hashParams.get("error")) {
+      setNotice(errorDescription || "邮箱验证失败，请重试。");
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -47,6 +67,9 @@ export function AuthPanel({
       const successNotice =
         "notice" in result && typeof result.notice === "string" ? result.notice : undefined;
       setNotice(successNotice || `${modeLabel}成功`);
+      if (mode === "signup" && "notice" in result) {
+        setPendingVerifyEmail(email.trim());
+      }
       setPassword("");
     } finally {
       setSubmitting(false);
@@ -130,6 +153,33 @@ export function AuthPanel({
           >
             {submitting ? "处理中..." : modeLabel}
           </button>
+
+          {(pendingVerifyEmail || mode === "signup") && !auth.isAuthenticated ? (
+            <button
+              type="button"
+              disabled={resending || !((pendingVerifyEmail || email).trim())}
+              onClick={async () => {
+                const targetEmail = (pendingVerifyEmail || email).trim();
+                if (!targetEmail) {
+                  setNotice("请先输入邮箱");
+                  return;
+                }
+
+                setResending(true);
+                const result = await auth.resendSignUpConfirmation(targetEmail);
+                if (!result.success) {
+                  setNotice(result.error || "重发失败");
+                } else {
+                  setNotice(result.notice || "已重发验证邮件");
+                  setPendingVerifyEmail(targetEmail);
+                }
+                setResending(false);
+              }}
+              className="ml-2 rounded-lg border px-4 py-2 text-sm disabled:opacity-60"
+            >
+              {resending ? "发送中..." : "重新发送验证邮件"}
+            </button>
+          ) : null}
         </form>
       )}
 

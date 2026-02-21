@@ -84,3 +84,20 @@ V0.2 手工验收请按：
 
 - `blog-nextjs/AGENT_MART_V02_QA.md`
 - 自动化回归命令：`npm run test:agent-mart:v02`
+
+## 7. 邮箱验证常见报错（`otp_expired`）
+
+如果点击邮件链接后出现：
+
+- `error_code=otp_expired`
+- `Email link is invalid or has expired`
+
+处理方式：
+
+1. 回到 `/agent-mart` 登录面板，点击“重新发送验证邮件”，使用最新邮件中的链接
+2. 到 Supabase Dashboard -> Auth -> URL Configuration 检查：
+   - `Site URL` 为你当前环境域名
+   - `Redirect URLs` 包含：
+     - `http://localhost:3000/agent-mart`（本地）
+     - 你的线上域名 `/agent-mart`
+3. 使用同一浏览器打开链接，避免旧邮件链接（链接是一次性的，可能被邮箱安全扫描提前消费）
