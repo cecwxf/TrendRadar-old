@@ -125,9 +125,11 @@ export default function LLMLeaderboardPage() {
         </div>
 
         {/* 市场份额 */}
-        <div id="market-share">
-          <MarketShareChart data={data.market_shares} />
-        </div>
+        {data.market_shares && data.market_shares.length > 0 && (
+          <div id="market-share">
+            <MarketShareChart data={data.market_shares} />
+          </div>
+        )}
 
         {/* 分类排名 */}
         {data.category_rankings && data.category_rankings.length > 0 && (
@@ -143,11 +145,11 @@ export default function LLMLeaderboardPage() {
           </h3>
           <div className="text-sm text-blue-800 dark:text-blue-400 space-y-2">
             <p>
-              <strong>数据来源:</strong> 本排行榜数据基于模拟生成，展示了类似 OpenRouter Rankings 的功能。
-              实际部署时可接入真实数据源（API、数据库等）。
+              <strong>数据来源:</strong> 本排行榜数据来自 HuggingFace API，展示真实的模型下载量和使用统计。
+              如果 HuggingFace 不可用，会自动回退到模拟数据。
             </p>
             <p>
-              <strong>排名指标:</strong> 综合考虑使用量（Token数）、请求数、平均延迟、质量评分等多维度指标。
+              <strong>排名指标:</strong> 综合考虑下载量、点赞数、使用量（Token数）、请求数、平均延迟、质量评分等多维度指标。
             </p>
             <p>
               <strong>更新频率:</strong> 数据每小时更新一次，确保排名的时效性。

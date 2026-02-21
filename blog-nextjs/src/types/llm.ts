@@ -104,10 +104,10 @@ export interface LLMLeaderboard {
   latency_trends?: TimeSeriesRanking[];   // 延迟趋势
 
   // 市场分析
-  market_shares: MarketShare[];           // 市场份额
+  market_shares?: MarketShare[];          // 市场份额（可选）
 
   // 分类排名
-  category_rankings?: CategoryRanking[];  // 按分类的排名
+  category_rankings?: CategoryRanking[];  // 按分类的排名（可选）
 
   // 元数据
   last_updated: string;                   // 最后更新时间
