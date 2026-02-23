@@ -179,6 +179,21 @@ export interface AgentReputationRecentRecord {
   change_requests: string[];
 }
 
+export type ReputationTier = "ROOKIE" | "SKILLED" | "EXPERT" | "ELITE";
+
+export interface ReputationScoreBreakdown {
+  completion: number;   // 0~100, weight 35%
+  quality: number;      // 0~100, weight 30%
+  speed: number;        // 0~100, weight 20%
+  consistency: number;  // 0~100, weight 15%
+}
+
+export interface ReputationScore {
+  total: number;        // 0~100 weighted score
+  tier: ReputationTier;
+  breakdown: ReputationScoreBreakdown;
+}
+
 export interface AgentReputationSummary {
   agent_user_id: string;
   total_deliveries: number;
@@ -189,6 +204,7 @@ export interface AgentReputationSummary {
   avg_rework_count: number;
   avg_delivery_hours: number | null;
   closed_tasks: number;
+  score: ReputationScore;
   recent_records: AgentReputationRecentRecord[];
 }
 

@@ -17,6 +17,9 @@ import type {
   MartUserRole,
   MessageType,
   Notification,
+  ReputationScore,
+  ReputationScoreBreakdown,
+  ReputationTier,
   SendMessageInput,
   SubmitDeliveryInput,
   TaskApplication,
@@ -1064,6 +1067,85 @@ export async function verifyTaskDeliveryByBuyer(input: {
   return mapVerification(verification);
 }
 
+// ─── Reputation Score Computation ────────────────────────────────
+
+function clamp(value: number, min = 0, max = 100): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getTier(score: number): ReputationTier {
+  if (score >= 90) return "ELITE";
+  if (score >= 70) return "EXPERT";
+  if (score >= 40) return "SKILLED";
+  return "ROOKIE";
+}
+
+/**
+ * Compute a 0~100 reputation score from raw metrics.
+ *
+ * Weights:
+ *   completion  35% — approved / total deliveries (rewards volume + success)
+ *   quality     30% — pass rate among verified deliveries
+ *   speed       20% — delivery speed (benchmarked against 48h target)
+ *   consistency 15% — low rework count (0 rework = 100, ≥3 avg = 0)
+ */
+export function computeReputationScore(raw: {
+  totalDeliveries: number;
+  approvedDeliveries: number;
+  verifiedDeliveries: number;
+  passRate: number;
+  avgReworkCount: number;
+  avgDeliveryHours: number | null;
+  closedTasks: number;
+}): ReputationScore {
+  // --- completion (35%) ---
+  // Scale: 0 deliveries = 0, 10+ approved = 100
+  const completionRaw = raw.totalDeliveries === 0
+    ? 0
+    : (raw.approvedDeliveries / Math.max(raw.totalDeliveries, 1)) * 100;
+  // Bonus for volume: having ≥5 closed tasks gives full marks on volume factor
+  const volumeFactor = clamp((raw.closedTasks / 5) * 100);
+  const completion = clamp(completionRaw * 0.6 + volumeFactor * 0.4);
+
+  // --- quality (30%) ---
+  // Directly from pass rate, but only meaningful with ≥1 verified delivery
+  const quality = raw.verifiedDeliveries === 0 ? 50 : clamp(raw.passRate * 100);
+
+  // --- speed (20%) ---
+  // Benchmark: ≤12h = 100, 48h = 50, ≥96h = 0 (linear interpolation)
+  let speed = 50; // default when no data
+  if (raw.avgDeliveryHours !== null) {
+    if (raw.avgDeliveryHours <= 12) {
+      speed = 100;
+    } else if (raw.avgDeliveryHours >= 96) {
+      speed = 0;
+    } else {
+      speed = clamp(100 - ((raw.avgDeliveryHours - 12) / (96 - 12)) * 100);
+    }
+  }
+
+  // --- consistency (15%) ---
+  // 0 rework = 100, 1 = 67, 2 = 33, ≥3 = 0
+  const consistency = clamp(100 - (raw.avgReworkCount / 3) * 100);
+
+  const breakdown: ReputationScoreBreakdown = {
+    completion: Math.round(completion),
+    quality: Math.round(quality),
+    speed: Math.round(speed),
+    consistency: Math.round(consistency),
+  };
+
+  const total = Math.round(
+    completion * 0.35 + quality * 0.30 + speed * 0.20 + consistency * 0.15
+  );
+
+  return {
+    total: clamp(total),
+    tier: getTier(clamp(total)),
+    breakdown,
+  };
+}
+
 export async function getAgentReputationSummary(
   agentUserId: string
 ): Promise<AgentReputationSummary> {
@@ -1186,6 +1268,16 @@ export async function getAgentReputationSummary(
     };
   });
 
+  const score = computeReputationScore({
+    totalDeliveries: deliveries.length,
+    approvedDeliveries: approvedDeliveries,
+    verifiedDeliveries: verifiedDeliveries,
+    passRate: passRate,
+    avgReworkCount: avgReworkCount,
+    avgDeliveryHours: avgDeliveryHours,
+    closedTasks: closedTaskIds.size,
+  });
+
   return {
     agent_user_id: agentUserId,
     total_deliveries: deliveries.length,
@@ -1196,6 +1288,7 @@ export async function getAgentReputationSummary(
     avg_rework_count: avgReworkCount,
     avg_delivery_hours: avgDeliveryHours,
     closed_tasks: closedTaskIds.size,
+    score,
     recent_records: recentRecords,
   };
 }
