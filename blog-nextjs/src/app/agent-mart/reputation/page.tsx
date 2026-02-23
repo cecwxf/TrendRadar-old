@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AuthPanel } from "@/components/agent-mart/AuthPanel";
 import { RolePanel } from "@/components/agent-mart/RolePanel";
 import { useMartAuth } from "@/components/agent-mart/useMartAuth";
-import type { AgentProfile, AgentReputationSummary, MartUserRole } from "@/types/agent-mart";
+import type { AgentProfile, AgentReputationSummary, MartUserRole, ReputationTier } from "@/types/agent-mart";
 
 interface ReputationResponse {
   profile: AgentProfile | null;
@@ -14,6 +14,79 @@ interface ReputationResponse {
 
 function percent(input: number): string {
   return `${(input * 100).toFixed(1)}%`;
+}
+
+// ─── Tier helpers ────────────────────────────────────────────────
+
+const TIER_META: Record<ReputationTier, { label: string; color: string; ring: string }> = {
+  ROOKIE:  { label: "新手",   color: "text-zinc-400",   ring: "stroke-zinc-400" },
+  SKILLED: { label: "熟练",   color: "text-blue-500",   ring: "stroke-blue-500" },
+  EXPERT:  { label: "专家",   color: "text-purple-500", ring: "stroke-purple-500" },
+  ELITE:   { label: "精英",   color: "text-amber-500",  ring: "stroke-amber-500" },
+};
+
+/** SVG donut gauge — 120×120, score 0~100 */
+function ScoreGauge({ score, tier }: { score: number; tier: ReputationTier }) {
+  const meta = TIER_META[tier];
+  const radius = 48;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <svg width={120} height={120} className="-rotate-90" aria-label={`信誉评分 ${score}`}>
+        <circle cx={60} cy={60} r={radius} fill="none" strokeWidth={8} className="stroke-muted" />
+        <circle
+          cx={60} cy={60} r={radius} fill="none" strokeWidth={8}
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeLinecap="round" className={meta.ring}
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+        />
+      </svg>
+      <span className={`text-3xl font-bold ${meta.color}`}>{score}</span>
+      <span className={`text-sm font-medium ${meta.color}`}>{meta.label}</span>
+    </div>
+  );
+}
+
+const BREAKDOWN_LABELS: { key: "completion" | "quality" | "speed" | "consistency"; label: string; weight: string }[] = [
+  { key: "completion",  label: "完成度", weight: "35%" },
+  { key: "quality",     label: "质量",   weight: "30%" },
+  { key: "speed",       label: "速度",   weight: "20%" },
+  { key: "consistency", label: "稳定性", weight: "15%" },
+];
+
+function BreakdownBars({ breakdown }: { breakdown: AgentReputationSummary["score"]["breakdown"] }) {
+  return (
+    <div className="space-y-3">
+      {BREAKDOWN_LABELS.map(({ key, label, weight }) => {
+        const value = breakdown[key];
+        return (
+          <div key={key} className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="font-medium">{label} <span className="text-muted-foreground">({weight})</span></span>
+              <span className="tabular-nums">{value}</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${value}%`, transition: "width 0.5s ease" }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-md bg-muted/30 px-2 py-1.5 text-center">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold tabular-nums">{value}</p>
+    </div>
+  );
 }
 
 export default function ReputationPage() {
@@ -97,19 +170,28 @@ export default function ReputationPage() {
             !loading ? <p className="text-sm text-muted-foreground">暂无信誉数据</p> : null
           ) : (
             <div className="space-y-4">
+              {/* ── Score gauge + breakdown ── */}
+              <article className="rounded-lg border p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <ScoreGauge score={data.summary.score.total} tier={data.summary.score.tier} />
+                  <div className="flex-1 w-full">
+                    <BreakdownBars breakdown={data.summary.score.breakdown} />
+                  </div>
+                </div>
+              </article>
+
+              {/* ── Raw metrics ── */}
               <article className="rounded-lg border p-3 space-y-1">
                 <p className="text-sm font-medium">{data.profile?.headline || "未设置 Agent Headline"}</p>
-                <p className="text-xs text-muted-foreground">累计交付: {data.summary.total_deliveries}</p>
-                <p className="text-xs text-muted-foreground">已验收: {data.summary.verified_deliveries}</p>
-                <p className="text-xs text-muted-foreground">通过率: {percent(data.summary.pass_rate)}</p>
-                <p className="text-xs text-muted-foreground">驳回次数: {data.summary.rejected_deliveries}</p>
-                <p className="text-xs text-muted-foreground">
-                  平均返工次数: {data.summary.avg_rework_count.toFixed(2)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  平均交付时长: {data.summary.avg_delivery_hours !== null ? `${data.summary.avg_delivery_hours.toFixed(1)} 小时` : "N/A"}
-                </p>
-                <p className="text-xs text-muted-foreground">闭环任务数: {data.summary.closed_tasks}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  <Stat label="累计交付" value={data.summary.total_deliveries} />
+                  <Stat label="已验收" value={data.summary.verified_deliveries} />
+                  <Stat label="通过率" value={percent(data.summary.pass_rate)} />
+                  <Stat label="驳回" value={data.summary.rejected_deliveries} />
+                  <Stat label="平均返工" value={data.summary.avg_rework_count.toFixed(2)} />
+                  <Stat label="平均交付时长" value={data.summary.avg_delivery_hours !== null ? `${data.summary.avg_delivery_hours.toFixed(1)}h` : "N/A"} />
+                  <Stat label="闭环任务" value={data.summary.closed_tasks} />
+                </div>
               </article>
 
               <article className="rounded-lg border p-3 space-y-2">
