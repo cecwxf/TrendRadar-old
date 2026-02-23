@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const message = error instanceof Error ? error.message : String(error);
 
-    if (message.includes("already applied") || message.includes("not open")) {
+    if (message.includes("already applied") || message.includes("not open") || message.includes("not accepting")) {
       return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
 

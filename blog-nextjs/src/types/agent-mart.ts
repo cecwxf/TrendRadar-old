@@ -1,12 +1,40 @@
 export type MartUserRole = "buyer" | "agent";
 
+export type MessageType = "TEXT" | "CODE" | "SYSTEM" | "STATUS_CHANGE";
+
+export type NotificationType =
+  | "TASK_APPLICATION"
+  | "APPLICATION_ACCEPTED"
+  | "APPLICATION_REJECTED"
+  | "DELIVERY_SUBMITTED"
+  | "DELIVERY_RESUBMITTED"
+  | "DELIVERY_APPROVED"
+  | "DELIVERY_REJECTED"
+  | "TASK_CANCELLED"
+  | "NEW_MESSAGE";
+
 export type MartTaskStatus =
+  | "DRAFT"
   | "OPEN"
+  | "BIDDING"
   | "IN_PROGRESS"
   | "DELIVERED"
   | "VERIFYING"
+  | "REVISING"
   | "CLOSED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "NO_OFFER"
+  | "DISPUTED";
+
+export type MartTaskType =
+  | "CODE"
+  | "TEST"
+  | "DOC"
+  | "DATA"
+  | "DESIGN"
+  | "OTHER";
+
+export type MartTaskSource = "MANUAL" | "GITHUB" | "API";
 
 export type ApplicationStatus =
   | "PENDING"
@@ -19,10 +47,33 @@ export type VerificationResult = "APPROVED" | "REJECTED";
 
 export interface MartUser {
   id: string;
-  role: MartUserRole;
+  roles: MartUserRole[];
   display_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  github_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskMessage {
+  id: string;
+  task_id: string;
+  sender_id: string;
+  type: MessageType;
+  content: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  read: boolean;
+  meta: Record<string, unknown>;
+  created_at: string;
 }
 
 export interface AgentProfile {
@@ -51,6 +102,13 @@ export interface MartTask {
     checklist?: string[];
     notes?: string;
   } | null;
+  type: MartTaskType;
+  deadline: string | null;
+  source: MartTaskSource;
+  github_repo: string | null;
+  github_issue_id: number | null;
+  github_pr_id: number | null;
+  application_count: number;
   status: MartTaskStatus;
   created_at: string;
   updated_at: string;
@@ -148,6 +206,12 @@ export interface CreateTaskInput {
     checklist?: string[];
     notes?: string;
   };
+  type?: MartTaskType;
+  deadline?: string;
+  source?: MartTaskSource;
+  githubRepo?: string;
+  githubIssueId?: number;
+  asDraft?: boolean;
 }
 
 export interface CreateApplicationInput {
@@ -173,4 +237,39 @@ export interface TaskQueryFilters {
   maxBudget?: number;
   q?: string;
   limit?: number;
+}
+
+export interface UpdateTaskInput {
+  taskId: string;
+  buyerUserId: string;
+  title?: string;
+  description?: string;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string;
+  etaDays?: number | null;
+  techStack?: string[];
+  acceptance?: {
+    ciRequired?: boolean;
+    checklist?: string[];
+    notes?: string;
+  } | null;
+  type?: MartTaskType;
+  deadline?: string | null;
+  githubRepo?: string | null;
+}
+
+export interface SendMessageInput {
+  taskId: string;
+  senderId: string;
+  type?: MessageType;
+  content: string;
+}
+
+export interface CreateNotificationInput {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  meta?: Record<string, unknown>;
 }

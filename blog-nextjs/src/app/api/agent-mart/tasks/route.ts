@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRequestActor } from "@/lib/agent-mart/request-auth";
 import { createTask, listTasks, upsertMartUser } from "@/lib/agent-mart/service";
-import type { MartTaskStatus, TaskQueryFilters } from "@/types/agent-mart";
+import type { MartTaskStatus, MartTaskType, MartTaskSource, TaskQueryFilters } from "@/types/agent-mart";
 
-const STATUS_SET: MartTaskStatus[] = ["OPEN", "IN_PROGRESS", "CLOSED", "CANCELLED"];
+const STATUS_SET: MartTaskStatus[] = [
+  "DRAFT", "OPEN", "BIDDING", "IN_PROGRESS", "DELIVERED", "VERIFYING", "REVISING", "CLOSED", "CANCELLED", "NO_OFFER", "DISPUTED",
+];
+const TASK_TYPES: MartTaskType[] = ["CODE", "TEST", "DOC", "DATA", "DESIGN", "OTHER"];
+const TASK_SOURCES: MartTaskSource[] = ["MANUAL", "GITHUB", "API"];
 
 function parseOptionalNumber(input: string | null): number | undefined {
   if (!input) return undefined;
@@ -75,6 +79,9 @@ export async function POST(request: NextRequest) {
       displayName: body.displayName ? String(body.displayName) : undefined,
     });
 
+    const rawType = body.type ? String(body.type) : undefined;
+    const rawSource = body.source ? String(body.source) : undefined;
+
     const task = await createTask({
       buyerUserId: actor.userId,
       title,
@@ -92,6 +99,12 @@ export async function POST(request: NextRequest) {
               notes: body.acceptance.notes ? String(body.acceptance.notes) : undefined,
             }
           : undefined,
+      type: rawType && TASK_TYPES.includes(rawType as MartTaskType) ? (rawType as MartTaskType) : undefined,
+      deadline: body.deadline ? String(body.deadline) : undefined,
+      source: rawSource && TASK_SOURCES.includes(rawSource as MartTaskSource) ? (rawSource as MartTaskSource) : undefined,
+      githubRepo: body.githubRepo ? String(body.githubRepo) : undefined,
+      githubIssueId: typeof body.githubIssueId === "number" ? body.githubIssueId : undefined,
+      asDraft: body.asDraft === true,
     });
 
     return NextResponse.json({ success: true, data: task, identity: actor.source });

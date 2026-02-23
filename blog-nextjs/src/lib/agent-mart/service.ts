@@ -5,17 +5,26 @@ import type {
   AgentProfile,
   ApplicationStatus,
   CreateApplicationInput,
+  CreateNotificationInput,
   CreateTaskInput,
   DeliveryEvidence,
   MartTask,
   MartTaskStatus,
+  MartTaskType,
+  MartTaskSource,
+  NotificationType,
   MartUser,
   MartUserRole,
+  MessageType,
+  Notification,
+  SendMessageInput,
   SubmitDeliveryInput,
   TaskApplication,
   TaskDelivery,
+  TaskMessage,
   TaskVerification,
   TaskQueryFilters,
+  UpdateTaskInput,
   VerificationResult,
 } from "@/types/agent-mart";
 
@@ -26,6 +35,8 @@ const TABLES = {
   TASK_APPLICATIONS: "task_applications",
   TASK_DELIVERIES: "task_deliveries",
   TASK_VERIFICATIONS: "task_verifications",
+  TASK_MESSAGES: "task_messages",
+  NOTIFICATIONS: "notifications",
   MART_AUDIT_LOGS: "mart_audit_logs",
 } as const;
 
@@ -53,6 +64,13 @@ function mapTask(row: any): MartTask {
     eta_days: row.eta_days,
     tech_stack: normalizeStringArray(row.tech_stack),
     acceptance_json: row.acceptance_json || null,
+    type: row.type || "CODE",
+    deadline: row.deadline || null,
+    source: row.source || "MANUAL",
+    github_repo: row.github_repo || null,
+    github_issue_id: row.github_issue_id ?? null,
+    github_pr_id: row.github_pr_id ?? null,
+    application_count: Number(row.application_count || 0),
     status: row.status,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -137,12 +155,22 @@ export async function upsertMartUser(input: {
 }): Promise<MartUser> {
   const db = getAdminClient();
 
+  // Fetch existing user to merge roles additively
+  const { data: existing } = await db
+    .from(TABLES.MART_USERS)
+    .select("roles")
+    .eq("id", input.userId)
+    .maybeSingle();
+
+  const existingRoles: MartUserRole[] = Array.isArray(existing?.roles) ? existing.roles : [];
+  const mergedRoles = Array.from(new Set([...existingRoles, input.role]));
+
   const { data, error } = await db
     .from(TABLES.MART_USERS)
     .upsert(
       {
         id: input.userId,
-        role: input.role,
+        roles: mergedRoles,
         display_name: input.displayName || null,
       },
       { onConflict: "id" }
@@ -159,7 +187,7 @@ export async function upsertMartUser(input: {
     action: "MART_USER_UPSERT",
     entityType: "mart_user",
     entityId: input.userId,
-    meta: { role: input.role },
+    meta: { role: input.role, roles: mergedRoles },
   });
 
   return data as MartUser;
@@ -276,6 +304,8 @@ export async function listTasks(filters: TaskQueryFilters = {}): Promise<MartTas
 export async function createTask(input: CreateTaskInput): Promise<MartTask> {
   const db = getAdminClient();
 
+  const isDraft = input.asDraft === true;
+
   const payload = {
     buyer_user_id: input.buyerUserId,
     title: input.title,
@@ -292,7 +322,12 @@ export async function createTask(input: CreateTaskInput): Promise<MartTask> {
           notes: input.acceptance.notes || "",
         }
       : null,
-    status: "OPEN" satisfies MartTaskStatus,
+    type: input.type || "CODE",
+    deadline: input.deadline || null,
+    source: input.source || "MANUAL",
+    github_repo: input.githubRepo || null,
+    github_issue_id: input.githubIssueId ?? null,
+    status: (isDraft ? "DRAFT" : "OPEN") satisfies MartTaskStatus,
   };
 
   const { data, error } = await db
@@ -307,7 +342,7 @@ export async function createTask(input: CreateTaskInput): Promise<MartTask> {
 
   await addAuditLog({
     actorUserId: input.buyerUserId,
-    action: "TASK_CREATE",
+    action: isDraft ? "TASK_DRAFT" : "TASK_CREATE",
     entityType: "task",
     entityId: data.id,
     meta: {
@@ -336,6 +371,140 @@ export async function listBuyerTasks(buyerUserId: string): Promise<MartTask[]> {
   return (data || []).map(mapTask);
 }
 
+export async function getTaskById(taskId: string): Promise<MartTask | null> {
+  const db = supabase || getAdminClient();
+
+  const { data, error } = await db
+    .from(TABLES.MART_TASKS)
+    .select("*")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) return null;
+  return mapTask(data);
+}
+
+export async function updateTask(input: UpdateTaskInput): Promise<MartTask> {
+  const db = getAdminClient();
+
+  const { data: existing, error: fetchError } = await db
+    .from(TABLES.MART_TASKS)
+    .select("*")
+    .eq("id", input.taskId)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+  if (!existing) {
+    throw new Error("Task not found");
+  }
+  if (existing.buyer_user_id !== input.buyerUserId) {
+    throw new Error("Only the task owner can update this task");
+  }
+
+  const editable: MartTaskStatus[] = ["DRAFT", "OPEN"];
+  if (!editable.includes(existing.status)) {
+    throw new Error(`Cannot edit task in status ${existing.status}`);
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (input.title !== undefined) updates.title = input.title;
+  if (input.description !== undefined) updates.description = input.description;
+  if (input.budgetMin !== undefined) updates.budget_min = input.budgetMin;
+  if (input.budgetMax !== undefined) updates.budget_max = input.budgetMax;
+  if (input.currency !== undefined) updates.currency = input.currency;
+  if (input.etaDays !== undefined) updates.eta_days = input.etaDays;
+  if (input.techStack !== undefined) updates.tech_stack = input.techStack;
+  if (input.type !== undefined) updates.type = input.type;
+  if (input.deadline !== undefined) updates.deadline = input.deadline;
+  if (input.githubRepo !== undefined) updates.github_repo = input.githubRepo;
+  if (input.acceptance !== undefined) {
+    updates.acceptance_json = input.acceptance
+      ? {
+          ci_required: input.acceptance.ciRequired ?? false,
+          checklist: input.acceptance.checklist || [],
+          notes: input.acceptance.notes || "",
+        }
+      : null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return mapTask(existing);
+  }
+
+  const { data, error } = await db
+    .from(TABLES.MART_TASKS)
+    .update(updates)
+    .eq("id", input.taskId)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to update task");
+  }
+
+  await addAuditLog({
+    actorUserId: input.buyerUserId,
+    action: "TASK_UPDATE",
+    entityType: "task",
+    entityId: input.taskId,
+    meta: { updatedFields: Object.keys(updates) },
+  });
+
+  return mapTask(data);
+}
+
+export async function publishDraftTask(taskId: string, buyerUserId: string): Promise<MartTask> {
+  const db = getAdminClient();
+
+  const { data: task, error: taskError } = await db
+    .from(TABLES.MART_TASKS)
+    .select("*")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (taskError) {
+    throw new Error(taskError.message);
+  }
+
+  if (!task) {
+    throw new Error("Task not found");
+  }
+
+  if (task.buyer_user_id !== buyerUserId) {
+    throw new Error("Access denied");
+  }
+
+  if (task.status !== "DRAFT") {
+    throw new Error("Only draft tasks can be published");
+  }
+
+  const { data: updated, error: updateError } = await db
+    .from(TABLES.MART_TASKS)
+    .update({ status: "OPEN" })
+    .eq("id", taskId)
+    .select("*")
+    .single();
+
+  if (updateError || !updated) {
+    throw new Error(updateError?.message || "Failed to publish task");
+  }
+
+  await addAuditLog({
+    actorUserId: buyerUserId,
+    action: "TASK_PUBLISH",
+    entityType: "task",
+    entityId: taskId,
+  });
+
+  return mapTask(updated);
+}
+
 export async function createApplication(input: CreateApplicationInput): Promise<TaskApplication> {
   const db = getAdminClient();
 
@@ -353,7 +522,7 @@ export async function createApplication(input: CreateApplicationInput): Promise<
     throw new Error("Task not found");
   }
 
-  if (task.status !== "OPEN") {
+  if (task.status !== "OPEN" && task.status !== "BIDDING") {
     throw new Error("Task is not open for applications");
   }
 
@@ -502,6 +671,28 @@ export async function updateApplicationStatusByBuyer(input: {
       .eq("task_id", app.task_id)
       .neq("id", input.applicationId)
       .in("status", ["PENDING", "SHORTLISTED"]);
+
+    await emitStatusChange({
+      taskId: app.task_id,
+      actorId: input.buyerUserId,
+      message: "Application accepted — task is now IN_PROGRESS.",
+      notifyUserId: app.agent_user_id,
+      notificationType: "APPLICATION_ACCEPTED",
+      notificationTitle: "Your application was accepted",
+      notificationBody: "Your application has been accepted. The task is now in progress.",
+      meta: { application_id: input.applicationId },
+    });
+  } else if (input.status === "REJECTED") {
+    await emitStatusChange({
+      taskId: app.task_id,
+      actorId: input.buyerUserId,
+      message: "Application rejected.",
+      notifyUserId: app.agent_user_id,
+      notificationType: "APPLICATION_REJECTED",
+      notificationTitle: "Your application was rejected",
+      notificationBody: "Your application has been rejected by the task owner.",
+      meta: { application_id: input.applicationId },
+    });
   }
 
   await addAuditLog({
@@ -515,12 +706,48 @@ export async function updateApplicationStatusByBuyer(input: {
   return mapApplication(updated);
 }
 
+function validateDeliveryEvidence(evidence: DeliveryEvidence, taskId: string): string[] {
+  const warnings: string[] = [];
+
+  if (!evidence.pr_url) {
+    warnings.push("pr_url is required");
+  }
+  if (!evidence.repo_full_name) {
+    warnings.push("repo_full_name is required");
+  }
+  if (!evidence.pr_number) {
+    warnings.push("pr_number is required");
+  }
+  if (!evidence.commit_sha) {
+    warnings.push("commit_sha is required");
+  }
+  if (!evidence.self_check) {
+    warnings.push("self_check is required");
+  }
+
+  // V0.2: PR branch naming convention check (agent/<task_id>)
+  if (evidence.pr_url && !evidence.pr_url.includes(`agent/${taskId}`)) {
+    warnings.push(`PR branch should follow naming convention: agent/${taskId}`);
+  }
+
+  return warnings;
+}
+
 export async function submitTaskDelivery(input: SubmitDeliveryInput): Promise<TaskDelivery> {
   const db = getAdminClient();
 
+  // V0.2: Validate delivery evidence format
+  const validationErrors = validateDeliveryEvidence(input.evidence, input.taskId);
+  const hardErrors = validationErrors.filter(
+    (msg) => !msg.startsWith("PR branch should")
+  );
+  if (hardErrors.length > 0) {
+    throw new Error(`Invalid delivery evidence: ${hardErrors.join("; ")}`);
+  }
+
   const { data: task, error: taskError } = await db
     .from(TABLES.MART_TASKS)
-    .select("id, status")
+    .select("id, status, buyer_user_id")
     .eq("id", input.taskId)
     .maybeSingle();
 
@@ -532,8 +759,27 @@ export async function submitTaskDelivery(input: SubmitDeliveryInput): Promise<Ta
     throw new Error("Task not found");
   }
 
-  if (!["IN_PROGRESS", "DELIVERED", "VERIFYING"].includes(task.status)) {
+  if (!["IN_PROGRESS", "DELIVERED", "VERIFYING", "REVISING"].includes(task.status)) {
     throw new Error("Task is not in deliverable status");
+  }
+
+  // V0.2: For REVISING tasks, fetch the latest rejection's change_requests
+  let previousChangeRequests: string[] = [];
+  let isResubmission = false;
+  if (task.status === "REVISING") {
+    isResubmission = true;
+    const { data: lastRejection } = await db
+      .from(TABLES.TASK_VERIFICATIONS)
+      .select("change_requests")
+      .eq("task_id", input.taskId)
+      .eq("result", "REJECTED")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastRejection) {
+      previousChangeRequests = normalizeStringArray(lastRejection.change_requests);
+    }
   }
 
   const { data: acceptedApp, error: appError } = await db
@@ -569,19 +815,44 @@ export async function submitTaskDelivery(input: SubmitDeliveryInput): Promise<Ta
 
   await db.from(TABLES.MART_TASKS).update({ status: "DELIVERED" }).eq("id", input.taskId);
 
+  // V0.2: Soft warnings (e.g. branch naming) included in audit
+  const softWarnings = validationErrors.filter((msg) =>
+    msg.startsWith("PR branch should")
+  );
+
   await addAuditLog({
     actorUserId: input.agentUserId,
-    action: "DELIVERY_SUBMIT",
+    action: isResubmission ? "DELIVERY_RESUBMIT" : "DELIVERY_SUBMIT",
     entityType: "task_delivery",
     entityId: created.id,
     meta: {
       taskId: input.taskId,
       prUrl: input.evidence.pr_url,
       commitSha: input.evidence.commit_sha,
+      ...(isResubmission ? { previousChangeRequests } : {}),
+      ...(softWarnings.length > 0 ? { warnings: softWarnings } : {}),
     },
   });
 
-  return mapDelivery(created);
+  await emitStatusChange({
+    taskId: input.taskId,
+    actorId: input.agentUserId,
+    message: isResubmission
+      ? "Delivery resubmitted after revision."
+      : "Delivery submitted — awaiting buyer verification.",
+    notifyUserId: task.buyer_user_id,
+    notificationType: isResubmission ? "DELIVERY_RESUBMITTED" : "DELIVERY_SUBMITTED",
+    notificationTitle: isResubmission ? "Delivery resubmitted" : "New delivery submitted",
+    notificationBody: isResubmission
+      ? "The agent has resubmitted a revised delivery for your task."
+      : "The agent has submitted a delivery for your task. Please review it.",
+    meta: { delivery_id: created.id, pr_url: input.evidence.pr_url },
+  });
+
+  return {
+    ...mapDelivery(created),
+    ...(softWarnings.length > 0 ? { warnings: softWarnings } : {}),
+  } as TaskDelivery;
 }
 
 async function listVerificationsByDeliveryIds(deliveryIds: string[]): Promise<TaskVerification[]> {
@@ -759,7 +1030,7 @@ export async function verifyTaskDeliveryByBuyer(input: {
 
   await db
     .from(TABLES.MART_TASKS)
-    .update({ status: input.result === "APPROVED" ? "CLOSED" : "IN_PROGRESS" })
+    .update({ status: input.result === "APPROVED" ? "CLOSED" : "REVISING" })
     .eq("id", delivery.task_id);
 
   await addAuditLog({
@@ -772,6 +1043,22 @@ export async function verifyTaskDeliveryByBuyer(input: {
       result: input.result,
       rejectReason: input.rejectReason || null,
     },
+  });
+
+  const isApproved = input.result === "APPROVED";
+  await emitStatusChange({
+    taskId: delivery.task_id,
+    actorId: input.buyerUserId,
+    message: isApproved
+      ? "Delivery approved — task closed."
+      : "Delivery rejected — revision requested.",
+    notifyUserId: delivery.agent_user_id,
+    notificationType: isApproved ? "DELIVERY_APPROVED" : "DELIVERY_REJECTED",
+    notificationTitle: isApproved ? "Delivery approved" : "Delivery rejected",
+    notificationBody: isApproved
+      ? "Your delivery has been approved and the task is now closed."
+      : `Your delivery was rejected. ${input.rejectReason || "Please revise and resubmit."}`,
+    meta: { delivery_id: input.deliveryId },
   });
 
   return mapVerification(verification);
@@ -911,4 +1198,198 @@ export async function getAgentReputationSummary(
     closed_tasks: closedTaskIds.size,
     recent_records: recentRecords,
   };
+}
+
+// ─── Auto System Message + Notification Helper ──────────────────
+
+async function emitStatusChange(params: {
+  taskId: string;
+  actorId: string;
+  message: string;
+  notifyUserId?: string;
+  notificationType?: NotificationType;
+  notificationTitle?: string;
+  notificationBody?: string;
+  meta?: Record<string, unknown>;
+}) {
+  const db = getAdminClient();
+
+  // Insert SYSTEM message into task_messages
+  await db.from(TABLES.TASK_MESSAGES).insert({
+    task_id: params.taskId,
+    sender_id: params.actorId,
+    type: "STATUS_CHANGE" satisfies MessageType,
+    content: params.message,
+  });
+
+  // Create notification for the other party
+  if (params.notifyUserId && params.notificationType) {
+    await db.from(TABLES.NOTIFICATIONS).insert({
+      user_id: params.notifyUserId,
+      type: params.notificationType,
+      title: params.notificationTitle || params.message,
+      body: params.notificationBody || params.message,
+      meta: { task_id: params.taskId, ...params.meta },
+    });
+  }
+}
+
+// ─── Cancel Task ─────────────────────────────────────────────────
+
+export async function cancelTask(taskId: string, buyerUserId: string): Promise<MartTask> {
+  const db = getAdminClient();
+
+  const { data: task, error: fetchError } = await db
+    .from(TABLES.MART_TASKS)
+    .select("*")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!task) throw new Error("Task not found");
+  if (task.buyer_user_id !== buyerUserId) throw new Error("Only the task owner can cancel");
+
+  const cancellable: MartTaskStatus[] = ["DRAFT", "OPEN"];
+  if (!cancellable.includes(task.status)) {
+    throw new Error(`Cannot cancel task in status ${task.status}`);
+  }
+
+  const { data: updated, error: updateError } = await db
+    .from(TABLES.MART_TASKS)
+    .update({ status: "CANCELLED" satisfies MartTaskStatus })
+    .eq("id", taskId)
+    .select("*")
+    .single();
+
+  if (updateError || !updated) {
+    throw new Error(updateError?.message || "Failed to cancel task");
+  }
+
+  await addAuditLog({
+    actorUserId: buyerUserId,
+    action: "TASK_CANCEL",
+    entityType: "task",
+    entityId: taskId,
+    meta: { previousStatus: task.status },
+  });
+
+  return mapTask(updated);
+}
+
+// ─── Task Messages ───────────────────────────────────────────────
+
+export async function sendTaskMessage(input: SendMessageInput): Promise<TaskMessage> {
+  const db = getAdminClient();
+
+  const { data, error } = await db
+    .from(TABLES.TASK_MESSAGES)
+    .insert({
+      task_id: input.taskId,
+      sender_id: input.senderId,
+      type: input.type || "TEXT",
+      content: input.content,
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to send message");
+  }
+
+  return data as TaskMessage;
+}
+
+export async function getTaskMessages(
+  taskId: string,
+  opts?: { limit?: number; before?: string }
+): Promise<TaskMessage[]> {
+  const db = supabase || getAdminClient();
+  const limit = opts?.limit || 50;
+
+  let query = db
+    .from(TABLES.TASK_MESSAGES)
+    .select("*")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (opts?.before) {
+    query = query.lt("created_at", opts.before);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as TaskMessage[]) || [];
+}
+
+// ─── Notifications ───────────────────────────────────────────────
+
+export async function createNotification(input: CreateNotificationInput): Promise<Notification> {
+  const db = getAdminClient();
+
+  const { data, error } = await db
+    .from(TABLES.NOTIFICATIONS)
+    .insert({
+      user_id: input.userId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      meta: input.meta || {},
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to create notification");
+  }
+
+  return data as Notification;
+}
+
+export async function getNotifications(
+  userId: string,
+  opts?: { unreadOnly?: boolean; limit?: number }
+): Promise<Notification[]> {
+  const db = supabase || getAdminClient();
+  const limit = opts?.limit || 30;
+
+  let query = db
+    .from(TABLES.NOTIFICATIONS)
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (opts?.unreadOnly) {
+    query = query.eq("read", false);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as Notification[]) || [];
+}
+
+export async function markNotificationsRead(
+  userId: string,
+  notificationIds: string[]
+): Promise<void> {
+  const db = getAdminClient();
+
+  const { error } = await db
+    .from(TABLES.NOTIFICATIONS)
+    .update({ read: true })
+    .eq("user_id", userId)
+    .in("id", notificationIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }

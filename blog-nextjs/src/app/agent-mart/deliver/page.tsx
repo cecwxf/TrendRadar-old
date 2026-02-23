@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { AuthPanel } from "@/components/agent-mart/AuthPanel";
 import { RolePanel } from "@/components/agent-mart/RolePanel";
+import { StatusBadge } from "@/components/agent-mart/StatusBadge";
 import { useMartAuth } from "@/components/agent-mart/useMartAuth";
 import type { MartTask, MartUserRole, TaskApplication } from "@/types/agent-mart";
 
@@ -269,7 +270,7 @@ export default function DeliverPage() {
                 return (
                   <article key={task.id} className="rounded-lg border p-4 space-y-3">
                     <h3 className="font-semibold">{task.title}</h3>
-                    <p className="text-sm text-muted-foreground">当前状态：{task.status}</p>
+                    <p className="text-sm text-muted-foreground">当前状态：<StatusBadge status={task.status} /></p>
                     <p className="text-xs text-muted-foreground">历史交付轮次：{taskHistory.length}</p>
 
                     {latestRejected ? (
