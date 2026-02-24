@@ -16,8 +16,9 @@ const TASK_TYPES: { value: MartTaskType; label: string }[] = [
   { value: "OTHER", label: "其他" },
 ];
 
-const labelCls = "text-xs font-medium text-muted-foreground";
-const inputCls = "w-full rounded-lg border bg-background px-3 py-2 text-sm";
+const labelCls = "text-xs font-semibold tracking-wide text-muted-foreground";
+const inputCls =
+  "w-full rounded-xl border border-border/80 bg-background/95 px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20";
 
 export default function PublishTaskPage() {
   const auth = useMartAuthContext();
@@ -123,14 +124,16 @@ export default function PublishTaskPage() {
   const canSubmit = auth.isAuthenticated && auth.hasRole("buyer") && !submitting;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto max-w-2xl px-4 py-12 space-y-6">
-        <section className="space-y-2">
-          <h1 className="text-3xl font-bold">发布任务</h1>
-          <p className="text-muted-foreground">提交任务描述、预算和验收标准，进入 Agent Mart 广场。</p>
-          <Link href="/agent-mart" className="text-sm text-primary hover:underline">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.10),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent_36%)]">
+      <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
+        <section className="space-y-3 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm backdrop-blur">
+          <Link href="/agent-mart" className="inline-flex text-sm font-medium text-primary hover:underline">
             ← 返回 Agent Mart
           </Link>
+          <h1 className="text-3xl font-bold tracking-tight">发布任务</h1>
+          <p className="text-sm text-muted-foreground lg:text-base">
+            填写目标、预算与验收标准，任务会进入广场等待 Agent 竞标。
+          </p>
         </section>
 
         <AuthPanel auth={auth} title="Buyer 登录" description="登录后可发布任务并管理申请。" />
@@ -141,14 +144,12 @@ export default function PublishTaskPage() {
           description="本页面发布任务需要 buyer 角色。"
         />
 
-        <form onSubmit={handleSubmit} className="rounded-xl border bg-card p-5 space-y-5">
-          {/* ── 标题 ── */}
+        <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
           <label className="block space-y-1">
             <span className={labelCls}>任务标题 *</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} required />
           </label>
 
-          {/* ── 描述 ── */}
           <label className="block space-y-1">
             <span className={labelCls}>任务描述 *</span>
             <textarea
@@ -160,73 +161,78 @@ export default function PublishTaskPage() {
             />
           </label>
 
-          {/* ── 类型 + 截止日期 ── */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className={labelCls}>任务类型</span>
-              <select
-                value={taskType}
-                onChange={(e) => setTaskType(e.target.value as MartTaskType)}
-                className={inputCls}
-              >
-                {TASK_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-1">
-              <span className={labelCls}>截止日期</span>
-              <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={inputCls} />
-            </label>
-          </div>
-
-          {/* ── 预算 ── */}
-          <div className="grid gap-4 sm:grid-cols-4">
-            <label className="block space-y-1">
-              <span className={labelCls}>最低预算</span>
-              <input type="number" min="0" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} className={inputCls} />
-            </label>
-            <label className="block space-y-1">
-              <span className={labelCls}>最高预算</span>
-              <input type="number" min="0" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} className={inputCls} />
-            </label>
-            <label className="block space-y-1">
-              <span className={labelCls}>币种</span>
-              <input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} className={inputCls} />
-            </label>
-            <label className="block space-y-1">
-              <span className={labelCls}>交付天数</span>
-              <input type="number" min="1" value={etaDays} onChange={(e) => setEtaDays(e.target.value)} className={inputCls} />
-            </label>
-          </div>
-
-          {/* ── 技术标签 chips ── */}
-          <div className="space-y-1">
-            <span className={labelCls}>技术标签</span>
-            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5 min-h-[38px]">
-              {tags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+            <p className="mb-3 text-sm font-semibold">任务范围</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className={labelCls}>任务类型</span>
+                <select
+                  value={taskType}
+                  onChange={(e) => setTaskType(e.target.value as MartTaskType)}
+                  className={inputCls}
                 >
-                  {t}
-                  <button type="button" onClick={() => removeTag(t)} className="hover:text-destructive">×</button>
-                </span>
-              ))}
-              <input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagKey}
-                onBlur={() => addTag(tagInput)}
-                placeholder={tags.length ? "" : "输入后按 Enter 添加"}
-                className="flex-1 min-w-[120px] bg-transparent text-sm outline-none"
-              />
+                  {TASK_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1">
+                <span className={labelCls}>截止日期</span>
+                <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={inputCls} />
+              </label>
             </div>
           </div>
 
-          {/* ── 验收标准 ── */}
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+              <p className="mb-3 text-sm font-semibold">预算与周期</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block space-y-1">
+                  <span className={labelCls}>最低预算</span>
+                  <input type="number" min="0" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} className={inputCls} />
+                </label>
+                <label className="block space-y-1">
+                  <span className={labelCls}>最高预算</span>
+                  <input type="number" min="0" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} className={inputCls} />
+                </label>
+                <label className="block space-y-1">
+                  <span className={labelCls}>币种</span>
+                  <input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} className={inputCls} />
+                </label>
+                <label className="block space-y-1">
+                  <span className={labelCls}>交付天数</span>
+                  <input type="number" min="1" value={etaDays} onChange={(e) => setEtaDays(e.target.value)} className={inputCls} />
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-1 rounded-xl border border-border/70 bg-muted/20 p-4">
+              <span className={labelCls}>技术标签</span>
+              <div className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-xl border bg-background/90 px-2 py-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary"
+                  >
+                    {t}
+                    <button type="button" onClick={() => removeTag(t)} className="hover:text-destructive">×</button>
+                  </span>
+                ))}
+                <input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKey}
+                  onBlur={() => addTag(tagInput)}
+                  placeholder={tags.length ? "" : "输入后按 Enter 添加"}
+                  className="min-w-[120px] flex-1 bg-transparent text-sm outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">示例：React, Next.js, Python, LangChain</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
             <h3 className="text-sm font-semibold">验收标准</h3>
 
             <label className="flex items-center gap-2 text-sm">
@@ -250,12 +256,11 @@ export default function PublishTaskPage() {
             </label>
           </div>
 
-          {/* ── 操作按钮 ── */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="submit"
               disabled={!canSubmit}
-              className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+              className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             >
               {submitting ? "发布中..." : "发布任务"}
             </button>
@@ -263,12 +268,16 @@ export default function PublishTaskPage() {
               type="button"
               disabled={!canSubmit}
               onClick={() => doSubmit(true)}
-              className="rounded-lg border px-5 py-2 text-sm font-medium hover:bg-muted disabled:opacity-60"
+              className="rounded-xl border px-5 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-60"
             >
               保存草稿
             </button>
-            {message && <p className="text-sm text-muted-foreground">{message}</p>}
           </div>
+          {message && (
+            <p className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+              {message}
+            </p>
+          )}
         </form>
       </div>
     </main>

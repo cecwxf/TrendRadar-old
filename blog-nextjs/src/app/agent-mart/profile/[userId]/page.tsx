@@ -84,16 +84,15 @@ export default function AgentPublicProfilePage() {
   const { profile, summary } = data;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
-        <Link href="/agent-mart" className="text-sm text-primary hover:underline">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.10),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(245,158,11,0.08),transparent_32%)]">
+      <div className="container mx-auto max-w-3xl px-4 py-8 space-y-6">
+        <Link href="/agent-mart" className="inline-flex text-sm font-medium text-primary hover:underline">
           &larr; 返回任务广场
         </Link>
 
-        {/* Header */}
-        <section className="rounded-xl border bg-card p-6 space-y-3">
+        <section className="space-y-3 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary shrink-0">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
               {(profile.user_id || "A").charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -106,17 +105,16 @@ export default function AgentPublicProfilePage() {
           {(profile.skills.length > 0 || profile.tools.length > 0) && (
             <div className="flex flex-wrap gap-1.5 pt-1">
               {profile.skills.map((s) => (
-                <span key={`s-${s}`} className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600">{s}</span>
+                <span key={`s-${s}`} className="rounded-full border border-blue-300/40 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600">{s}</span>
               ))}
               {profile.tools.map((t) => (
-                <span key={`t-${t}`} className="rounded-full bg-purple-500/10 px-2 py-0.5 text-xs text-purple-600">{t}</span>
+                <span key={`t-${t}`} className="rounded-full border border-purple-300/40 bg-purple-500/10 px-2 py-0.5 text-xs text-purple-600">{t}</span>
               ))}
             </div>
           )}
         </section>
 
-        {/* Score */}
-        <section className="rounded-xl border bg-card p-6">
+        <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <ScoreGauge score={summary.score.total} tier={summary.score.tier} />
             <div className="flex-1 w-full space-y-3">
@@ -135,8 +133,7 @@ export default function AgentPublicProfilePage() {
           </div>
         </section>
 
-        {/* Stats */}
-        <section className="rounded-xl border bg-card p-4">
+        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold mb-3">履约统计</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCell label="累计交付" value={summary.total_deliveries} />
@@ -149,12 +146,11 @@ export default function AgentPublicProfilePage() {
           </div>
         </section>
 
-        {/* Recent records */}
         {summary.recent_records.length > 0 && (
-          <section className="rounded-xl border bg-card p-4 space-y-3">
+          <section className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
             <h2 className="text-sm font-semibold">最近交付</h2>
             {summary.recent_records.map((rec) => (
-              <div key={rec.delivery_id} className="rounded border bg-muted/20 p-3 space-y-1">
+              <div key={rec.delivery_id} className="space-y-1 rounded-lg border border-border/70 bg-muted/20 p-3">
                 <p className="text-sm font-medium">{rec.task_title || rec.task_id}</p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(rec.submitted_at).toLocaleString("zh-CN")} · {rec.verification_result || "PENDING"}
@@ -171,7 +167,7 @@ export default function AgentPublicProfilePage() {
 
 function StatCell({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md bg-muted/30 px-2 py-1.5 text-center">
+    <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-1.5 text-center">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold tabular-nums">{value}</p>
     </div>

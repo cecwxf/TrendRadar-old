@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthPanel } from "@/components/agent-mart/AuthPanel";
 import { RolePanel } from "@/components/agent-mart/RolePanel";
 import { useMartAuthContext } from "@/components/agent-mart/MartAuthContext";
@@ -82,7 +82,7 @@ function BreakdownBars({ breakdown }: { breakdown: AgentReputationSummary["score
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md bg-muted/30 px-2 py-1.5 text-center">
+    <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-1.5 text-center">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold tabular-nums">{value}</p>
     </div>
@@ -95,7 +95,7 @@ export default function ReputationPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!auth.isAuthenticated || !auth.accessToken) {
       setMessage("请先登录");
       return;
@@ -106,8 +106,8 @@ export default function ReputationPage() {
       return;
     }
 
-    setLoading(true);
-    setMessage(null);
+    if (!silent) setLoading(true);
+    if (!silent) setMessage(null);
 
     try {
       const res = await fetch("/api/agent-mart/agents/reputation", {
@@ -126,19 +126,27 @@ export default function ReputationPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.roles.includes("agent")) {
+      load(true);
+    }
+  }, [auth.isAuthenticated, auth.roles]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto px-4 py-12 space-y-6">
-        <section className="space-y-2">
-          <h1 className="text-3xl font-bold">Agent 信誉面板</h1>
-          <p className="text-muted-foreground">查看通过率、返工次数、平均交付时长和最近履历。</p>
-          <Link href="/agent-mart" className="text-sm text-primary hover:underline">
-            返回 Agent Mart
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.10),transparent_42%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.08),transparent_36%)]">
+      <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
+        <section className="space-y-3 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm backdrop-blur">
+          <Link href="/agent-mart" className="inline-flex text-sm font-medium text-primary hover:underline">
+            ← 返回 Agent Mart
           </Link>
+          <h1 className="text-3xl font-bold tracking-tight">Agent 信誉面板</h1>
+          <p className="text-sm text-muted-foreground">
+            查看通过率、返工次数、平均交付时长以及最近交付履历。
+          </p>
         </section>
 
         <AuthPanel auth={auth} title="Agent 登录" description="登录后查看你的信誉指标。" />
@@ -149,14 +157,14 @@ export default function ReputationPage() {
           description="信誉面板只对 agent 角色开放。"
         />
 
-        <section className="rounded-xl border bg-card p-4 space-y-4">
+        <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">信誉指标</h2>
             <button
               type="button"
-              onClick={load}
+              onClick={() => load()}
               disabled={loading || !auth.isAuthenticated || !auth.hasRole("agent")}
-              className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-60"
+              className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             >
               {loading ? "加载中..." : "刷新"}
             </button>
@@ -168,8 +176,7 @@ export default function ReputationPage() {
             !loading ? <p className="text-sm text-muted-foreground">暂无信誉数据</p> : null
           ) : (
             <div className="space-y-4">
-              {/* ── Score gauge + breakdown ── */}
-              <article className="rounded-lg border p-4">
+              <article className="rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <ScoreGauge score={data.summary.score.total} tier={data.summary.score.tier} />
                   <div className="flex-1 w-full">
@@ -178,8 +185,7 @@ export default function ReputationPage() {
                 </div>
               </article>
 
-              {/* ── Raw metrics ── */}
-              <article className="rounded-lg border p-3 space-y-1">
+              <article className="space-y-1 rounded-xl border border-border/70 bg-muted/20 p-3">
                 <p className="text-sm font-medium">{data.profile?.headline || "未设置 Agent Headline"}</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                   <Stat label="累计交付" value={data.summary.total_deliveries} />
@@ -192,14 +198,14 @@ export default function ReputationPage() {
                 </div>
               </article>
 
-              <article className="rounded-lg border p-3 space-y-2">
+              <article className="space-y-2 rounded-xl border border-border/70 bg-muted/20 p-3">
                 <h3 className="text-sm font-medium">最近交付履历</h3>
                 {data.summary.recent_records.length === 0 ? (
                   <p className="text-xs text-muted-foreground">暂无履历</p>
                 ) : (
                   <div className="space-y-2">
                     {data.summary.recent_records.map((record) => (
-                      <div key={record.delivery_id} className="rounded border bg-muted/20 p-2 space-y-1">
+                      <div key={record.delivery_id} className="space-y-1 rounded-lg border border-border/70 bg-background p-2">
                         <p className="text-xs font-medium">{record.task_title || record.task_id}</p>
                         <p className="text-xs text-muted-foreground">PR: {record.pr_url || "N/A"}</p>
                         <p className="text-xs text-muted-foreground">

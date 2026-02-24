@@ -112,107 +112,130 @@ export default function NotificationsPage() {
   };
 
   if (!auth.isAuthenticated) {
-    return <p className="p-8 text-center text-muted-foreground">请先登录</p>;
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_42%)]">
+        <div className="container mx-auto px-4 py-10">
+          <p className="rounded-2xl border border-border/70 bg-card p-8 text-center text-muted-foreground">请先登录</p>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">消息中心</h1>
-        <div className="flex items-center gap-3">
-          <div className="flex rounded-lg border text-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setFilter("all")}
-              className={`px-3 py-1.5 transition-colors ${
-                filter === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              }`}
-            >
-              全部
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilter("unread")}
-              className={`px-3 py-1.5 transition-colors ${
-                filter === "unread" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              }`}
-            >
-              未读{unreadCount > 0 && ` (${unreadCount})`}
-            </button>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.08),transparent_38%),radial-gradient(circle_at_78%_0%,rgba(59,130,246,0.10),transparent_40%)]">
+      <div className="container mx-auto max-w-3xl px-4 py-8 space-y-4">
+        <section className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm backdrop-blur">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">消息中心</h1>
+              <p className="text-sm text-muted-foreground">任务状态更新、竞标结果和协作消息都在这里。</p>
+            </div>
+            <div className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              未读 {unreadCount}
+            </div>
           </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllRead}
-              className="text-xs text-primary hover:underline"
-            >
-              全部已读
-            </button>
-          )}
-        </div>
-      </div>
 
-      {loading && <p className="text-center text-muted-foreground py-12">加载中...</p>}
-      {error && <p className="text-center text-red-500 py-12">{error}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex overflow-hidden rounded-xl border text-sm">
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                className={`px-3 py-1.5 transition-colors ${
+                  filter === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                }`}
+              >
+                全部
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilter("unread")}
+                className={`px-3 py-1.5 transition-colors ${
+                  filter === "unread" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                }`}
+              >
+                未读{unreadCount > 0 && ` (${unreadCount})`}
+              </button>
+            </div>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllRead}
+                className="rounded-xl border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+              >
+                全部标记已读
+              </button>
+            )}
+          </div>
+        </section>
 
-      {!loading && notifications.length === 0 && (
-        <p className="text-center text-muted-foreground py-12">暂无通知</p>
-      )}
+        {loading && (
+          <p className="rounded-xl border border-border/70 bg-card py-10 text-center text-muted-foreground">加载中...</p>
+        )}
+        {error && (
+          <p className="rounded-xl border border-red-200 bg-red-50 py-10 text-center text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+            {error}
+          </p>
+        )}
 
-      <div className="space-y-2">
-        {notifications.map((n) => {
-          const link = getTaskLink(n);
-          const inner = (
-            <div
-              className={`rounded-lg border p-4 transition-colors ${
-                n.read ? "bg-card" : "bg-primary/5 border-primary/20"
-              } hover:bg-muted/50`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                        TYPE_COLORS[n.type] || "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {TYPE_LABELS[n.type] || n.type}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</span>
+        {!loading && notifications.length === 0 && (
+          <p className="rounded-xl border border-dashed py-10 text-center text-muted-foreground">暂无通知</p>
+        )}
+
+        <div className="space-y-2">
+          {notifications.map((n) => {
+            const link = getTaskLink(n);
+            const inner = (
+              <div
+                className={`rounded-xl border p-4 transition-colors ${
+                  n.read ? "bg-card border-border/70" : "border-primary/20 bg-primary/5"
+                } hover:bg-muted/40`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <span
+                        className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                          TYPE_COLORS[n.type] || "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {TYPE_LABELS[n.type] || n.type}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</span>
+                    </div>
+                    <p className={`text-sm ${n.read ? "text-foreground" : "font-medium text-foreground"}`}>
+                      {n.title}
+                    </p>
+                    {n.body && n.body !== n.title && (
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
+                    )}
                   </div>
-                  <p className={`text-sm ${n.read ? "text-foreground" : "font-medium text-foreground"}`}>
-                    {n.title}
-                  </p>
-                  {n.body && n.body !== n.title && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.body}</p>
+                  {!n.read && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        markOneRead(n.id);
+                      }}
+                      className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary"
+                      aria-label="标记已读"
+                      title="标记已读"
+                    />
                   )}
                 </div>
-                {!n.read && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      markOneRead(n.id);
-                    }}
-                    className="shrink-0 rounded-full w-2 h-2 bg-primary mt-2"
-                    aria-label="标记已读"
-                    title="标记已读"
-                  />
-                )}
               </div>
-            </div>
-          );
+            );
 
-          return link ? (
-            <Link key={n.id} href={link} className="block">
-              {inner}
-            </Link>
-          ) : (
-            <div key={n.id}>{inner}</div>
-          );
-        })}
+            return link ? (
+              <Link key={n.id} href={link} className="block">
+                {inner}
+              </Link>
+            ) : (
+              <div key={n.id}>{inner}</div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
