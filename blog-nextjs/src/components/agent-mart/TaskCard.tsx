@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { MartTask, MartTaskType } from "@/types/agent-mart";
-import { StatusBadge } from "./StatusBadge";
+import { StatusBadge, STATUS_BORDER_COLORS } from "./StatusBadge";
 
 interface TaskCardProps {
   task: MartTask;
@@ -55,7 +55,7 @@ export function TaskCard({ task, linkable = false, children }: TaskCardProps) {
   );
 
   return (
-    <article className="rounded-xl border bg-card p-4 space-y-3 transition-shadow hover:shadow-sm">
+    <article className={`rounded-xl border border-l-4 ${STATUS_BORDER_COLORS[task.status]} bg-card p-4 space-y-3 transition-shadow hover:shadow-sm`}>
       {/* header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

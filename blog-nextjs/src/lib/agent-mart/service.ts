@@ -155,6 +155,9 @@ export async function upsertMartUser(input: {
   userId: string;
   role: MartUserRole;
   displayName?: string;
+  avatarUrl?: string;
+  email?: string;
+  githubId?: string;
 }): Promise<MartUser> {
   const db = getAdminClient();
 
@@ -168,16 +171,19 @@ export async function upsertMartUser(input: {
   const existingRoles: MartUserRole[] = Array.isArray(existing?.roles) ? existing.roles : [];
   const mergedRoles = Array.from(new Set([...existingRoles, input.role]));
 
+  const payload: Record<string, unknown> = {
+    id: input.userId,
+    roles: mergedRoles,
+    display_name: input.displayName || null,
+  };
+
+  if (input.avatarUrl !== undefined) payload.avatar_url = input.avatarUrl || null;
+  if (input.email !== undefined) payload.email = input.email || null;
+  if (input.githubId !== undefined) payload.github_id = input.githubId || null;
+
   const { data, error } = await db
     .from(TABLES.MART_USERS)
-    .upsert(
-      {
-        id: input.userId,
-        roles: mergedRoles,
-        display_name: input.displayName || null,
-      },
-      { onConflict: "id" }
-    )
+    .upsert(payload, { onConflict: "id" })
     .select("*")
     .single();
 
@@ -274,6 +280,10 @@ export async function listTasks(filters: TaskQueryFilters = {}): Promise<MartTas
 
   if (filters.status) {
     query = query.eq("status", filters.status);
+  }
+
+  if (filters.type) {
+    query = query.eq("type", filters.type);
   }
 
   if (filters.tech) {

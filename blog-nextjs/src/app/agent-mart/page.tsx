@@ -93,6 +93,7 @@ export default function AgentMartPage() {
     try {
       const params = new URLSearchParams();
       if (f.status) params.set("status", f.status);
+      if (f.type) params.set("type", f.type);
       if (f.q.trim()) params.set("q", f.q.trim());
       if (f.tech.trim()) params.set("tech", f.tech.trim());
       if (f.minBudget) params.set("minBudget", f.minBudget);
@@ -109,14 +110,7 @@ export default function AgentMartPage() {
         return;
       }
 
-      let result: MartTask[] = json.data || [];
-
-      // client-side type filter (API doesn't support type param yet)
-      if (f.type) {
-        result = result.filter((t) => t.type === f.type);
-      }
-
-      setTasks(sortTasks(result, f.sort));
+      setTasks(sortTasks(json.data || [], f.sort));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
     } finally {
@@ -200,227 +194,260 @@ export default function AgentMartPage() {
     }
   };
 
-  /* ── select style helper ── */
-  const selectCls =
-    "rounded-lg border bg-background px-3 py-2 text-sm";
+  const applyFilter = () => loadTasks(filters);
+
+  const labelCls = "text-xs font-medium text-muted-foreground";
+  const inputCls = "w-full rounded-lg border bg-background px-3 py-2 text-sm";
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto px-4 py-8 space-y-6">
-        {/* ── filter bar ── */}
-        <form
-          onSubmit={handleSearch}
-          className="rounded-xl border bg-card p-4 space-y-3"
-        >
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-xl font-semibold">任务广场</h2>
-            <div className="flex w-full gap-2 md:w-auto">
-              <input
-                value={filters.q}
-                onChange={(e) => patchFilters({ q: e.target.value })}
-                placeholder="搜索标题或描述"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm md:w-64"
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+      <div className="container mx-auto px-4 py-8">
+        {/* ── header + search ── */}
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold">任务广场</h2>
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              value={filters.q}
+              onChange={(e) => patchFilters({ q: e.target.value })}
+              placeholder="搜索标题或描述"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm sm:w-64"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+            >
+              搜索
+            </button>
+          </form>
+        </div>
+
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* ── left sidebar filters ── */}
+          <aside className="w-full shrink-0 space-y-5 rounded-xl border bg-card p-4 lg:w-60">
+            <div className="space-y-1.5">
+              <span className={labelCls}>状态</span>
+              <select
+                value={filters.status}
+                onChange={(e) => {
+                  patchFilters({ status: e.target.value as Filters["status"] });
+                }}
+                className={inputCls}
+                aria-label="状态筛选"
               >
-                搜索
+                <option value="">全部状态</option>
+                {BROWSABLE_STATUSES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className={labelCls}>类型</span>
+              <select
+                value={filters.type}
+                onChange={(e) => {
+                  patchFilters({ type: e.target.value as Filters["type"] });
+                }}
+                className={inputCls}
+                aria-label="类型筛选"
+              >
+                <option value="">全部类型</option>
+                {ALL_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className={labelCls}>预算范围</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="最低"
+                  value={filters.minBudget}
+                  onChange={(e) => patchFilters({ minBudget: e.target.value })}
+                  className={inputCls}
+                  aria-label="最低预算"
+                />
+                <span className="text-muted-foreground">-</span>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="最高"
+                  value={filters.maxBudget}
+                  onChange={(e) => patchFilters({ maxBudget: e.target.value })}
+                  className={inputCls}
+                  aria-label="最高预算"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className={labelCls}>技术标签</span>
+              <input
+                placeholder="如 React, Python"
+                value={filters.tech}
+                onChange={(e) => patchFilters({ tech: e.target.value })}
+                className={inputCls}
+                aria-label="技术标签筛选"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className={labelCls}>排序</span>
+              <select
+                value={filters.sort}
+                onChange={(e) => {
+                  const key = e.target.value as SortKey;
+                  patchFilters({ sort: key });
+                  setTasks((prev) => sortTasks(prev, key));
+                }}
+                className={inputCls}
+                aria-label="排序"
+              >
+                <option value="newest">最新发布</option>
+                <option value="budget_desc">预算从高到低</option>
+                <option value="deadline_asc">截止日期最近</option>
+                <option value="applications">申请最多</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={applyFilter}
+                className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
+              >
+                筛选
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilters(defaultFilters);
+                  loadTasks(defaultFilters);
+                }}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm hover:bg-muted"
+              >
+                重置
               </button>
             </div>
-          </div>
+          </aside>
 
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={filters.status}
-              onChange={(e) => patchFilters({ status: e.target.value as Filters["status"] })}
-              className={selectCls}
-              aria-label="状态筛选"
-            >
-              <option value="">全部状态</option>
-              {BROWSABLE_STATUSES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+          {/* ── right content area ── */}
+          <section className="min-w-0 flex-1 space-y-4">
+            {/* status messages */}
+            {loading && <p className="text-sm text-muted-foreground">加载中...</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 
-            <select
-              value={filters.type}
-              onChange={(e) => patchFilters({ type: e.target.value as Filters["type"] })}
-              className={selectCls}
-              aria-label="类型筛选"
-            >
-              <option value="">全部类型</option>
-              {ALL_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            {!loading && tasks.length === 0 && (
+              <p className="text-sm text-muted-foreground">暂无匹配任务</p>
+            )}
 
-            <input
-              type="number"
-              min="0"
-              placeholder="最低预算"
-              value={filters.minBudget}
-              onChange={(e) => patchFilters({ minBudget: e.target.value })}
-              className={`${selectCls} w-28`}
-              aria-label="最低预算"
-            />
-            <input
-              type="number"
-              min="0"
-              placeholder="最高预算"
-              value={filters.maxBudget}
-              onChange={(e) => patchFilters({ maxBudget: e.target.value })}
-              className={`${selectCls} w-28`}
-              aria-label="最高预算"
-            />
+            {/* task grid */}
+            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              {tasks.map((task) => {
+                const isActive = activeTaskId === task.id;
+                const draft = drafts[task.id] || defaultDraft;
 
-            <input
-              placeholder="技术标签"
-              value={filters.tech}
-              onChange={(e) => patchFilters({ tech: e.target.value })}
-              className={`${selectCls} w-32`}
-              aria-label="技术标签筛选"
-            />
-
-            <select
-              value={filters.sort}
-              onChange={(e) => {
-                const key = e.target.value as SortKey;
-                patchFilters({ sort: key });
-                setTasks((prev) => sortTasks(prev, key));
-              }}
-              className={selectCls}
-              aria-label="排序"
-            >
-              <option value="newest">最新发布</option>
-              <option value="budget_desc">预算从高到低</option>
-              <option value="deadline_asc">截止日期最近</option>
-              <option value="applications">申请最多</option>
-            </select>
-
-            <button
-              type="button"
-              onClick={() => {
-                setFilters(defaultFilters);
-                loadTasks(defaultFilters);
-              }}
-              className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"
-            >
-              重置
-            </button>
-          </div>
-        </form>
-
-        {/* ── status messages ── */}
-        {loading && <p className="text-sm text-muted-foreground">加载中...</p>}
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        {notice && <p className="text-sm text-emerald-600">{notice}</p>}
-
-        {!loading && tasks.length === 0 && (
-          <p className="text-sm text-muted-foreground">暂无匹配任务</p>
-        )}
-
-        {/* ── task grid ── */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tasks.map((task) => {
-            const isActive = activeTaskId === task.id;
-            const draft = drafts[task.id] || defaultDraft;
-
-            return (
-              <TaskCard key={task.id} task={task} linkable>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openApply(task.id)}
-                    disabled={!auth.isAuthenticated || auth.currentRole !== "agent"}
-                    className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-60"
-                  >
-                    申请任务
-                  </button>
-                </div>
-
-                {isActive && (
-                  <form className="mt-4 grid gap-3" onSubmit={(e) => submitApply(e, task.id)}>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="text-sm space-y-1">
-                        <span className="text-muted-foreground">报价</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={draft.bidAmount}
-                          onChange={(e) => updateDraft(task.id, { bidAmount: e.target.value })}
-                          className="w-full rounded-lg border bg-background px-3 py-2"
-                          required
-                        />
-                      </label>
-                      <label className="text-sm space-y-1">
-                        <span className="text-muted-foreground">交付时长（天）</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={draft.etaDays}
-                          onChange={(e) => updateDraft(task.id, { etaDays: e.target.value })}
-                          className="w-full rounded-lg border bg-background px-3 py-2"
-                          required
-                        />
-                      </label>
-                    </div>
-
-                    <label className="text-sm space-y-1">
-                      <span className="text-muted-foreground">执行计划</span>
-                      <textarea
-                        value={draft.plan}
-                        onChange={(e) => updateDraft(task.id, { plan: e.target.value })}
-                        rows={3}
-                        className="w-full rounded-lg border bg-background px-3 py-2"
-                        required
-                      />
-                    </label>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="text-sm space-y-1">
-                        <span className="text-muted-foreground">假设（可选）</span>
-                        <input
-                          value={draft.assumptions}
-                          onChange={(e) => updateDraft(task.id, { assumptions: e.target.value })}
-                          className="w-full rounded-lg border bg-background px-3 py-2"
-                        />
-                      </label>
-                      <label className="text-sm space-y-1">
-                        <span className="text-muted-foreground">信心值 0-1（可选）</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={draft.confidence}
-                          onChange={(e) => updateDraft(task.id, { confidence: e.target.value })}
-                          className="w-full rounded-lg border bg-background px-3 py-2"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={submittingTaskId === task.id}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-                      >
-                        {submittingTaskId === task.id ? "提交中..." : "提交申请"}
-                      </button>
+                return (
+                  <TaskCard key={task.id} task={task} linkable>
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => setActiveTaskId(null)}
-                        className="rounded-lg border px-4 py-2 text-sm"
+                        onClick={() => openApply(task.id)}
+                        disabled={!auth.isAuthenticated || auth.currentRole !== "agent"}
+                        className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-60"
                       >
-                        取消
+                        申请任务
                       </button>
                     </div>
-                  </form>
-                )}
-              </TaskCard>
-            );
-          })}
+
+                    {isActive && (
+                      <form className="mt-4 grid gap-3" onSubmit={(e) => submitApply(e, task.id)}>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="text-sm space-y-1">
+                            <span className="text-muted-foreground">报价</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={draft.bidAmount}
+                              onChange={(e) => updateDraft(task.id, { bidAmount: e.target.value })}
+                              className="w-full rounded-lg border bg-background px-3 py-2"
+                              required
+                            />
+                          </label>
+                          <label className="text-sm space-y-1">
+                            <span className="text-muted-foreground">交付时长（天）</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={draft.etaDays}
+                              onChange={(e) => updateDraft(task.id, { etaDays: e.target.value })}
+                              className="w-full rounded-lg border bg-background px-3 py-2"
+                              required
+                            />
+                          </label>
+                        </div>
+
+                        <label className="text-sm space-y-1">
+                          <span className="text-muted-foreground">执行计划</span>
+                          <textarea
+                            value={draft.plan}
+                            onChange={(e) => updateDraft(task.id, { plan: e.target.value })}
+                            rows={3}
+                            className="w-full rounded-lg border bg-background px-3 py-2"
+                            required
+                          />
+                        </label>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <label className="text-sm space-y-1">
+                            <span className="text-muted-foreground">假设（可选）</span>
+                            <input
+                              value={draft.assumptions}
+                              onChange={(e) => updateDraft(task.id, { assumptions: e.target.value })}
+                              className="w-full rounded-lg border bg-background px-3 py-2"
+                            />
+                          </label>
+                          <label className="text-sm space-y-1">
+                            <span className="text-muted-foreground">信心值 0-1（可选）</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={draft.confidence}
+                              onChange={(e) => updateDraft(task.id, { confidence: e.target.value })}
+                              className="w-full rounded-lg border bg-background px-3 py-2"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={submittingTaskId === task.id}
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                          >
+                            {submittingTaskId === task.id ? "提交中..." : "提交申请"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTaskId(null)}
+                            className="rounded-lg border px-4 py-2 text-sm"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </TaskCard>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </div>
     </main>

@@ -248,6 +248,7 @@ export interface SubmitDeliveryInput {
 
 export interface TaskQueryFilters {
   status?: MartTaskStatus;
+  type?: MartTaskType;
   tech?: string;
   minBudget?: number;
   maxBudget?: number;

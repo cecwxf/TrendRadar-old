@@ -1,5 +1,5 @@
 -- ============================================
--- Agent Mart Schema (MVP)
+-- Agent Mart Schema (MVP) — Canonical Truth
 -- ============================================
 -- 在 Supabase SQL Editor 中执行。
 -- 依赖：auth.users（Supabase Auth）
@@ -11,13 +11,16 @@ create extension if not exists pgcrypto;
 -- ============================================
 create table if not exists mart_users (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('buyer', 'agent')),
+  roles text[] not null default '{}',
   display_name text,
+  avatar_url text,
+  email text,
+  github_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
-create index if not exists idx_mart_users_role on mart_users(role);
+create index if not exists idx_mart_users_roles on mart_users using gin (roles);
 
 -- ============================================
 -- 2) Agent profiles
@@ -49,7 +52,20 @@ create table if not exists mart_tasks (
   eta_days int,
   tech_stack jsonb not null default '[]'::jsonb,
   acceptance_json jsonb,
-  status text not null default 'OPEN' check (status in ('OPEN', 'IN_PROGRESS', 'DELIVERED', 'VERIFYING', 'CLOSED', 'CANCELLED')),
+  type text not null default 'CODE'
+    check (type in ('CODE', 'TEST', 'DOC', 'DATA', 'DESIGN', 'OTHER')),
+  deadline timestamptz,
+  source text not null default 'MANUAL'
+    check (source in ('MANUAL', 'GITHUB', 'API')),
+  github_repo text,
+  github_issue_id int,
+  github_pr_id int,
+  application_count int not null default 0,
+  status text not null default 'OPEN'
+    check (status in (
+      'DRAFT', 'OPEN', 'BIDDING', 'IN_PROGRESS', 'DELIVERED',
+      'VERIFYING', 'REVISING', 'CLOSED', 'CANCELLED', 'NO_OFFER', 'DISPUTED'
+    )),
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   check (budget_min is null or budget_min >= 0),
@@ -57,15 +73,11 @@ create table if not exists mart_tasks (
   check (budget_min is null or budget_max is null or budget_max >= budget_min)
 );
 
--- 兼容已存在表：重建状态约束
-alter table mart_tasks drop constraint if exists mart_tasks_status_check;
-alter table mart_tasks
-  add constraint mart_tasks_status_check
-  check (status in ('OPEN', 'IN_PROGRESS', 'DELIVERED', 'VERIFYING', 'CLOSED', 'CANCELLED'));
-
 create index if not exists idx_mart_tasks_status_created on mart_tasks(status, created_at desc);
 create index if not exists idx_mart_tasks_buyer_status on mart_tasks(buyer_user_id, status);
 create index if not exists idx_mart_tasks_tech_stack on mart_tasks using gin (tech_stack);
+create index if not exists idx_mart_tasks_type on mart_tasks(type);
+create index if not exists idx_mart_tasks_deadline on mart_tasks(deadline) where deadline is not null;
 
 -- ============================================
 -- 4) Task applications
@@ -121,14 +133,44 @@ create table if not exists task_verifications (
   created_at timestamptz default now()
 );
 
-alter table if exists task_verifications
-  add column if not exists change_requests jsonb not null default '[]'::jsonb;
-
 create index if not exists idx_task_verifications_delivery_created on task_verifications(delivery_id, created_at desc);
 create index if not exists idx_task_verifications_task_created on task_verifications(task_id, created_at desc);
 
 -- ============================================
--- 7) Audit logs
+-- 7) Task messages
+-- ============================================
+create table if not exists task_messages (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references mart_tasks(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  type text not null default 'TEXT'
+    check (type in ('TEXT', 'CODE', 'SYSTEM', 'STATUS_CHANGE')),
+  content text not null,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_task_messages_task_created on task_messages(task_id, created_at desc);
+create index if not exists idx_task_messages_sender on task_messages(sender_id);
+
+-- ============================================
+-- 8) Notifications
+-- ============================================
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null,
+  title text not null,
+  body text not null default '',
+  read boolean not null default false,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_notifications_user_read_created on notifications(user_id, read, created_at desc);
+create index if not exists idx_notifications_user_created on notifications(user_id, created_at desc);
+
+-- ============================================
+-- 9) Audit logs
 -- ============================================
 create table if not exists mart_audit_logs (
   id bigserial primary key,
@@ -143,7 +185,7 @@ create table if not exists mart_audit_logs (
 create index if not exists idx_mart_audit_entity on mart_audit_logs(entity_type, entity_id, created_at desc);
 
 -- ============================================
--- 8) updated_at trigger
+-- 10) updated_at trigger
 -- ============================================
 create or replace function mart_update_updated_at_column()
 returns trigger as $$
@@ -174,7 +216,38 @@ create trigger update_task_applications_updated_at
   for each row execute function mart_update_updated_at_column();
 
 -- ============================================
--- 9) RLS
+-- 11) application_count auto-update trigger
+-- ============================================
+create or replace function mart_update_application_count()
+returns trigger as $$
+begin
+  if tg_op = 'INSERT' then
+    update mart_tasks
+    set application_count = application_count + 1
+    where id = new.task_id;
+    return new;
+  elsif tg_op = 'DELETE' then
+    update mart_tasks
+    set application_count = greatest(application_count - 1, 0)
+    where id = old.task_id;
+    return old;
+  end if;
+  return null;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_application_count_insert on task_applications;
+create trigger trg_application_count_insert
+  after insert on task_applications
+  for each row execute function mart_update_application_count();
+
+drop trigger if exists trg_application_count_delete on task_applications;
+create trigger trg_application_count_delete
+  after delete on task_applications
+  for each row execute function mart_update_application_count();
+
+-- ============================================
+-- 12) RLS
 -- ============================================
 alter table mart_users enable row level security;
 alter table agent_profiles enable row level security;
@@ -182,6 +255,8 @@ alter table mart_tasks enable row level security;
 alter table task_applications enable row level security;
 alter table task_deliveries enable row level security;
 alter table task_verifications enable row level security;
+alter table task_messages enable row level security;
+alter table notifications enable row level security;
 alter table mart_audit_logs enable row level security;
 
 -- mart_users
@@ -284,6 +359,50 @@ for insert with check (
     where t.id = task_id and t.buyer_user_id = auth.uid()
   )
 );
+
+-- task_messages
+drop policy if exists "task_messages_select" on task_messages;
+create policy "task_messages_select" on task_messages
+for select using (
+  auth.uid() = sender_id
+  or exists (
+    select 1 from mart_tasks t
+    where t.id = task_id and t.buyer_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from task_applications a
+    where a.task_id = task_messages.task_id and a.agent_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "task_messages_insert" on task_messages;
+create policy "task_messages_insert" on task_messages
+for insert with check (
+  auth.uid() = sender_id
+  and (
+    exists (
+      select 1 from mart_tasks t
+      where t.id = task_id and t.buyer_user_id = auth.uid()
+    )
+    or exists (
+      select 1 from task_applications a
+      where a.task_id = task_messages.task_id and a.agent_user_id = auth.uid()
+    )
+  )
+);
+
+-- notifications
+drop policy if exists "notifications_select_own" on notifications;
+create policy "notifications_select_own" on notifications
+for select using (auth.uid() = user_id);
+
+drop policy if exists "notifications_update_own" on notifications;
+create policy "notifications_update_own" on notifications
+for update using (auth.uid() = user_id);
+
+drop policy if exists "notifications_insert" on notifications;
+create policy "notifications_insert" on notifications
+for insert with check (auth.uid() = user_id or auth.role() = 'service_role');
 
 -- audit logs 仅 service_role 可写，默认不开放给 anon
 drop policy if exists "mart_audit_logs_select_service" on mart_audit_logs;

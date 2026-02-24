@@ -130,6 +130,25 @@ export function useMartAuth() {
     } satisfies AuthActionResult;
   };
 
+  const signInWithGitHub = async () => {
+    setError(null);
+    const client = getSupabaseBrowserClient();
+
+    const { error: oauthError } = await client.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: getEmailRedirectTo(),
+      },
+    });
+
+    if (oauthError) {
+      setError(oauthError.message);
+      return { success: false, error: oauthError.message } satisfies AuthActionResult;
+    }
+
+    return { success: true } satisfies AuthActionResult;
+  };
+
   const signOut = async () => {
     setError(null);
     const client = getSupabaseBrowserClient();
@@ -155,6 +174,7 @@ export function useMartAuth() {
     authHeaders,
     signInWithPassword,
     signUpWithPassword,
+    signInWithGitHub,
     resendSignUpConfirmation,
     signOut,
   };

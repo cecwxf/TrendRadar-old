@@ -36,8 +36,11 @@ export async function GET(request: NextRequest) {
     const sp = request.nextUrl.searchParams;
     const status = sp.get("status") || undefined;
 
+    const type = sp.get("type") || undefined;
+
     const filters: TaskQueryFilters = {
       status: status && STATUS_SET.includes(status as MartTaskStatus) ? (status as MartTaskStatus) : undefined,
+      type: type && TASK_TYPES.includes(type as MartTaskType) ? (type as MartTaskType) : undefined,
       tech: sp.get("tech") || undefined,
       minBudget: parseOptionalNumber(sp.get("minBudget")),
       maxBudget: parseOptionalNumber(sp.get("maxBudget")),
