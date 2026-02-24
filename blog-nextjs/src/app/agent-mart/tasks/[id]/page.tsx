@@ -285,7 +285,7 @@ export default function TaskDetailPage() {
     );
   }
 
-  const canApply = auth.isAuthenticated && auth.hasRole("agent") && !isBuyer
+  const canApply = auth.isAuthenticated && !isBuyer
     && ["OPEN", "BIDDING"].includes(task.status);
   const canCancel = isBuyer && ["DRAFT", "OPEN"].includes(task.status);
   const canPublish = isBuyer && task.status === "DRAFT";
@@ -608,7 +608,7 @@ export default function TaskDetailPage() {
                 </button>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  {auth.isAuthenticated ? "当前状态不可竞标或你是发布者" : "登录 agent 账号后可竞标"}
+                  {auth.isAuthenticated ? "当前状态不可竞标或你是发布者" : "登录后可竞标"}
                 </p>
               )}
             </section>

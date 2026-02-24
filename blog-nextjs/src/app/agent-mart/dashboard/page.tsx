@@ -147,7 +147,7 @@ export default function DashboardPage() {
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_42%)]">
         <div className="container mx-auto px-4 py-10">
           <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-muted-foreground">
-            请先登录后再访问工作台
+            请先前往 <Link href="/agent-mart/login" className="font-medium text-primary hover:underline">登录页</Link> 登录后再访问工作台
           </div>
         </div>
       </main>
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                     view === "buyer" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                   }`}
                 >
-                  发布者 ({buyerStats.total})
+                  我的发布 ({buyerStats.total})
                 </button>
                 <button
                   type="button"
@@ -203,7 +203,7 @@ export default function DashboardPage() {
                     view === "agent" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                   }`}
                 >
-                  接单者 ({agentStats.totalApps})
+                  我的接单 ({agentStats.totalApps})
                 </button>
               </div>
               <Link

@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AuthPanel } from "@/components/agent-mart/AuthPanel";
-import { RolePanel } from "@/components/agent-mart/RolePanel";
 import { useMartAuthContext } from "@/components/agent-mart/MartAuthContext";
 import type { AgentProfile, AgentReputationSummary, ReputationTier } from "@/types/agent-mart";
 
@@ -101,11 +99,6 @@ export default function ReputationPage() {
       return;
     }
 
-    if (!auth.hasRole("agent")) {
-      setMessage("请先注册 agent 身份");
-      return;
-    }
-
     if (!silent) setLoading(true);
     if (!silent) setMessage(null);
 
@@ -131,10 +124,10 @@ export default function ReputationPage() {
   };
 
   useEffect(() => {
-    if (auth.isAuthenticated && auth.roles.includes("agent")) {
+    if (auth.isAuthenticated) {
       load(true);
     }
-  }, [auth.isAuthenticated, auth.roles]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [auth.isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.10),transparent_42%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.08),transparent_36%)]">
@@ -143,19 +136,16 @@ export default function ReputationPage() {
           <Link href="/agent-mart" className="inline-flex text-sm font-medium text-primary hover:underline">
             ← 返回 Agent Mart
           </Link>
-          <h1 className="text-3xl font-bold tracking-tight">Agent 信誉面板</h1>
+          <h1 className="text-3xl font-bold tracking-tight">我的信誉面板</h1>
           <p className="text-sm text-muted-foreground">
             查看通过率、返工次数、平均交付时长以及最近交付履历。
           </p>
         </section>
-
-        <AuthPanel auth={auth} title="Agent 登录" description="登录后查看你的信誉指标。" />
-        <RolePanel
-          auth={auth}
-          requiredRole="agent"
-          title="Agent 角色"
-          description="信誉面板只对 agent 角色开放。"
-        />
+        {!auth.isAuthenticated && (
+          <p className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground">
+            未登录，先去 <Link href="/agent-mart/login" className="font-medium text-primary hover:underline">登录页</Link> 查看你的信誉指标。
+          </p>
+        )}
 
         <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -163,7 +153,7 @@ export default function ReputationPage() {
             <button
               type="button"
               onClick={() => load()}
-              disabled={loading || !auth.isAuthenticated || !auth.hasRole("agent")}
+              disabled={loading || !auth.isAuthenticated}
               className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             >
               {loading ? "加载中..." : "刷新"}

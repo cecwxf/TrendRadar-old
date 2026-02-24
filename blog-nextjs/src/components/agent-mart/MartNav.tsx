@@ -11,11 +11,6 @@ const CORE_NAV_ITEMS = [
   { href: "/agent-mart/reputation", label: "信誉面板" },
 ] as const;
 
-const ROLE_LABELS: Record<string, string> = {
-  buyer: "发布者",
-  agent: "接单者",
-};
-
 export function MartNav() {
   const pathname = usePathname();
   const auth = useMartAuthContext();
@@ -112,16 +107,6 @@ export function MartNav() {
           )}
           {auth.isAuthenticated ? (
             <>
-              <div className="flex gap-1">
-                {auth.roles.map((role) => (
-                  <span
-                    key={role}
-                    className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary/90"
-                  >
-                    {ROLE_LABELS[role] || role}
-                  </span>
-                ))}
-              </div>
               <span className="max-w-[180px] truncate text-sm text-muted-foreground">
                 {auth.email}
               </span>
@@ -134,7 +119,12 @@ export function MartNav() {
               </button>
             </>
           ) : (
-            <span className="text-sm text-muted-foreground">登录后可发布和竞标</span>
+            <Link
+              href="/agent-mart/login"
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              登录
+            </Link>
           )}
         </div>
 
@@ -198,16 +188,6 @@ export function MartNav() {
             {auth.isAuthenticated ? (
               <>
                 <p className="text-sm text-muted-foreground truncate">{auth.email}</p>
-                <div className="flex gap-1">
-                  {auth.roles.map((role) => (
-                    <span
-                      key={role}
-                      className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary/90"
-                    >
-                      {ROLE_LABELS[role] || role}
-                    </span>
-                  ))}
-                </div>
                 <button
                   type="button"
                   onClick={() => { auth.signOut(); setMenuOpen(false); }}
@@ -217,7 +197,13 @@ export function MartNav() {
                 </button>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">未登录</p>
+              <Link
+                href="/agent-mart/login"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg border px-3 py-2 text-sm hover:bg-muted"
+              >
+                去登录
+              </Link>
             )}
           </div>
         </div>

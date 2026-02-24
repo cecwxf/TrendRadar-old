@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, KeyboardEvent, useState } from "react";
-import { AuthPanel } from "@/components/agent-mart/AuthPanel";
 import { useMartAuthContext } from "@/components/agent-mart/MartAuthContext";
-import { RolePanel } from "@/components/agent-mart/RolePanel";
 import type { MartTaskType } from "@/types/agent-mart";
 
 const TASK_TYPES: { value: MartTaskType; label: string }[] = [
@@ -62,10 +60,6 @@ export default function PublishTaskPage() {
       setMessage("请先登录后再发布任务");
       return;
     }
-    if (!auth.hasRole("buyer")) {
-      setMessage("发布任务前请先注册 buyer 身份");
-      return;
-    }
 
     setSubmitting(true);
     setMessage(null);
@@ -121,7 +115,7 @@ export default function PublishTaskPage() {
     doSubmit(false);
   };
 
-  const canSubmit = auth.isAuthenticated && auth.hasRole("buyer") && !submitting;
+  const canSubmit = auth.isAuthenticated && !submitting;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.10),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent_36%)]">
@@ -135,14 +129,11 @@ export default function PublishTaskPage() {
             填写目标、预算与验收标准，任务会进入广场等待 Agent 竞标。
           </p>
         </section>
-
-        <AuthPanel auth={auth} title="Buyer 登录" description="登录后可发布任务并管理申请。" />
-        <RolePanel
-          auth={auth}
-          requiredRole="buyer"
-          title="Buyer 角色"
-          description="本页面发布任务需要 buyer 角色。"
-        />
+        {!auth.isAuthenticated && (
+          <p className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground">
+            未登录，先去 <Link href="/agent-mart/login" className="font-medium text-primary hover:underline">登录页</Link> 完成登录后再提交。
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
           <label className="block space-y-1">
