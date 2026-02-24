@@ -9,7 +9,6 @@ interface RolePanelProps {
   requiredRole?: MartUserRole;
   title?: string;
   description?: string;
-  onRoleChange?: (role: MartUserRole | null) => void;
 }
 
 export function RolePanel({
@@ -17,7 +16,6 @@ export function RolePanel({
   requiredRole,
   title = "角色设置",
   description = "选择你当前在 Agent Mart 的角色。",
-  onRoleChange,
 }: RolePanelProps) {
   const [currentRole, setCurrentRole] = useState<MartUserRole | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -28,7 +26,6 @@ export function RolePanel({
   const refreshRole = useCallback(async () => {
     if (!auth.isAuthenticated || !auth.accessToken) {
       setCurrentRole(null);
-      onRoleChange?.(null);
       return;
     }
 
@@ -47,7 +44,6 @@ export function RolePanel({
       if (!res.ok || !json.success) {
         setMessage(json.error || "加载角色失败");
         setCurrentRole(null);
-        onRoleChange?.(null);
         return;
       }
 
@@ -56,16 +52,14 @@ export function RolePanel({
 
       setCurrentRole(role);
       setDisplayName((prev) => prev || fetchedName);
-      onRoleChange?.(role);
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error);
       setMessage(text);
       setCurrentRole(null);
-      onRoleChange?.(null);
     } finally {
       setLoading(false);
     }
-  }, [auth.accessToken, auth.authHeaders, auth.isAuthenticated, onRoleChange]);
+  }, [auth.accessToken, auth.authHeaders, auth.isAuthenticated]);
 
   useEffect(() => {
     refreshRole();
@@ -100,7 +94,6 @@ export function RolePanel({
       }
 
       setCurrentRole(role);
-      onRoleChange?.(role);
       setMessage(`当前角色已切换为 ${role}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));

@@ -6,11 +6,15 @@ import type { MartUserRole } from "@/types/agent-mart";
 import { useCallback, useEffect, useState } from "react";
 
 interface MartAuthContextValue extends MartAuthState {
-  currentRole: MartUserRole | null;
+  /** All roles the user has (dual-identity: typically ["buyer","agent"]) */
+  roles: MartUserRole[];
   roleLoading: boolean;
   roleMessage: string | null;
-  setRole: (role: MartUserRole, displayName?: string) => Promise<void>;
+  /** Ensure user is registered (auto-grants dual roles) */
+  ensureRegistered: (displayName?: string) => Promise<void>;
   refreshRole: () => Promise<void>;
+  /** Check if user has a specific role */
+  hasRole: (role: MartUserRole) => boolean;
 }
 
 const MartAuthCtx = createContext<MartAuthContextValue | null>(null);
@@ -23,13 +27,13 @@ export function useMartAuthContext(): MartAuthContextValue {
 
 export function MartAuthProvider({ children }: { children: React.ReactNode }) {
   const auth = useMartAuth();
-  const [currentRole, setCurrentRole] = useState<MartUserRole | null>(null);
+  const [roles, setRoles] = useState<MartUserRole[]>([]);
   const [roleLoading, setRoleLoading] = useState(false);
   const [roleMessage, setRoleMessage] = useState<string | null>(null);
 
   const refreshRole = useCallback(async () => {
     if (!auth.isAuthenticated || !auth.accessToken) {
-      setCurrentRole(null);
+      setRoles([]);
       return;
     }
 
@@ -45,14 +49,15 @@ export function MartAuthProvider({ children }: { children: React.ReactNode }) {
       const json = await res.json();
       if (!res.ok || !json.success) {
         setRoleMessage(json.error || "加载角色失败");
-        setCurrentRole(null);
+        setRoles([]);
         return;
       }
 
-      setCurrentRole((json.data?.role as MartUserRole | undefined) || null);
+      const userRoles: MartUserRole[] = Array.isArray(json.data?.roles) ? json.data.roles : [];
+      setRoles(userRoles);
     } catch (error) {
       setRoleMessage(error instanceof Error ? error.message : String(error));
-      setCurrentRole(null);
+      setRoles([]);
     } finally {
       setRoleLoading(false);
     }
@@ -62,8 +67,8 @@ export function MartAuthProvider({ children }: { children: React.ReactNode }) {
     refreshRole();
   }, [refreshRole]);
 
-  const setRole = useCallback(
-    async (role: MartUserRole, displayName?: string) => {
+  const ensureRegistered = useCallback(
+    async (displayName?: string) => {
       if (!auth.isAuthenticated || !auth.accessToken) {
         setRoleMessage("请先登录");
         return;
@@ -79,17 +84,17 @@ export function MartAuthProvider({ children }: { children: React.ReactNode }) {
             "Content-Type": "application/json",
             ...auth.authHeaders,
           },
-          body: JSON.stringify({ role, displayName }),
+          body: JSON.stringify({ displayName }),
         });
 
         const json = await res.json();
         if (!res.ok || !json.success) {
-          setRoleMessage(json.error || "设置角色失败");
+          setRoleMessage(json.error || "注册失败");
           return;
         }
 
-        setCurrentRole(role);
-        setRoleMessage(`已切换为 ${role}`);
+        setRoles(["buyer", "agent"]);
+        setRoleMessage(null);
       } catch (error) {
         setRoleMessage(error instanceof Error ? error.message : String(error));
       } finally {
@@ -99,15 +104,18 @@ export function MartAuthProvider({ children }: { children: React.ReactNode }) {
     [auth.accessToken, auth.authHeaders, auth.isAuthenticated],
   );
 
+  const hasRole = useCallback((role: MartUserRole) => roles.includes(role), [roles]);
+
   return (
     <MartAuthCtx.Provider
       value={{
         ...auth,
-        currentRole,
+        roles,
         roleLoading,
         roleMessage,
-        setRole,
+        ensureRegistered,
         refreshRole,
+        hasRole,
       }}
     >
       {children}

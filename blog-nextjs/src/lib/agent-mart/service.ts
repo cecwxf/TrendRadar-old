@@ -273,7 +273,7 @@ export async function getAgentProfileByUserId(userId: string): Promise<AgentProf
   return mapAgentProfile(data);
 }
 
-export async function listTasks(filters: TaskQueryFilters = {}): Promise<MartTask[]> {
+export async function listTasks(filters: TaskQueryFilters = {}): Promise<(MartTask & { buyer_info?: { display_name: string | null; avatar_url: string | null } })[]> {
   const db = supabase || getAdminClient();
 
   let query = db.from(TABLES.MART_TASKS).select("*").order("created_at", { ascending: false });
@@ -311,7 +311,28 @@ export async function listTasks(filters: TaskQueryFilters = {}): Promise<MartTas
     throw new Error(error.message);
   }
 
-  return (data || []).map(mapTask);
+  const tasks = (data || []).map(mapTask);
+
+  // Batch-fetch buyer info for all tasks
+  const buyerIds = [...new Set(tasks.map((t) => t.buyer_user_id))];
+  const buyerMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+
+  if (buyerIds.length > 0) {
+    const adminDb = getAdminClient();
+    const { data: buyers } = await adminDb
+      .from(TABLES.MART_USERS)
+      .select("id, display_name, avatar_url")
+      .in("id", buyerIds);
+
+    for (const b of buyers || []) {
+      buyerMap.set(b.id, { display_name: b.display_name, avatar_url: b.avatar_url });
+    }
+  }
+
+  return tasks.map((t) => ({
+    ...t,
+    buyer_info: buyerMap.get(t.buyer_user_id) || { display_name: null, avatar_url: null },
+  }));
 }
 
 export async function createTask(input: CreateTaskInput): Promise<MartTask> {
@@ -384,7 +405,7 @@ export async function listBuyerTasks(buyerUserId: string): Promise<MartTask[]> {
   return (data || []).map(mapTask);
 }
 
-export async function getTaskById(taskId: string): Promise<MartTask | null> {
+export async function getTaskById(taskId: string): Promise<(MartTask & { buyer_info?: { display_name: string | null; avatar_url: string | null } }) | null> {
   const db = supabase || getAdminClient();
 
   const { data, error } = await db
@@ -398,7 +419,23 @@ export async function getTaskById(taskId: string): Promise<MartTask | null> {
   }
 
   if (!data) return null;
-  return mapTask(data);
+
+  const task = mapTask(data);
+
+  // Fetch buyer info
+  const adminDb = getAdminClient();
+  const { data: buyer } = await adminDb
+    .from(TABLES.MART_USERS)
+    .select("display_name, avatar_url")
+    .eq("id", task.buyer_user_id)
+    .maybeSingle();
+
+  return {
+    ...task,
+    buyer_info: buyer
+      ? { display_name: buyer.display_name, avatar_url: buyer.avatar_url }
+      : { display_name: null, avatar_url: null },
+  };
 }
 
 export async function updateTask(input: UpdateTaskInput): Promise<MartTask> {
@@ -559,6 +596,42 @@ export async function createApplication(input: CreateApplicationInput): Promise<
       throw new Error("You have already applied to this task");
     }
     throw new Error(error?.message || "Failed to create application");
+  }
+
+  // Auto-transition OPEN → BIDDING on first application
+  if (task.status === "OPEN") {
+    await db
+      .from(TABLES.MART_TASKS)
+      .update({ status: "BIDDING" satisfies MartTaskStatus })
+      .eq("id", input.taskId);
+
+    await emitStatusChange({
+      taskId: input.taskId,
+      actorId: input.agentUserId,
+      message: "First application received — task is now in BIDDING.",
+      notifyUserId: undefined,
+      notificationType: undefined,
+    });
+  }
+
+  // Notify buyer about new application
+  const { data: taskFull } = await db
+    .from(TABLES.MART_TASKS)
+    .select("buyer_user_id")
+    .eq("id", input.taskId)
+    .maybeSingle();
+
+  if (taskFull?.buyer_user_id) {
+    await emitStatusChange({
+      taskId: input.taskId,
+      actorId: input.agentUserId,
+      message: "New application submitted.",
+      notifyUserId: taskFull.buyer_user_id,
+      notificationType: "TASK_APPLICATION",
+      notificationTitle: "New application received",
+      notificationBody: "An agent has applied to your task.",
+      meta: { application_id: data.id },
+    });
   }
 
   await addAuditLog({

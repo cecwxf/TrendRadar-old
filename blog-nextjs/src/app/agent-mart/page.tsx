@@ -155,10 +155,6 @@ export default function AgentMartPage() {
       setError("请先登录后再申请任务");
       return;
     }
-    if (auth.currentRole !== "agent") {
-      setError("申请任务前请先把角色切换为 agent");
-      return;
-    }
 
     const draft = drafts[taskId] || defaultDraft;
     setSubmittingTaskId(taskId);
@@ -205,20 +201,30 @@ export default function AgentMartPage() {
         {/* ── header + search ── */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold">任务广场</h2>
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <input
-              value={filters.q}
-              onChange={(e) => patchFilters({ q: e.target.value })}
-              placeholder="搜索标题或描述"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm sm:w-64"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
-            >
-              搜索
-            </button>
-          </form>
+          <div className="flex gap-2">
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <input
+                value={filters.q}
+                onChange={(e) => patchFilters({ q: e.target.value })}
+                placeholder="搜索标题或描述"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm sm:w-64"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+              >
+                搜索
+              </button>
+            </form>
+            {auth.isAuthenticated && (
+              <a
+                href="/agent-mart/publish"
+                className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                + 发布任务
+              </a>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">
@@ -357,7 +363,7 @@ export default function AgentMartPage() {
                       <button
                         type="button"
                         onClick={() => openApply(task.id)}
-                        disabled={!auth.isAuthenticated || auth.currentRole !== "agent"}
+                        disabled={!auth.isAuthenticated}
                         className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-60"
                       >
                         申请任务

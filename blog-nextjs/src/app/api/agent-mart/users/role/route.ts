@@ -53,22 +53,24 @@ export async function POST(request: NextRequest) {
     const actor = await requireRequestActor(request);
     const body = await request.json();
 
-    const role = String(body.role || "") as MartUserRole;
-    if (!ALLOWED_ROLES.includes(role)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid role. Allowed roles: buyer, agent" },
-        { status: 400 }
-      );
-    }
-
+    // Dual-role: always grant both roles on registration
     const displayName = body.displayName ? String(body.displayName) : undefined;
 
     // Extract GitHub metadata from auth user
     const meta = await extractAuthMetadata(actor.userId);
 
+    // Register with both roles by default (dual identity)
     const user = await upsertMartUser({
       userId: actor.userId,
-      role,
+      role: "buyer",
+      displayName,
+      ...meta,
+    });
+
+    // Ensure agent role is also added
+    await upsertMartUser({
+      userId: actor.userId,
+      role: "agent",
       displayName,
       ...meta,
     });

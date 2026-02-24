@@ -3,7 +3,7 @@ import type { MartTask, MartTaskType } from "@/types/agent-mart";
 import { StatusBadge, STATUS_BORDER_COLORS } from "./StatusBadge";
 
 interface TaskCardProps {
-  task: MartTask;
+  task: MartTask & { buyer_info?: { display_name: string | null; avatar_url: string | null } };
   /** If true, the card title links to /agent-mart/tasks/[id] */
   linkable?: boolean;
   children?: React.ReactNode;
@@ -36,11 +36,24 @@ function deadlineLabel(deadline: string | null): string | null {
   return `${diff} 天后截止`;
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "刚刚";
+  if (mins < 60) return `${mins} 分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  return `${Math.floor(days / 30)} 月前`;
+}
+
 /* ── component ── */
 
 export function TaskCard({ task, linkable = false, children }: TaskCardProps) {
   const dlLabel = deadlineLabel(task.deadline);
   const isUrgent = dlLabel !== null && (dlLabel === "已过期" || dlLabel === "今天截止");
+  const buyerName = (task as any).buyer_info?.display_name || "匿名用户";
 
   const title = (
     <h3 className="text-lg font-semibold leading-snug">
@@ -85,14 +98,21 @@ export function TaskCard({ task, linkable = false, children }: TaskCardProps) {
         </div>
       )}
 
-      {/* meta row */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span>预算: {formatBudget(task)}</span>
-        <span>交期: {task.eta_days ? `${task.eta_days} 天` : "–"}</span>
-        <span>申请: {task.application_count}</span>
+      {/* meta row — primary info */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <span className="font-medium text-foreground">预算: {formatBudget(task)}</span>
+        <span className="text-muted-foreground">交期: {task.eta_days ? `${task.eta_days} 天` : "–"}</span>
+        <span className="text-muted-foreground">申请: {task.application_count}</span>
         {dlLabel && (
-          <span className={isUrgent ? "text-red-500 font-medium" : ""}>{dlLabel}</span>
+          <span className={isUrgent ? "text-red-500 font-medium" : "text-muted-foreground"}>{dlLabel}</span>
         )}
+      </div>
+
+      {/* secondary info — publisher + time */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>发布者: {buyerName}</span>
+        <span>{timeAgo(task.created_at)}</span>
+        {task.source !== "MANUAL" && <span>来源: {task.source}</span>}
       </div>
 
       {children}

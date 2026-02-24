@@ -7,9 +7,9 @@ import { useMartAuthContext } from "./MartAuthContext";
 
 const NAV_ITEMS = [
   { href: "/agent-mart", label: "任务广场" },
-  { href: "/agent-mart/publish", label: "发布任务" },
   { href: "/agent-mart/dashboard", label: "工作台" },
   { href: "/agent-mart/reputation", label: "信誉面板" },
+  { href: "/agent-mart/profile", label: "个人中心" },
 ] as const;
 
 export function MartNav() {
@@ -35,6 +35,11 @@ export function MartNav() {
     return () => clearInterval(interval);
   }, [fetchUnread]);
 
+  const isActive = (href: string) => {
+    if (href === "/agent-mart") return pathname === href;
+    return pathname.startsWith(href);
+  };
+
   return (
     <nav className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
       <div className="container mx-auto flex items-center justify-between px-4 h-14">
@@ -45,7 +50,7 @@ export function MartNav() {
 
           <div className="hidden md:flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href;
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
@@ -82,40 +87,20 @@ export function MartNav() {
           )}
           {auth.isAuthenticated ? (
             <>
-              {auth.currentRole && (
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
-                  {auth.currentRole}
-                </span>
-              )}
+              {/* Dual-identity badges */}
+              <div className="flex gap-1">
+                {auth.roles.map((role) => (
+                  <span
+                    key={role}
+                    className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium capitalize"
+                  >
+                    {role}
+                  </span>
+                ))}
+              </div>
               <span className="text-sm text-muted-foreground truncate max-w-[160px]">
                 {auth.email}
               </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => auth.setRole("buyer")}
-                  disabled={auth.roleLoading || auth.currentRole === "buyer"}
-                  className={`rounded-lg px-2 py-1 text-xs transition-colors ${
-                    auth.currentRole === "buyer"
-                      ? "bg-primary text-primary-foreground"
-                      : "border hover:bg-muted"
-                  } disabled:opacity-60`}
-                >
-                  Buyer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => auth.setRole("agent")}
-                  disabled={auth.roleLoading || auth.currentRole === "agent"}
-                  className={`rounded-lg px-2 py-1 text-xs transition-colors ${
-                    auth.currentRole === "agent"
-                      ? "bg-primary text-primary-foreground"
-                      : "border hover:bg-muted"
-                  } disabled:opacity-60`}
-                >
-                  Agent
-                </button>
-              </div>
               <button
                 type="button"
                 onClick={() => auth.signOut()}
@@ -150,7 +135,7 @@ export function MartNav() {
       {menuOpen && (
         <div className="md:hidden border-t px-4 py-3 space-y-2 bg-card">
           {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href;
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
@@ -182,27 +167,15 @@ export function MartNav() {
             {auth.isAuthenticated ? (
               <>
                 <p className="text-sm text-muted-foreground truncate">{auth.email}</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => auth.setRole("buyer")}
-                    disabled={auth.roleLoading}
-                    className={`rounded-lg px-3 py-1.5 text-xs ${
-                      auth.currentRole === "buyer" ? "bg-primary text-primary-foreground" : "border"
-                    } disabled:opacity-60`}
-                  >
-                    Buyer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => auth.setRole("agent")}
-                    disabled={auth.roleLoading}
-                    className={`rounded-lg px-3 py-1.5 text-xs ${
-                      auth.currentRole === "agent" ? "bg-primary text-primary-foreground" : "border"
-                    } disabled:opacity-60`}
-                  >
-                    Agent
-                  </button>
+                <div className="flex gap-1">
+                  {auth.roles.map((role) => (
+                    <span
+                      key={role}
+                      className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium capitalize"
+                    >
+                      {role}
+                    </span>
+                  ))}
                 </div>
                 <button
                   type="button"

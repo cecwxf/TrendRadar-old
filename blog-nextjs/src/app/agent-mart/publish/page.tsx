@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { FormEvent, KeyboardEvent, useState } from "react";
 import { AuthPanel } from "@/components/agent-mart/AuthPanel";
-import { useMartAuth } from "@/components/agent-mart/useMartAuth";
+import { useMartAuthContext } from "@/components/agent-mart/MartAuthContext";
 import { RolePanel } from "@/components/agent-mart/RolePanel";
-import type { MartUserRole, MartTaskType } from "@/types/agent-mart";
+import type { MartTaskType } from "@/types/agent-mart";
 
 const TASK_TYPES: { value: MartTaskType; label: string }[] = [
   { value: "CODE", label: "编码开发" },
@@ -20,7 +20,7 @@ const labelCls = "text-xs font-medium text-muted-foreground";
 const inputCls = "w-full rounded-lg border bg-background px-3 py-2 text-sm";
 
 export default function PublishTaskPage() {
-  const auth = useMartAuth();
+  const auth = useMartAuthContext();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -37,7 +37,6 @@ export default function PublishTaskPage() {
   const [ciRequired, setCiRequired] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<MartUserRole | null>(null);
 
   /* ── tag helpers ── */
   const addTag = (raw: string) => {
@@ -62,8 +61,8 @@ export default function PublishTaskPage() {
       setMessage("请先登录后再发布任务");
       return;
     }
-    if (currentRole !== "buyer") {
-      setMessage("发布任务前请先把角色切换为 buyer");
+    if (!auth.hasRole("buyer")) {
+      setMessage("发布任务前请先注册 buyer 身份");
       return;
     }
 
@@ -121,7 +120,7 @@ export default function PublishTaskPage() {
     doSubmit(false);
   };
 
-  const canSubmit = auth.isAuthenticated && currentRole === "buyer" && !submitting;
+  const canSubmit = auth.isAuthenticated && auth.hasRole("buyer") && !submitting;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -140,7 +139,6 @@ export default function PublishTaskPage() {
           requiredRole="buyer"
           title="Buyer 角色"
           description="本页面发布任务需要 buyer 角色。"
-          onRoleChange={setCurrentRole}
         />
 
         <form onSubmit={handleSubmit} className="rounded-xl border bg-card p-5 space-y-5">

@@ -7,7 +7,6 @@ import { AppStatusBadge, StatusBadge } from "@/components/agent-mart/StatusBadge
 import Link from "next/link";
 import type {
   MartTask,
-  MartUserRole,
   TaskApplication,
   TaskDelivery,
   TaskVerification,
@@ -47,66 +46,68 @@ const VERIFY_COLORS: Record<string, string> = {
   REJECTED: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300",
 };
 
-/* ── tab button ── */
-
-const tabCls = (active: boolean) =>
-  `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-    active
-      ? "bg-primary text-primary-foreground"
-      : "text-muted-foreground hover:bg-muted"
-  }`;
-
 /* ── component ── */
 
 export default function DashboardPage() {
   const auth = useMartAuthContext();
-  const defaultTab = auth.currentRole ?? "buyer";
 
-  const [tab, setTab] = useState<MartUserRole>(defaultTab);
   const [buyerData, setBuyerData] = useState<BuyerData | null>(null);
   const [agentData, setAgentData] = useState<AgentData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingBuyer, setLoadingBuyer] = useState(false);
+  const [loadingAgent, setLoadingAgent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* sync tab when role changes externally */
-  useEffect(() => {
-    if (auth.currentRole) setTab(auth.currentRole);
-  }, [auth.currentRole]);
-
-  /* fetch data for active tab */
+  /* fetch buyer data */
   useEffect(() => {
     if (!auth.isAuthenticated) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    setLoadingBuyer(true);
 
-    fetch(`/api/agent-mart/tasks/my?role=${tab}`, {
+    fetch("/api/agent-mart/tasks/my?role=buyer", {
       headers: { ...auth.authHeaders },
       cache: "no-store",
     })
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
-        if (!json.success) {
-          setError(json.error || "加载失败");
-          return;
-        }
-        if (tab === "agent") {
-          setAgentData(json.data as AgentData);
-        } else {
-          setBuyerData(json.data as BuyerData);
-        }
+        if (json.success) setBuyerData(json.data as BuyerData);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoadingBuyer(false);
       });
 
     return () => { cancelled = true; };
-  }, [auth.isAuthenticated, auth.authHeaders, tab]);
+  }, [auth.isAuthenticated, auth.authHeaders]);
+
+  /* fetch agent data */
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+
+    let cancelled = false;
+    setLoadingAgent(true);
+
+    fetch("/api/agent-mart/tasks/my?role=agent", {
+      headers: { ...auth.authHeaders },
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json.success) setAgentData(json.data as AgentData);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAgent(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [auth.isAuthenticated, auth.authHeaders]);
 
   /* ── buyer stats ── */
   const buyerStats = useMemo(() => {
@@ -133,6 +134,8 @@ export default function DashboardPage() {
     return { totalApps, accepted, totalDels, approved, rejected, pending, passRate };
   }, [agentData]);
 
+  const loading = loadingBuyer || loadingAgent;
+
   /* ── not logged in ── */
   if (!auth.isAuthenticated) {
     return (
@@ -143,33 +146,26 @@ export default function DashboardPage() {
   }
 
   return (
-    <section className="space-y-6">
-      {/* ── tabs ── */}
+    <section className="space-y-8">
+      {/* ── header ── */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-2">
-          <button type="button" className={tabCls(tab === "buyer")} onClick={() => setTab("buyer")}>
-            Buyer 工作台
-          </button>
-          <button type="button" className={tabCls(tab === "agent")} onClick={() => setTab("agent")}>
-            Agent 工作台
-          </button>
-        </div>
-        {tab === "buyer" && (
-          <Link
-            href="/agent-mart/publish"
-            className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
-          >
-            发布新任务
-          </Link>
-        )}
+        <h2 className="text-xl font-semibold">工作台</h2>
+        <Link
+          href="/agent-mart/publish"
+          className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
+        >
+          发布新任务
+        </Link>
       </div>
 
       {loading && <p className="text-sm text-muted-foreground py-10 text-center">加载中…</p>}
       {error && <p className="text-sm text-red-500 py-10 text-center">{error}</p>}
 
-      {/* ══════════ Buyer Tab ══════════ */}
-      {!loading && !error && tab === "buyer" && (
-        <>
+      {/* ══════════ Buyer Section ══════════ */}
+      {!loadingBuyer && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold border-b pb-2">我发布的任务</h3>
+
           {/* stat cards */}
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
             <StatCard label="全部任务" value={buyerStats.total} />
@@ -181,7 +177,7 @@ export default function DashboardPage() {
 
           {/* task list */}
           {(buyerData?.tasks ?? []).length === 0 ? (
-            <p className="text-muted-foreground py-10 text-center">暂无任务</p>
+            <p className="text-muted-foreground py-6 text-center">暂无任务</p>
           ) : (
             <div className="grid gap-4">
               {(buyerData?.tasks ?? []).map((t) => (
@@ -189,12 +185,14 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
-      {/* ══════════ Agent Tab ══════════ */}
-      {!loading && !error && tab === "agent" && (
-        <>
+      {/* ══════════ Agent Section ══════════ */}
+      {!loadingAgent && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold border-b pb-2">我的接单</h3>
+
           {/* stat cards */}
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
             <StatCard label="申请总数" value={agentStats.totalApps} sub={`${agentStats.accepted} 已接受`} />
@@ -205,7 +203,7 @@ export default function DashboardPage() {
 
           {/* applications */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">我的申请</h3>
+            <h4 className="font-medium text-muted-foreground">我的申请</h4>
             {(agentData?.applications ?? []).length === 0 ? (
               <p className="text-muted-foreground py-6 text-center">暂无申请记录</p>
             ) : (
@@ -240,7 +238,7 @@ export default function DashboardPage() {
 
           {/* deliveries */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">我的交付</h3>
+            <h4 className="font-medium text-muted-foreground">我的交付</h4>
             {(agentData?.deliveries ?? []).length === 0 ? (
               <p className="text-muted-foreground py-6 text-center">暂无交付记录</p>
             ) : (
@@ -292,7 +290,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
     </section>
   );

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { AuthPanel } from "@/components/agent-mart/AuthPanel";
 import { RolePanel } from "@/components/agent-mart/RolePanel";
-import { useMartAuth } from "@/components/agent-mart/useMartAuth";
-import type { AgentProfile, AgentReputationSummary, MartUserRole, ReputationTier } from "@/types/agent-mart";
+import { useMartAuthContext } from "@/components/agent-mart/MartAuthContext";
+import type { AgentProfile, AgentReputationSummary, ReputationTier } from "@/types/agent-mart";
 
 interface ReputationResponse {
   profile: AgentProfile | null;
@@ -90,8 +90,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function ReputationPage() {
-  const auth = useMartAuth();
-  const [currentRole, setCurrentRole] = useState<MartUserRole | null>(null);
+  const auth = useMartAuthContext();
   const [data, setData] = useState<ReputationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -102,8 +101,8 @@ export default function ReputationPage() {
       return;
     }
 
-    if (currentRole !== "agent") {
-      setMessage("请先把角色切换为 agent");
+    if (!auth.hasRole("agent")) {
+      setMessage("请先注册 agent 身份");
       return;
     }
 
@@ -148,7 +147,6 @@ export default function ReputationPage() {
           requiredRole="agent"
           title="Agent 角色"
           description="信誉面板只对 agent 角色开放。"
-          onRoleChange={setCurrentRole}
         />
 
         <section className="rounded-xl border bg-card p-4 space-y-4">
@@ -157,7 +155,7 @@ export default function ReputationPage() {
             <button
               type="button"
               onClick={load}
-              disabled={loading || !auth.isAuthenticated || currentRole !== "agent"}
+              disabled={loading || !auth.isAuthenticated || !auth.hasRole("agent")}
               className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-60"
             >
               {loading ? "加载中..." : "刷新"}

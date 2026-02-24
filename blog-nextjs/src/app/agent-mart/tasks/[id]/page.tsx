@@ -269,7 +269,7 @@ export default function TaskDetailPage() {
     );
   }
 
-  const canApply = auth.isAuthenticated && auth.currentRole === "agent" && !isBuyer
+  const canApply = auth.isAuthenticated && auth.hasRole("agent") && !isBuyer
     && ["OPEN", "BIDDING"].includes(task.status);
   const canCancel = isBuyer && ["DRAFT", "OPEN"].includes(task.status);
   const canPublish = isBuyer && task.status === "DRAFT";

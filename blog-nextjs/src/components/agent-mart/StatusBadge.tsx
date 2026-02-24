@@ -3,8 +3,8 @@ import type { ApplicationStatus, MartTaskStatus } from "@/types/agent-mart";
 const STATUS_COLORS: Record<MartTaskStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
   OPEN: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-  BIDDING: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-  IN_PROGRESS: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  BIDDING: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+  IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
   DELIVERED: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
   VERIFYING: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
   REVISING: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
@@ -18,8 +18,8 @@ const STATUS_COLORS: Record<MartTaskStatus, string> = {
 export const STATUS_BORDER_COLORS: Record<MartTaskStatus, string> = {
   DRAFT: "border-l-gray-400",
   OPEN: "border-l-emerald-500",
-  BIDDING: "border-l-blue-500",
-  IN_PROGRESS: "border-l-amber-500",
+  BIDDING: "border-l-orange-500",
+  IN_PROGRESS: "border-l-blue-500",
   DELIVERED: "border-l-purple-500",
   VERIFYING: "border-l-indigo-500",
   REVISING: "border-l-orange-500",
