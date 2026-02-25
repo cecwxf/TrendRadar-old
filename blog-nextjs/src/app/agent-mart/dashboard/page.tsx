@@ -10,6 +10,7 @@ import type {
   TaskApplication,
   TaskDelivery,
   TaskVerification,
+  Notification,
 } from "@/types/agent-mart";
 
 /* ── API response shapes ── */
@@ -56,8 +57,10 @@ export default function DashboardPage() {
 
   const [buyerData, setBuyerData] = useState<BuyerData | null>(null);
   const [agentData, setAgentData] = useState<AgentData | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingBuyer, setLoadingBuyer] = useState(false);
   const [loadingAgent, setLoadingAgent] = useState(false);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /* fetch buyer data */
@@ -112,6 +115,30 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [auth.isAuthenticated, auth.authHeaders]);
 
+  /* fetch recent unread notifications */
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+
+    let cancelled = false;
+    setLoadingNotifs(true);
+
+    fetch("/api/agent-mart/notifications?unreadOnly=true&limit=5", {
+      headers: { ...auth.authHeaders },
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json.success) setNotifications(json.data as Notification[]);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingNotifs(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [auth.isAuthenticated, auth.authHeaders]);
+
   /* ── buyer stats ── */
   const buyerStats = useMemo(() => {
     const tasks = buyerData?.tasks ?? [];
@@ -137,6 +164,7 @@ export default function DashboardPage() {
     return { totalApps, accepted, totalDels, approved, rejected, pending, passRate };
   }, [agentData]);
 
+  const unreadCount = notifications.filter((n) => !n.read).length;
   const loading = loadingBuyer || loadingAgent;
   const showBuyer = view === "overview" || view === "buyer";
   const showAgent = view === "overview" || view === "agent";
@@ -225,6 +253,65 @@ export default function DashboardPage() {
           <p className="rounded-xl border border-red-200 bg-red-50 py-6 text-center text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
             {error}
           </p>
+        )}
+
+        {/* ── quick-jump + notifications (overview only) ── */}
+        {view === "overview" && (
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* quick-jump buttons */}
+            <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-muted-foreground">快捷入口</h2>
+              <div className="grid grid-cols-2 gap-2">
+                <Link href="/agent-mart/publish" className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-muted">
+                  发布任务
+                </Link>
+                <Link href="/agent-mart/tasks" className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-muted">
+                  浏览任务
+                </Link>
+                <Link href="/agent-mart/profile" className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-muted">
+                  我的档案
+                </Link>
+                <Link href="/agent-mart/notifications" className="relative rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-muted">
+                  通知中心
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+              </div>
+            </div>
+
+            {/* recent notifications */}
+            <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-muted-foreground">最近通知</h2>
+                <Link href="/agent-mart/notifications" className="text-xs text-primary hover:underline">
+                  查看全部
+                </Link>
+              </div>
+              {loadingNotifs ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">加载中…</p>
+              ) : notifications.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">暂无新通知</p>
+              ) : (
+                <ul className="space-y-2">
+                  {notifications.map((n) => (
+                    <li key={n.id} className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                      {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug">{n.title}</p>
+                        {n.body && <p className="line-clamp-1 text-xs text-muted-foreground">{n.body}</p>}
+                      </div>
+                      <time className="shrink-0 text-[10px] text-muted-foreground">
+                        {new Date(n.created_at).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })}
+                      </time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
 
         {showBuyer && !loadingBuyer && (

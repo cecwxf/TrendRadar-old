@@ -8,6 +8,8 @@ import type {
   CreateNotificationInput,
   CreateTaskInput,
   DeliveryEvidence,
+  GitHubWebhookIssuePayload,
+  GitHubWebhookPRPayload,
   MartTask,
   MartTaskStatus,
   MartTaskType,
@@ -1568,4 +1570,186 @@ export async function markNotificationsRead(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+// ─── GitHub Webhook Handlers ─────────────────────────────────────
+
+/** Map GitHub issue labels to MartTaskType */
+function labelToTaskType(labels: Array<{ name: string }>): MartTaskType {
+  const names = labels.map((l) => l.name.toLowerCase());
+  if (names.some((n) => n.includes("test"))) return "TEST";
+  if (names.some((n) => n.includes("doc"))) return "DOC";
+  if (names.some((n) => n.includes("data"))) return "DATA";
+  if (names.some((n) => n.includes("design"))) return "DESIGN";
+  return "CODE";
+}
+
+/** Extract tech stack hints from issue labels (skip non-tech labels) */
+function labelsToTechStack(labels: Array<{ name: string }>): string[] {
+  const skip = new Set(["bug", "enhancement", "feature", "help wanted", "good first issue", "test", "doc", "data", "design"]);
+  return labels
+    .map((l) => l.name)
+    .filter((n) => !skip.has(n.toLowerCase()));
+}
+
+/**
+ * Create a DRAFT task from a GitHub issue webhook event.
+ * The task is linked to the repo and issue via github_repo / github_issue_id.
+ * A "system" buyer_user_id is used since the webhook has no logged-in user.
+ */
+export async function createTaskFromGitHubIssue(
+  payload: GitHubWebhookIssuePayload
+): Promise<MartTask> {
+  const { issue, repository } = payload;
+
+  const task = await createTask({
+    buyerUserId: "github-webhook",
+    title: issue.title,
+    description: issue.body || `GitHub Issue #${issue.number} from ${repository.full_name}`,
+    type: labelToTaskType(issue.labels),
+    techStack: labelsToTechStack(issue.labels),
+    source: "GITHUB",
+    githubRepo: repository.full_name,
+    githubIssueId: issue.number,
+    asDraft: true,
+  });
+
+  return task;
+}
+
+/**
+ * Handle a merged PR event: find the linked task by github_repo + github_pr_id,
+ * insert a system message, and notify the buyer.
+ */
+export async function handlePRMerge(
+  payload: GitHubWebhookPRPayload
+): Promise<void> {
+  const db = getAdminClient();
+  const { pull_request: pr, repository } = payload;
+
+  // Try to find a task linked to this PR
+  const { data: task } = await db
+    .from(TABLES.MART_TASKS)
+    .select("id, buyer_user_id, status")
+    .eq("github_repo", repository.full_name)
+    .eq("github_pr_id", pr.number)
+    .maybeSingle();
+
+  if (!task) {
+    // Also try matching by branch naming convention: agent/<task_id>
+    const branchMatch = pr.head.ref.match(/^agent\/(.+)$/);
+    if (!branchMatch) return;
+
+    const { data: taskByBranch } = await db
+      .from(TABLES.MART_TASKS)
+      .select("id, buyer_user_id, status")
+      .eq("id", branchMatch[1])
+      .maybeSingle();
+
+    if (!taskByBranch) return;
+
+    await emitStatusChange({
+      taskId: taskByBranch.id,
+      actorId: "github-webhook",
+      message: `PR #${pr.number} merged in ${repository.full_name} (${pr.merge_commit_sha?.slice(0, 7) || "N/A"})`,
+      notifyUserId: taskByBranch.buyer_user_id,
+      notificationType: "DELIVERY_SUBMITTED",
+      notificationTitle: "PR merged",
+      notificationBody: `PR #${pr.number} has been merged in ${repository.full_name}. Please review the delivery.`,
+      meta: { pr_url: pr.html_url, pr_number: pr.number },
+    });
+    return;
+  }
+
+  await emitStatusChange({
+    taskId: task.id,
+    actorId: "github-webhook",
+    message: `PR #${pr.number} merged in ${repository.full_name} (${pr.merge_commit_sha?.slice(0, 7) || "N/A"})`,
+    notifyUserId: task.buyer_user_id,
+    notificationType: "DELIVERY_SUBMITTED",
+    notificationTitle: "PR merged",
+    notificationBody: `PR #${pr.number} has been merged in ${repository.full_name}. Please review the delivery.`,
+    meta: { pr_url: pr.html_url, pr_number: pr.number },
+  });
+}
+
+// ─── Cron: Expire NO_OFFER Tasks ─────────────────────────────────
+
+/**
+ * Find OPEN tasks past their deadline with zero applications and mark them NO_OFFER.
+ * Returns the number of tasks expired.
+ */
+export async function expireNoOfferTasks(): Promise<number> {
+  const db = getAdminClient();
+
+  const { data: tasks, error } = await db
+    .from(TABLES.MART_TASKS)
+    .select("id, buyer_user_id, deadline")
+    .eq("status", "OPEN")
+    .eq("application_count", 0)
+    .not("deadline", "is", null)
+    .lt("deadline", new Date().toISOString());
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!tasks || tasks.length === 0) return 0;
+
+  for (const task of tasks) {
+    await db
+      .from(TABLES.MART_TASKS)
+      .update({ status: "NO_OFFER" satisfies MartTaskStatus })
+      .eq("id", task.id);
+
+    await emitStatusChange({
+      taskId: task.id,
+      actorId: "system",
+      message: "Task expired with no applications — marked as NO_OFFER.",
+      notifyUserId: task.buyer_user_id,
+      notificationType: "TASK_CANCELLED",
+      notificationTitle: "任务已流标",
+      notificationBody: "你的任务已过截止日期且无人申请，已自动标记为流标。",
+    });
+
+    await addAuditLog({
+      actorUserId: "system",
+      action: "TASK_EXPIRE_NO_OFFER",
+      entityType: "task",
+      entityId: task.id,
+    });
+  }
+
+  return tasks.length;
+}
+
+/* ─── Buyer Stats ─── */
+
+export interface BuyerStats {
+  published_tasks: number;
+  closed_tasks: number;
+}
+
+export async function getBuyerStats(userId: string): Promise<BuyerStats> {
+  const db = supabase || getAdminClient();
+
+  const { count: published, error: e1 } = await db
+    .from(TABLES.MART_TASKS)
+    .select("id", { count: "exact", head: true })
+    .eq("buyer_user_id", userId);
+
+  if (e1) throw new Error(e1.message);
+
+  const { count: closed, error: e2 } = await db
+    .from(TABLES.MART_TASKS)
+    .select("id", { count: "exact", head: true })
+    .eq("buyer_user_id", userId)
+    .eq("status", "CLOSED");
+
+  if (e2) throw new Error(e2.message);
+
+  return {
+    published_tasks: published ?? 0,
+    closed_tasks: closed ?? 0,
+  };
 }

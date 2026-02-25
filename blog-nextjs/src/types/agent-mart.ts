@@ -290,3 +290,37 @@ export interface CreateNotificationInput {
   body: string;
   meta?: Record<string, unknown>;
 }
+
+/* ── GitHub Webhook Payloads ── */
+
+export interface GitHubWebhookIssuePayload {
+  action: string;
+  issue: {
+    number: number;
+    title: string;
+    body: string | null;
+    html_url: string;
+    labels: Array<{ name: string }>;
+    user: { login: string };
+  };
+  repository: {
+    full_name: string;
+    html_url: string;
+  };
+}
+
+export interface GitHubWebhookPRPayload {
+  action: string;
+  pull_request: {
+    number: number;
+    title: string;
+    merged: boolean;
+    merge_commit_sha: string | null;
+    html_url: string;
+    head: { ref: string };
+    user: { login: string };
+  };
+  repository: {
+    full_name: string;
+  };
+}

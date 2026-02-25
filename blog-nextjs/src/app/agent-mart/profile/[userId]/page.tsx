@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import type { AgentProfile, AgentReputationSummary, ReputationTier } from "@/types/agent-mart";
+import type { AgentProfile, AgentReputationSummary, MartUser, ReputationTier } from "@/types/agent-mart";
+import type { BuyerStats } from "@/lib/agent-mart/service";
 
 interface ProfileData {
-  profile: AgentProfile;
-  summary: AgentReputationSummary;
+  profile: AgentProfile | null;
+  summary: AgentReputationSummary | null;
+  user: MartUser | null;
+  buyerStats: BuyerStats;
 }
 
 const TIER_META: Record<ReputationTier, { label: string; color: string; ring: string }> = {
@@ -81,7 +84,12 @@ export default function AgentPublicProfilePage() {
     );
   }
 
-  const { profile, summary } = data;
+  const { profile, summary, user, buyerStats } = data;
+  const displayName = profile?.headline || user?.display_name || "用户";
+  const avatarChar = (user?.display_name || profile?.user_id || "U").charAt(0).toUpperCase();
+  const uid = profile?.user_id || user?.id || userId;
+  const isBuyer = user?.roles.includes("buyer");
+  const isAgent = !!profile;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.10),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(245,158,11,0.08),transparent_32%)]">
@@ -90,19 +98,29 @@ export default function AgentPublicProfilePage() {
           &larr; 返回任务广场
         </Link>
 
+        {/* ── Header card ── */}
         <section className="space-y-3 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
-              {(profile.user_id || "A").charAt(0).toUpperCase()}
+              {avatarChar}
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold truncate">{profile.headline || "Agent"}</h1>
-              <p className="text-sm text-muted-foreground truncate">{profile.user_id}</p>
-              {profile.bio && <p className="text-sm mt-1">{profile.bio}</p>}
+              <h1 className="text-xl font-bold truncate">{displayName}</h1>
+              <p className="text-sm text-muted-foreground truncate">{uid}</p>
+              {profile?.bio && <p className="text-sm mt-1">{profile.bio}</p>}
+              {user && (
+                <div className="flex gap-1.5 mt-1">
+                  {user.roles.map((r) => (
+                    <span key={r} className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground">
+                      {r === "buyer" ? "买家" : "Agent"}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {(profile.skills.length > 0 || profile.tools.length > 0) && (
+          {profile && (profile.skills.length > 0 || profile.tools.length > 0) && (
             <div className="flex flex-wrap gap-1.5 pt-1">
               {profile.skills.map((s) => (
                 <span key={`s-${s}`} className="rounded-full border border-blue-300/40 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600">{s}</span>
@@ -114,51 +132,67 @@ export default function AgentPublicProfilePage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <ScoreGauge score={summary.score.total} tier={summary.score.tier} />
-            <div className="flex-1 w-full space-y-3">
-              {BREAKDOWN.map(({ key, label, weight }) => (
-                <div key={key} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">{label} <span className="text-muted-foreground">({weight})</span></span>
-                    <span className="tabular-nums">{summary.score.breakdown[key]}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${summary.score.breakdown[key]}%`, transition: "width 0.5s ease" }} />
-                  </div>
-                </div>
-              ))}
+        {/* ── Buyer stats ── */}
+        {isBuyer && (
+          <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+            <h2 className="text-sm font-semibold mb-3">买家统计</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <StatCell label="发布任务" value={buyerStats.published_tasks} />
+              <StatCell label="已完结" value={buyerStats.closed_tasks} />
             </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
-          <h2 className="text-sm font-semibold mb-3">履约统计</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <StatCell label="累计交付" value={summary.total_deliveries} />
-            <StatCell label="已验收" value={summary.verified_deliveries} />
-            <StatCell label="通过率" value={percent(summary.pass_rate)} />
-            <StatCell label="驳回" value={summary.rejected_deliveries} />
-            <StatCell label="平均返工" value={summary.avg_rework_count.toFixed(2)} />
-            <StatCell label="平均交付时长" value={summary.avg_delivery_hours !== null ? `${summary.avg_delivery_hours.toFixed(1)}h` : "N/A"} />
-            <StatCell label="闭环任务" value={summary.closed_tasks} />
-          </div>
-        </section>
-
-        {summary.recent_records.length > 0 && (
-          <section className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
-            <h2 className="text-sm font-semibold">最近交付</h2>
-            {summary.recent_records.map((rec) => (
-              <div key={rec.delivery_id} className="space-y-1 rounded-lg border border-border/70 bg-muted/20 p-3">
-                <p className="text-sm font-medium">{rec.task_title || rec.task_id}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(rec.submitted_at).toLocaleString("zh-CN")} · {rec.verification_result || "PENDING"}
-                  {rec.reject_reason ? ` · ${rec.reject_reason}` : ""}
-                </p>
-              </div>
-            ))}
           </section>
+        )}
+
+        {/* ── Agent reputation (only when agent profile exists) ── */}
+        {isAgent && summary && (
+          <>
+            <section className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <ScoreGauge score={summary.score.total} tier={summary.score.tier} />
+                <div className="flex-1 w-full space-y-3">
+                  {BREAKDOWN.map(({ key, label, weight }) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-medium">{label} <span className="text-muted-foreground">({weight})</span></span>
+                        <span className="tabular-nums">{summary.score.breakdown[key]}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${summary.score.breakdown[key]}%`, transition: "width 0.5s ease" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+              <h2 className="text-sm font-semibold mb-3">履约统计</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <StatCell label="累计交付" value={summary.total_deliveries} />
+                <StatCell label="已验收" value={summary.verified_deliveries} />
+                <StatCell label="通过率" value={percent(summary.pass_rate)} />
+                <StatCell label="驳回" value={summary.rejected_deliveries} />
+                <StatCell label="平均返工" value={summary.avg_rework_count.toFixed(2)} />
+                <StatCell label="平均交付时长" value={summary.avg_delivery_hours !== null ? `${summary.avg_delivery_hours.toFixed(1)}h` : "N/A"} />
+                <StatCell label="闭环任务" value={summary.closed_tasks} />
+              </div>
+            </section>
+
+            {summary.recent_records.length > 0 && (
+              <section className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+                <h2 className="text-sm font-semibold">最近交付</h2>
+                {summary.recent_records.map((rec) => (
+                  <div key={rec.delivery_id} className="space-y-1 rounded-lg border border-border/70 bg-muted/20 p-3">
+                    <p className="text-sm font-medium">{rec.task_title || rec.task_id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(rec.submitted_at).toLocaleString("zh-CN")} · {rec.verification_result || "PENDING"}
+                      {rec.reject_reason ? ` · ${rec.reject_reason}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </section>
+            )}
+          </>
         )}
       </div>
     </main>

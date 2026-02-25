@@ -51,24 +51,6 @@ const defaultFilters: Filters = {
   sort: "newest",
 };
 
-/* ── apply draft ── */
-
-interface ApplyDraft {
-  bidAmount: string;
-  etaDays: string;
-  plan: string;
-  assumptions: string;
-  confidence: string;
-}
-
-const defaultDraft: ApplyDraft = {
-  bidAmount: "",
-  etaDays: "",
-  plan: "",
-  assumptions: "",
-  confidence: "",
-};
-
 /* ── client-side sort ── */
 
 function sortTasks(tasks: MartTask[], key: SortKey): MartTask[] {
@@ -98,17 +80,12 @@ export default function AgentMartPage() {
   const [tasks, setTasks] = useState<MartTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, ApplyDraft>>({});
-  const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
   const loadTasks = useCallback(async (f: Filters) => {
     setLoading(true);
     setError(null);
-    setNotice(null);
 
     try {
       const params = new URLSearchParams();
@@ -149,65 +126,6 @@ export default function AgentMartPage() {
 
   const patchFilters = (patch: Partial<Filters>) => {
     setFilters((prev) => ({ ...prev, ...patch }));
-  };
-
-  /* ── apply helpers ── */
-
-  const openApply = (taskId: string) => {
-    setActiveTaskId(taskId);
-    setDrafts((prev) => ({
-      ...prev,
-      [taskId]: prev[taskId] || { ...defaultDraft },
-    }));
-  };
-
-  const updateDraft = (taskId: string, patch: Partial<ApplyDraft>) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [taskId]: { ...(prev[taskId] || defaultDraft), ...patch },
-    }));
-  };
-
-  const submitApply = async (e: FormEvent<HTMLFormElement>, taskId: string) => {
-    e.preventDefault();
-
-    if (!auth.isAuthenticated || !auth.accessToken) {
-      setError("请先登录后再申请任务");
-      return;
-    }
-
-    const draft = drafts[taskId] || defaultDraft;
-    setSubmittingTaskId(taskId);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const res = await fetch(`/api/agent-mart/tasks/${taskId}/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...auth.authHeaders },
-        body: JSON.stringify({
-          bidAmount: Number(draft.bidAmount),
-          etaDays: Number(draft.etaDays),
-          plan: draft.plan,
-          assumptions: draft.assumptions,
-          confidence: draft.confidence ? Number(draft.confidence) : undefined,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json.error || "申请失败");
-        return;
-      }
-
-      setActiveTaskId(null);
-      setDrafts((prev) => ({ ...prev, [taskId]: { ...defaultDraft } }));
-      setNotice("申请已提交");
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : String(submitError));
-    } finally {
-      setSubmittingTaskId(null);
-    }
   };
 
   const applyFilter = () => loadTasks(filters);
@@ -477,11 +395,6 @@ export default function AgentMartPage() {
                 {error}
               </div>
             )}
-            {notice && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
-                {notice}
-              </div>
-            )}
 
             {!loading && tasks.length === 0 && (
               <div className="rounded-2xl border border-dashed p-10 text-center">
@@ -490,113 +403,9 @@ export default function AgentMartPage() {
             )}
 
             <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-              {tasks.map((task) => {
-                const isActive = activeTaskId === task.id;
-                const draft = drafts[task.id] || defaultDraft;
-
-                return (
-                  <TaskCard key={task.id} task={task} linkable>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openApply(task.id)}
-                        disabled={!auth.isAuthenticated}
-                        className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-                      >
-                        申请任务
-                      </button>
-                      {!auth.isAuthenticated && (
-                        <span className="inline-flex items-center rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
-                          登录后可申请
-                        </span>
-                      )}
-                    </div>
-
-                    {isActive && (
-                      <form
-                        className="mt-4 grid gap-3 rounded-xl border border-border/70 bg-muted/20 p-3"
-                        onSubmit={(e) => submitApply(e, task.id)}
-                      >
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <label className="text-sm space-y-1">
-                            <span className="text-muted-foreground">报价</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={draft.bidAmount}
-                              onChange={(e) => updateDraft(task.id, { bidAmount: e.target.value })}
-                              className={inputCls}
-                              required
-                            />
-                          </label>
-                          <label className="text-sm space-y-1">
-                            <span className="text-muted-foreground">交付时长（天）</span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={draft.etaDays}
-                              onChange={(e) => updateDraft(task.id, { etaDays: e.target.value })}
-                              className={inputCls}
-                              required
-                            />
-                          </label>
-                        </div>
-
-                        <label className="text-sm space-y-1">
-                          <span className="text-muted-foreground">执行计划</span>
-                          <textarea
-                            value={draft.plan}
-                            onChange={(e) => updateDraft(task.id, { plan: e.target.value })}
-                            rows={3}
-                            className={inputCls}
-                            required
-                          />
-                        </label>
-
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <label className="text-sm space-y-1">
-                            <span className="text-muted-foreground">假设（可选）</span>
-                            <input
-                              value={draft.assumptions}
-                              onChange={(e) => updateDraft(task.id, { assumptions: e.target.value })}
-                              className={inputCls}
-                            />
-                          </label>
-                          <label className="text-sm space-y-1">
-                            <span className="text-muted-foreground">信心值 0-1（可选）</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="1"
-                              step="0.01"
-                              value={draft.confidence}
-                              onChange={(e) => updateDraft(task.id, { confidence: e.target.value })}
-                              className={inputCls}
-                            />
-                          </label>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            disabled={submittingTaskId === task.id}
-                            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-                          >
-                            {submittingTaskId === task.id ? "提交中..." : "提交申请"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActiveTaskId(null)}
-                            className="rounded-xl border px-4 py-2 text-sm"
-                          >
-                            取消
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </TaskCard>
-                );
-              })}
+              {tasks.map((task) => (
+                <TaskCard key={task.id} task={task} linkable />
+              ))}
             </div>
           </section>
         </div>

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAgentProfileByUserId, getAgentReputationSummary } from "@/lib/agent-mart/service";
+import {
+  getAgentProfileByUserId,
+  getAgentReputationSummary,
+  getMartUserById,
+  getBuyerStats,
+} from "@/lib/agent-mart/service";
 
 export async function GET(
   _request: NextRequest,
@@ -8,21 +13,28 @@ export async function GET(
   try {
     const { userId } = await params;
 
-    const [profile, summary] = await Promise.all([
+    const [profile, summary, user, buyerStats] = await Promise.all([
       getAgentProfileByUserId(userId),
       getAgentReputationSummary(userId),
+      getMartUserById(userId),
+      getBuyerStats(userId),
     ]);
 
-    if (!profile) {
+    if (!profile && !user) {
       return NextResponse.json(
-        { success: false, error: "Agent profile not found" },
+        { success: false, error: "User not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: { profile, summary },
+      data: {
+        profile: profile || null,
+        summary: profile ? summary : null,
+        user: user || null,
+        buyerStats,
+      },
     });
   } catch (error) {
     return NextResponse.json(
