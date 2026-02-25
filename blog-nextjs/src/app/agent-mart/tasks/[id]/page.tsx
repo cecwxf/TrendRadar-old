@@ -90,6 +90,18 @@ export default function TaskDetailPage() {
   const [appsLoading, setAppsLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
+  // deliveries (buyer review + agent submit)
+  const [deliveries, setDeliveries] = useState<Array<{ delivery: TaskDelivery; verification: TaskVerification | null }>>([]);
+  const [delsLoading, setDelsLoading] = useState(false);
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [deliveryDraft, setDeliveryDraft] = useState({
+    pr_url: "", repo_full_name: "", pr_number: "", commit_sha: "", self_check: "", ci_url: "",
+  });
+  const [deliverySubmitting, setDeliverySubmitting] = useState(false);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [rejectForm, setRejectForm] = useState<{ id: string; reason: string; changes: string; comment: string } | null>(null);
+  const [approveComment, setApproveComment] = useState("");
+
   // buyer action loading
   const [buyerActioning, setBuyerActioning] = useState(false);
 
@@ -152,6 +164,126 @@ export default function TaskDetailPage() {
   }, [id, auth.isAuthenticated, auth.authHeaders, isBuyer]);
 
   useEffect(() => { loadApplications(); }, [loadApplications]);
+
+  /* ── fetch deliveries ── */
+
+  const loadDeliveries = useCallback(async () => {
+    if (!auth.isAuthenticated || !task) return;
+    const canSee = isBuyer || ["IN_PROGRESS", "DELIVERED", "VERIFYING", "REVISING", "CLOSED"].includes(task.status);
+    if (!canSee) return;
+    setDelsLoading(true);
+    try {
+      const res = await fetch(`/api/agent-mart/tasks/${id}/deliveries`, {
+        headers: { ...auth.authHeaders },
+        cache: "no-store",
+      });
+      const json = await res.json();
+      if (json.success) setDeliveries(json.data || []);
+    } catch { /* ignore */ }
+    finally { setDelsLoading(false); }
+  }, [id, auth.isAuthenticated, auth.authHeaders, isBuyer, task]);
+
+  useEffect(() => { loadDeliveries(); }, [loadDeliveries]);
+
+  /* ── submit delivery (agent) ── */
+
+  const submitDelivery = async (e: FormEvent) => {
+    e.preventDefault();
+    if (deliverySubmitting || !auth.isAuthenticated) return;
+    setDeliverySubmitting(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/agent-mart/deliveries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...auth.authHeaders },
+        body: JSON.stringify({
+          taskId: id,
+          evidence: {
+            pr_url: deliveryDraft.pr_url,
+            repo_full_name: deliveryDraft.repo_full_name,
+            pr_number: Number(deliveryDraft.pr_number),
+            commit_sha: deliveryDraft.commit_sha,
+            self_check: deliveryDraft.self_check,
+            ...(deliveryDraft.ci_url ? { ci_evidence: { ci_url: deliveryDraft.ci_url } } : {}),
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setNotice(json.error || "提交交付失败");
+      } else {
+        setNotice("交付已提交，等待买家验收");
+        setShowDeliveryForm(false);
+        setDeliveryDraft({ pr_url: "", repo_full_name: "", pr_number: "", commit_sha: "", self_check: "", ci_url: "" });
+        loadTask();
+        loadDeliveries();
+      }
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeliverySubmitting(false);
+    }
+  };
+
+  /* ── approve delivery (buyer) ── */
+
+  const approveDelivery = async (deliveryId: string) => {
+    if (reviewingId) return;
+    setReviewingId(deliveryId);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/agent-mart/deliveries/${deliveryId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...auth.authHeaders },
+        body: JSON.stringify({ comment: approveComment || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setNotice(json.error || "审批失败");
+      } else {
+        setNotice("交付已通过");
+        setApproveComment("");
+        loadTask();
+        loadDeliveries();
+      }
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  /* ── reject delivery (buyer) ── */
+
+  const rejectDelivery = async () => {
+    if (!rejectForm || reviewingId) return;
+    setReviewingId(rejectForm.id);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/agent-mart/deliveries/${rejectForm.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...auth.authHeaders },
+        body: JSON.stringify({
+          rejectReason: rejectForm.reason,
+          changeRequests: rejectForm.changes || undefined,
+          comment: rejectForm.comment || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setNotice(json.error || "驳回失败");
+      } else {
+        setNotice("交付已驳回，等待 Agent 修改后重新提交");
+        setRejectForm(null);
+        loadTask();
+        loadDeliveries();
+      }
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   /* ── send message ── */
 
@@ -504,6 +636,244 @@ export default function TaskDetailPage() {
                           >
                             拒绝
                           </button>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Agent: submit delivery ── */}
+            {auth.isAuthenticated && !isBuyer && ["IN_PROGRESS", "REVISING"].includes(task.status) && (
+              <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm space-y-3">
+                {!showDeliveryForm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeliveryForm(true)}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    {task.status === "REVISING" ? "重新提交交付" : "提交交付"}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-semibold">提交交付</h2>
+                    <form className="grid gap-3" onSubmit={submitDelivery}>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm space-y-1">
+                          <span className="text-muted-foreground">PR 链接 *</span>
+                          <input
+                            type="url" required placeholder="https://github.com/..."
+                            value={deliveryDraft.pr_url}
+                            onChange={(e) => setDeliveryDraft({ ...deliveryDraft, pr_url: e.target.value })}
+                            className={inputCls}
+                          />
+                        </label>
+                        <label className="text-sm space-y-1">
+                          <span className="text-muted-foreground">仓库全名 *</span>
+                          <input
+                            required placeholder="owner/repo"
+                            value={deliveryDraft.repo_full_name}
+                            onChange={(e) => setDeliveryDraft({ ...deliveryDraft, repo_full_name: e.target.value })}
+                            className={inputCls}
+                          />
+                        </label>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm space-y-1">
+                          <span className="text-muted-foreground">PR 编号 *</span>
+                          <input
+                            type="number" min="1" required
+                            value={deliveryDraft.pr_number}
+                            onChange={(e) => setDeliveryDraft({ ...deliveryDraft, pr_number: e.target.value })}
+                            className={inputCls}
+                          />
+                        </label>
+                        <label className="text-sm space-y-1">
+                          <span className="text-muted-foreground">Commit SHA *</span>
+                          <input
+                            required placeholder="abc1234..."
+                            value={deliveryDraft.commit_sha}
+                            onChange={(e) => setDeliveryDraft({ ...deliveryDraft, commit_sha: e.target.value })}
+                            className={inputCls}
+                          />
+                        </label>
+                      </div>
+                      <label className="text-sm space-y-1">
+                        <span className="text-muted-foreground">自检说明 *</span>
+                        <textarea
+                          rows={3} required placeholder="描述你完成了哪些验收标准..."
+                          value={deliveryDraft.self_check}
+                          onChange={(e) => setDeliveryDraft({ ...deliveryDraft, self_check: e.target.value })}
+                          className={inputCls}
+                        />
+                      </label>
+                      <label className="text-sm space-y-1">
+                        <span className="text-muted-foreground">CI 链接（可选）</span>
+                        <input
+                          type="url" placeholder="https://github.com/.../actions/runs/..."
+                          value={deliveryDraft.ci_url}
+                          onChange={(e) => setDeliveryDraft({ ...deliveryDraft, ci_url: e.target.value })}
+                          className={inputCls}
+                        />
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="submit" disabled={deliverySubmitting}
+                          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                        >
+                          {deliverySubmitting ? "提交中..." : "提交交付"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeliveryForm(false)}
+                          className="rounded-xl border px-4 py-2 text-sm"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ── Delivery list & buyer review ── */}
+            {auth.isAuthenticated && deliveries.length > 0 && (
+              <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm space-y-3">
+                <h2 className="text-lg font-semibold">交付记录 ({deliveries.length})</h2>
+                {delsLoading && <p className="text-sm text-muted-foreground">加载中...</p>}
+                <div className="space-y-3">
+                  {deliveries.map(({ delivery, verification }) => (
+                    <article key={delivery.id} className="space-y-2 rounded-xl border bg-muted/20 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">交付 #{delivery.id.slice(0, 8)}</span>
+                        {verification ? (
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            verification.result === "APPROVED"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                              : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+                          }`}>
+                            {verification.result === "APPROVED" ? "已通过" : "已驳回"}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                            待验收
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <p>
+                          <span className="text-muted-foreground">PR: </span>
+                          <a href={delivery.evidence_json.pr_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {delivery.evidence_json.repo_full_name}#{delivery.evidence_json.pr_number}
+                          </a>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Commit: <code className="rounded bg-muted px-1 py-0.5">{delivery.evidence_json.commit_sha.slice(0, 10)}</code>
+                        </p>
+                        <p className="text-xs"><span className="text-muted-foreground">自检: </span>{delivery.evidence_json.self_check}</p>
+                        {delivery.evidence_json.ci_evidence?.ci_url && (
+                          <p className="text-xs">
+                            <span className="text-muted-foreground">CI: </span>
+                            <a href={delivery.evidence_json.ci_evidence.ci_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                              查看 CI
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{formatDate(delivery.created_at)}</p>
+
+                      {/* verification details */}
+                      {verification?.comment && (
+                        <p className="text-sm text-muted-foreground">评语: {verification.comment}</p>
+                      )}
+                      {verification?.reject_reason && (
+                        <p className="text-sm text-red-500">驳回原因: {verification.reject_reason}</p>
+                      )}
+                      {verification?.change_requests && verification.change_requests.length > 0 && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">修改要求:</span>
+                          <ul className="list-inside list-disc text-xs text-muted-foreground">
+                            {verification.change_requests.map((cr, i) => <li key={i}>{cr}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* buyer actions: approve / reject (only for unverified deliveries) */}
+                      {isBuyer && !verification && (
+                        <div className="space-y-2 border-t border-border/70 pt-2">
+                          {rejectForm?.id === delivery.id ? (
+                            <div className="space-y-2">
+                              <label className="text-sm space-y-1">
+                                <span className="text-muted-foreground">驳回原因 *</span>
+                                <textarea
+                                  rows={2} required
+                                  value={rejectForm.reason}
+                                  onChange={(e) => setRejectForm({ ...rejectForm, reason: e.target.value })}
+                                  className={inputCls}
+                                />
+                              </label>
+                              <label className="text-sm space-y-1">
+                                <span className="text-muted-foreground">修改要求（每行一条，可选）</span>
+                                <textarea
+                                  rows={2}
+                                  value={rejectForm.changes}
+                                  onChange={(e) => setRejectForm({ ...rejectForm, changes: e.target.value })}
+                                  className={inputCls}
+                                />
+                              </label>
+                              <label className="text-sm space-y-1">
+                                <span className="text-muted-foreground">评语（可选）</span>
+                                <input
+                                  value={rejectForm.comment}
+                                  onChange={(e) => setRejectForm({ ...rejectForm, comment: e.target.value })}
+                                  className={inputCls}
+                                />
+                              </label>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={rejectDelivery}
+                                  disabled={reviewingId === delivery.id || !rejectForm.reason.trim()}
+                                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:text-red-400 disabled:opacity-60"
+                                >
+                                  {reviewingId === delivery.id ? "处理中..." : "确认驳回"}
+                                </button>
+                                <button type="button" onClick={() => setRejectForm(null)} className="rounded-lg border px-3 py-1.5 text-xs">
+                                  取消
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-end gap-2">
+                              <label className="flex-1 text-sm space-y-1">
+                                <span className="text-muted-foreground">评语（可选）</span>
+                                <input
+                                  value={approveComment}
+                                  onChange={(e) => setApproveComment(e.target.value)}
+                                  placeholder="写一句评语..."
+                                  className={inputCls}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => approveDelivery(delivery.id)}
+                                disabled={reviewingId === delivery.id}
+                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                              >
+                                {reviewingId === delivery.id ? "处理中..." : "通过"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRejectForm({ id: delivery.id, reason: "", changes: "", comment: "" })}
+                                disabled={!!reviewingId}
+                                className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:text-red-400 disabled:opacity-60"
+                              >
+                                驳回
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </article>
