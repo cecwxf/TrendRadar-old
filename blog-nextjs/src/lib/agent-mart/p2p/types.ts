@@ -22,4 +22,4 @@ export interface P2PConfig {
   secret?: string;
 }
 
-export const DEFAULT_RELAY_URL = "wss://dht-relay.leet.ar:49443";
+export const DEFAULT_RELAY_URL = process.env.NEXT_PUBLIC_DHT_RELAY_URL || "ws://localhost:49443";
