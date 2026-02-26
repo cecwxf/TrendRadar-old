@@ -2,9 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { P2PMessage, P2PConnectionState } from "@/lib/agent-mart/p2p/types";
-import { SwarmClient } from "@/lib/agent-mart/p2p/swarm-client";
-import { deriveTopic, deriveSecret, toHex } from "@/lib/agent-mart/p2p/crypto";
-import { saveMessage, getMessages } from "@/lib/agent-mart/p2p/message-store";
 
 interface UseP2PChatOptions {
   taskId: string;
@@ -34,10 +31,10 @@ export function useP2PChat({
   const [connectionState, setConnectionState] = useState<P2PConnectionState>("disconnected");
   const [error, setError] = useState<string | null>(null);
 
-  const clientRef = useRef<SwarmClient | null>(null);
+  const clientRef = useRef<import("@/lib/agent-mart/p2p/swarm-client").SwarmClient | null>(null);
   const topicHexRef = useRef<string>("");
 
-  // Connect to swarm on mount
+  // Connect to swarm on mount — dynamic imports keep sodium-native out of SSR bundle
   useEffect(() => {
     if (!taskId || !userId || !buyerUserId) return;
 
@@ -45,6 +42,13 @@ export function useP2PChat({
 
     async function init() {
       try {
+        const [{ SwarmClient }, { deriveTopic, deriveSecret, toHex }, { getMessages }] =
+          await Promise.all([
+            import("@/lib/agent-mart/p2p/swarm-client"),
+            import("@/lib/agent-mart/p2p/crypto"),
+            import("@/lib/agent-mart/p2p/message-store"),
+          ]);
+
         const sec = secret || (await deriveSecret(taskId, buyerUserId));
         const topicBuf = await deriveTopic(taskId, sec);
         const topicHex = toHex(topicBuf);
@@ -72,7 +76,9 @@ export function useP2PChat({
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          saveMessage(msg).catch(() => {});
+          import("@/lib/agent-mart/p2p/message-store").then(({ saveMessage }) =>
+            saveMessage(msg).catch(() => {})
+          );
         });
 
         await client.connect(topicBuf);
@@ -108,7 +114,9 @@ export function useP2PChat({
 
       // Optimistic update
       setMessages((prev) => [...prev, msg]);
-      saveMessage(msg).catch(() => {});
+      import("@/lib/agent-mart/p2p/message-store").then(({ saveMessage }) =>
+        saveMessage(msg).catch(() => {})
+      );
 
       // Send to peers
       clientRef.current.send(msg);

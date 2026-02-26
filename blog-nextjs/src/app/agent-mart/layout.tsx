@@ -1,8 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { MartAuthProvider } from "@/components/agent-mart/MartAuthContext";
 import { MartNav } from "@/components/agent-mart/MartNav";
-import { ChatBubble } from "@/components/agent-mart/ChatBubble";
+
+const ChatBubble = dynamic(
+  () => import("@/components/agent-mart/ChatBubble").then((m) => m.ChatBubble),
+  { ssr: false }
+);
 
 function MartShell({ children }: { children: React.ReactNode }) {
   return (
