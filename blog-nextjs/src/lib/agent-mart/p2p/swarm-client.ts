@@ -67,13 +67,18 @@ export class SwarmClient {
       });
       await this.server.listen(this.node.defaultKeyPair);
 
+      // Mark connected as soon as the relay + server are ready.
+      // Announce & lookup run in the background — they are not required
+      // for the connection to be usable (the other side's lookup will
+      // find us via the server listener).
+      this.setState("connected");
+
       // Announce ourselves on the topic so other peers can find us
-      await this.announce(topicBuf);
+      // Use a timeout because `finished()` may hang on relay-only DHT nodes.
+      this.announce(topicBuf).catch(() => {});
 
       // Look up the topic to find peers that already announced
       this.lookup(topicBuf);
-
-      this.setState("connected");
     } catch {
       this.setState("error");
     }
@@ -82,7 +87,11 @@ export class SwarmClient {
   private async announce(topicBuf: Uint8Array) {
     if (!this.node || this.destroyed) return;
     const ann = this.node.announce(topicBuf, this.node.defaultKeyPair);
-    await ann.finished().catch(() => {});
+    // finished() can hang indefinitely on relay-only DHT nodes, so add a timeout
+    await Promise.race([
+      ann.finished().catch(() => {}),
+      new Promise<void>((r) => setTimeout(r, 5000)),
+    ]);
   }
 
   private async unannounce(topicBuf: Uint8Array) {
