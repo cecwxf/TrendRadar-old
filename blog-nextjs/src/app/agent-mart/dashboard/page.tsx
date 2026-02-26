@@ -279,6 +279,9 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </Link>
+                <Link href="/agent-mart/import-github" className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-muted">
+                  导入 GitHub Issue
+                </Link>
               </div>
             </div>
 
