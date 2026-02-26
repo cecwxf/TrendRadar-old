@@ -10,8 +10,10 @@ type PeerCountHandler = (count: number) => void;
 
 export class SwarmClient {
   private ws: WebSocket | null = null;
-  private node: ReturnType<typeof DHT> | null = null;
-  private server: ReturnType<ReturnType<typeof DHT>["createServer"]> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private node: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private server: any = null;
   private topic: Uint8Array | null = null;
   private relayUrl: string;
   private peers = new Set<string>();
@@ -54,8 +56,8 @@ export class SwarmClient {
         this.ws!.onerror = (e) => reject(e);
       });
 
-      const stream = new Stream(true, this.ws);
-      this.node = new DHT(stream);
+      const stream = new (Stream as any)(true, this.ws);
+      this.node = new (DHT as any)(stream);
 
       // Create server to accept incoming connections
       this.server = this.node.createServer();

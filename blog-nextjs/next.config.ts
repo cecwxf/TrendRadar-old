@@ -2,6 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  turbopack: {
+    resolveAlias: {
+      // sodium-universal uses sodium-native (native C++ addon) by default.
+      // Swap it for the pure-JS sodium-javascript in the browser bundle.
+      "sodium-native": "sodium-javascript",
+    },
+  },
   images: {
     remotePatterns: [
       {
