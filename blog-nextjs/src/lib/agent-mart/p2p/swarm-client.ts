@@ -17,6 +17,7 @@ export class SwarmClient {
   private topic: Uint8Array | null = null;
   private relayUrl: string;
   private peers = new Set<string>();
+  private knownKeys = new Set<string>();
   private streams: Array<{ stream: NodeJS.ReadWriteStream; remoteId: string }> = [];
 
   private onMessage: MsgHandler | null = null;
@@ -66,7 +67,10 @@ export class SwarmClient {
       });
       await this.server.listen(this.node.defaultKeyPair);
 
-      // Look up the topic to find peers
+      // Announce ourselves on the topic so other peers can find us
+      await this.announce(topicBuf);
+
+      // Look up the topic to find peers that already announced
       this.lookup(topicBuf);
 
       this.setState("connected");
@@ -75,18 +79,42 @@ export class SwarmClient {
     }
   }
 
+  private async announce(topicBuf: Uint8Array) {
+    if (!this.node || this.destroyed) return;
+    const ann = this.node.announce(topicBuf, this.node.defaultKeyPair);
+    await ann.finished().catch(() => {});
+  }
+
+  private async unannounce(topicBuf: Uint8Array) {
+    if (!this.node) return;
+    try {
+      const unann = this.node.unannounce(topicBuf, this.node.defaultKeyPair);
+      await unann.finished().catch(() => {});
+    } catch { /* ok */ }
+  }
+
   private lookup(topicBuf: Uint8Array) {
     if (!this.node || this.destroyed) return;
     const lookup = this.node.lookup(topicBuf);
-    lookup.on("peer", (peer: { publicKey: Uint8Array; relayAddresses: unknown[] }) => {
+    // lookup is a Readable stream; each chunk is { token, from, to, peers }
+    lookup.on("data", (result: { peers: Array<{ publicKey: Uint8Array; relayAddresses: unknown[] }> }) => {
       if (this.destroyed || !this.node) return;
-      const socket = this.node.connect(peer.publicKey, { relayAddresses: peer.relayAddresses });
-      this.handlePeer(socket);
+      for (const peer of result.peers) {
+        const remoteKey = toHex(peer.publicKey);
+        const localKey = toHex(this.node.defaultKeyPair.publicKey);
+        // Don't connect to ourselves
+        if (remoteKey === localKey) continue;
+        // Don't connect to already-known peers
+        if (this.knownKeys.has(remoteKey)) continue;
+        this.knownKeys.add(remoteKey);
+        const socket = this.node.connect(peer.publicKey, { relayAddresses: peer.relayAddresses });
+        this.handlePeer(socket, remoteKey);
+      }
     });
   }
 
-  private handlePeer(socket: NodeJS.ReadWriteStream) {
-    const remoteId = Math.random().toString(36).slice(2, 10);
+  private handlePeer(socket: NodeJS.ReadWriteStream, remoteKey?: string) {
+    const remoteId = remoteKey || Math.random().toString(36).slice(2, 10);
     this.peers.add(remoteId);
     this.streams.push({ stream: socket, remoteId });
     this.onPeerCount?.(this.peers.size);
@@ -124,6 +152,7 @@ export class SwarmClient {
 
   private removePeer(id: string) {
     this.peers.delete(id);
+    this.knownKeys.delete(id);
     this.streams = this.streams.filter((s) => s.remoteId !== id);
     this.onPeerCount?.(this.peers.size);
   }
@@ -144,11 +173,15 @@ export class SwarmClient {
   async destroy(): Promise<void> {
     this.destroyed = true;
     this.setState("disconnected");
+    if (this.topic) {
+      await this.unannounce(this.topic);
+    }
     for (const { stream } of this.streams) {
       try { (stream as unknown as { destroy(): void }).destroy(); } catch { /* ok */ }
     }
     this.streams = [];
     this.peers.clear();
+    this.knownKeys.clear();
     try { await this.server?.close(); } catch { /* ok */ }
     try { this.node?.destroy(); } catch { /* ok */ }
     try { this.ws?.close(); } catch { /* ok */ }
