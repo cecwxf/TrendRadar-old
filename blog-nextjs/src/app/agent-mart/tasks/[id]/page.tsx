@@ -1,18 +1,18 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useMartAuthContext } from "@/components/agent-mart/MartAuthContext";
 import { AppStatusBadge, StatusBadge } from "@/components/agent-mart/StatusBadge";
+import { useP2PChat } from "@/hooks/agent-mart/useP2PChat";
 import type {
   MartTask,
   MartTaskType,
   TaskApplication,
   TaskDelivery,
-  TaskMessage,
   TaskVerification,
 } from "@/types/agent-mart";
 
@@ -79,11 +79,8 @@ export default function TaskDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // messages
-  const [messages, setMessages] = useState<TaskMessage[]>([]);
-  const [msgLoading, setMsgLoading] = useState(false);
+  // P2P messages
   const [msgText, setMsgText] = useState("");
-  const [msgSending, setMsgSending] = useState(false);
 
   // applications (buyer only)
   const [applications, setApplications] = useState<TaskApplication[]>([]);
@@ -129,23 +126,18 @@ export default function TaskDetailPage() {
 
   useEffect(() => { loadTask(); }, [loadTask]);
 
-  /* ── fetch messages ── */
+  /* ── P2P chat ── */
 
-  const loadMessages = useCallback(async () => {
-    if (!auth.isAuthenticated) return;
-    setMsgLoading(true);
-    try {
-      const res = await fetch(`/api/agent-mart/tasks/${id}/messages`, {
-        headers: { ...auth.authHeaders },
-        cache: "no-store",
-      });
-      const json = await res.json();
-      if (json.success) setMessages(json.data || []);
-    } catch { /* ignore */ }
-    finally { setMsgLoading(false); }
-  }, [id, auth.isAuthenticated, auth.authHeaders]);
+  const p2p = useP2PChat({
+    taskId: id,
+    userId: auth.userId || "",
+    buyerUserId: task?.buyer_user_id || "",
+  });
 
-  useEffect(() => { loadMessages(); }, [loadMessages]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [p2p.messages]);
 
   /* ── fetch applications (buyer) ── */
 
@@ -285,30 +277,13 @@ export default function TaskDetailPage() {
     }
   };
 
-  /* ── send message ── */
+  /* ── send message (P2P) ── */
 
-  const sendMessage = async (e: FormEvent) => {
+  const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
-    if (!msgText.trim() || msgSending || !auth.isAuthenticated) return;
-    setMsgSending(true);
-    try {
-      const res = await fetch(`/api/agent-mart/tasks/${id}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...auth.authHeaders },
-        body: JSON.stringify({ content: msgText.trim() }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setMsgText("");
-        loadMessages();
-      } else {
-        setNotice(json.error || "发送失败");
-      }
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err));
-    } finally {
-      setMsgSending(false);
-    }
+    if (!msgText.trim() || !auth.isAuthenticated) return;
+    p2p.sendMessage(msgText.trim());
+    setMsgText("");
   };
 
   /* ── submit application (agent) ── */
@@ -884,50 +859,48 @@ export default function TaskDetailPage() {
 
             {auth.isAuthenticated && (
               <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm space-y-3">
-                <h2 className="text-lg font-semibold">消息</h2>
-                {msgLoading && <p className="text-sm text-muted-foreground">加载中...</p>}
-                {!msgLoading && messages.length === 0 && (
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">消息 (P2P)</h2>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    p2p.connectionState === "connected"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                      : p2p.connectionState === "connecting"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                        : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${
+                      p2p.connectionState === "connected" ? "bg-emerald-500" : p2p.connectionState === "connecting" ? "bg-amber-500" : "bg-red-500"
+                    }`} />
+                    {p2p.connectionState === "connected" ? `在线 (${p2p.peerCount})` : p2p.connectionState === "connecting" ? "连接中..." : "离线"}
+                  </span>
+                </div>
+                {p2p.error && <p className="text-xs text-red-500">{p2p.error}</p>}
+
+                {p2p.messages.length === 0 && (
                   <p className="text-sm text-muted-foreground">暂无消息</p>
                 )}
 
-                {messages.length > 0 && (
+                {p2p.messages.length > 0 && (
                   <div className="max-h-80 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-muted/20 p-3">
-                    {messages.map((msg) => {
-                      const isMe = msg.sender_id === auth.userId;
-                      const isSystem = msg.type === "SYSTEM" || msg.type === "STATUS_CHANGE";
-                      const isCode = msg.type === "CODE";
-
-                      if (isSystem) {
-                        return (
-                          <div key={msg.id} className="text-center">
-                            <span className="inline-block rounded-full bg-muted/70 px-3 py-1 text-xs italic text-muted-foreground">
-                              {msg.content}
-                            </span>
-                            <p className="mt-0.5 text-[10px] text-muted-foreground">{formatDate(msg.created_at)}</p>
-                          </div>
-                        );
-                      }
-
+                    {p2p.messages.map((msg) => {
+                      const isMe = msg.sender === auth.userId;
                       return (
                         <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[75%] rounded-xl p-3 text-sm ${isMe ? "bg-primary/10" : "bg-background"}`}>
                             <div className="mb-1 flex items-center justify-between gap-2">
-                              <span className="text-xs font-medium">{isMe ? "我" : `${msg.sender_id.slice(0, 8)}...`}</span>
-                              <span className="text-[10px] text-muted-foreground">{formatDate(msg.created_at)}</span>
+                              <span className="text-xs font-medium">{isMe ? "我" : `${msg.sender.slice(0, 8)}...`}</span>
+                              <span className="text-[10px] text-muted-foreground">{formatDate(new Date(msg.ts).toISOString())}</span>
                             </div>
-                            {isCode ? (
-                              <pre className="overflow-x-auto rounded bg-muted p-2 text-xs"><code>{msg.content}</code></pre>
-                            ) : (
-                              <p className="whitespace-pre-wrap">{msg.content}</p>
-                            )}
+                            <p className="whitespace-pre-wrap">{msg.data}</p>
                           </div>
                         </div>
                       );
                     })}
+                    <div ref={chatEndRef} />
                   </div>
                 )}
 
-                <form className="flex gap-2" onSubmit={sendMessage}>
+                <form className="flex gap-2" onSubmit={handleSendMessage}>
                   <input
                     value={msgText}
                     onChange={(e) => setMsgText(e.target.value)}
@@ -936,10 +909,10 @@ export default function TaskDetailPage() {
                   />
                   <button
                     type="submit"
-                    disabled={msgSending || !msgText.trim()}
+                    disabled={p2p.connectionState !== "connected" || !msgText.trim()}
                     className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
                   >
-                    {msgSending ? "发送中..." : "发送"}
+                    发送
                   </button>
                 </form>
               </section>

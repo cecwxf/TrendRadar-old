@@ -276,6 +276,19 @@ export interface UpdateTaskInput {
   githubRepo?: string | null;
 }
 
+/* ── P2P Message Types ── */
+
+export type P2PConnectionState = "disconnected" | "connecting" | "connected" | "error";
+
+export interface P2PChatMessage {
+  t: "msg";
+  topic: string;
+  data: string;
+  id: string;
+  ts: number;
+  sender: string;
+}
+
 export interface SendMessageInput {
   taskId: string;
   senderId: string;
