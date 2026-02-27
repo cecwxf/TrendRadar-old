@@ -2,13 +2,13 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useMartAuthContext } from "./MartAuthContext";
-import { useP2PChat } from "@/hooks/agent-mart/useP2PChat";
+import { useTaskChat } from "@/hooks/agent-mart/useTaskChat";
 import type { MartTask } from "@/types/agent-mart";
 
 /* ── tiny helpers ── */
 
-function formatTs(ts: number): string {
-  return new Date(ts).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+function formatTs(iso: string): string {
+  return new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
 }
 
 /* ── task picker item ── */
@@ -21,24 +21,24 @@ interface ChatTask {
 
 /* ── inner chat panel (handles one task) ── */
 
-function ChatPanel({ task, userId }: { task: ChatTask; userId: string }) {
+function ChatPanel({ task, userId, authHeaders }: { task: ChatTask; userId: string; authHeaders: Record<string, string> }) {
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
-  const p2p = useP2PChat({
+  const chat = useTaskChat({
     taskId: task.id,
     userId,
-    buyerUserId: task.buyer_user_id,
+    authHeaders,
   });
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [p2p.messages]);
+  }, [chat.messages]);
 
   const send = (e: FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
-    p2p.sendMessage(text.trim());
+    chat.sendMessage(text.trim());
     setText("");
   };
 
@@ -46,30 +46,18 @@ function ChatPanel({ task, userId }: { task: ChatTask; userId: string }) {
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* status bar */}
       <div className="flex items-center gap-2 border-b border-border/60 px-3 py-1.5 text-xs text-muted-foreground">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            p2p.connectionState === "connected"
-              ? "bg-emerald-500"
-              : p2p.connectionState === "connecting"
-                ? "bg-amber-500"
-                : "bg-red-500"
-          }`}
-        />
-        {p2p.connectionState === "connected"
-          ? `在线 (${p2p.peerCount})`
-          : p2p.connectionState === "connecting"
-            ? "连接中..."
-            : "离线"}
-        {p2p.error && <span className="ml-auto text-red-500 truncate">{p2p.error}</span>}
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        {chat.loading ? "加载中..." : `${chat.messages.length} 条消息`}
+        {chat.error && <span className="ml-auto text-red-500 truncate">{chat.error}</span>}
       </div>
 
       {/* messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {p2p.messages.length === 0 && (
+        {chat.messages.length === 0 && !chat.loading && (
           <p className="text-center text-xs text-muted-foreground pt-8">暂无消息</p>
         )}
-        {p2p.messages.map((msg) => {
-          const isMe = msg.sender === userId;
+        {chat.messages.map((msg) => {
+          const isMe = msg.sender_id === userId;
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
               <div
@@ -79,11 +67,11 @@ function ChatPanel({ task, userId }: { task: ChatTask; userId: string }) {
               >
                 <div className="mb-0.5 flex items-center justify-between gap-2">
                   <span className="text-[10px] font-medium">
-                    {isMe ? "我" : `${msg.sender.slice(0, 8)}...`}
+                    {isMe ? "我" : `${msg.sender_id.slice(0, 8)}...`}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{formatTs(msg.ts)}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatTs(msg.created_at)}</span>
                 </div>
-                <p className="whitespace-pre-wrap break-words">{msg.data}</p>
+                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
               </div>
             </div>
           );
@@ -101,7 +89,7 @@ function ChatPanel({ task, userId }: { task: ChatTask; userId: string }) {
         />
         <button
           type="submit"
-          disabled={p2p.connectionState !== "connected" || !text.trim()}
+          disabled={!text.trim()}
           className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
         >
           发送
@@ -210,7 +198,7 @@ export function ChatBubble() {
 
           {/* chat body */}
           {selectedTask ? (
-            <ChatPanel key={selectedTask.id} task={selectedTask} userId={auth.userId!} />
+            <ChatPanel key={selectedTask.id} task={selectedTask} userId={auth.userId!} authHeaders={auth.authHeaders} />
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               {loadingTasks ? "加载任务中..." : "暂无可聊天的任务"}
