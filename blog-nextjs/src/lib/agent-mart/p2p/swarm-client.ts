@@ -8,6 +8,13 @@ type MsgHandler = (msg: P2PMessage) => void;
 type StateHandler = (state: P2PConnectionState) => void;
 type PeerCountHandler = (count: number) => void;
 
+/** Interval between periodic lookup rounds (ms) */
+const LOOKUP_INTERVAL = 10_000;
+/** Interval between periodic re-announce rounds (ms) */
+const ANNOUNCE_INTERVAL = 30_000;
+/** Max time to wait for announce().finished() */
+const ANNOUNCE_TIMEOUT = 5_000;
+
 export class SwarmClient {
   private ws: WebSocket | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,9 +23,10 @@ export class SwarmClient {
   private server: any = null;
   private topic: Uint8Array | null = null;
   private relayUrl: string;
-  private peers = new Set<string>();
+  private peers = new Map<string, NodeJS.ReadWriteStream>();
   private knownKeys = new Set<string>();
-  private streams: Array<{ stream: NodeJS.ReadWriteStream; remoteId: string }> = [];
+  private lookupTimer: ReturnType<typeof setInterval> | null = null;
+  private announceTimer: ReturnType<typeof setInterval> | null = null;
 
   private onMessage: MsgHandler | null = null;
   private onStateChange: StateHandler | null = null;
@@ -45,6 +53,10 @@ export class SwarmClient {
     this.onStateChange?.(s);
   }
 
+  private emitPeerCount() {
+    this.onPeerCount?.(this.peers.size);
+  }
+
   async connect(topicBuf: Uint8Array): Promise<void> {
     if (this.destroyed) return;
     this.topic = topicBuf;
@@ -67,18 +79,20 @@ export class SwarmClient {
       });
       await this.server.listen(this.node.defaultKeyPair);
 
-      // Mark connected as soon as the relay + server are ready.
-      // Announce & lookup run in the background — they are not required
-      // for the connection to be usable (the other side's lookup will
-      // find us via the server listener).
+      // Connected as soon as relay + server are ready
       this.setState("connected");
 
-      // Announce ourselves on the topic so other peers can find us
-      // Use a timeout because `finished()` may hang on relay-only DHT nodes.
+      // Announce + lookup in background, then keep retrying periodically
       this.announce(topicBuf).catch(() => {});
-
-      // Look up the topic to find peers that already announced
       this.lookup(topicBuf);
+
+      this.announceTimer = setInterval(() => {
+        this.announce(topicBuf).catch(() => {});
+      }, ANNOUNCE_INTERVAL);
+
+      this.lookupTimer = setInterval(() => {
+        this.lookup(topicBuf);
+      }, LOOKUP_INTERVAL);
     } catch {
       this.setState("error");
     }
@@ -87,10 +101,9 @@ export class SwarmClient {
   private async announce(topicBuf: Uint8Array) {
     if (!this.node || this.destroyed) return;
     const ann = this.node.announce(topicBuf, this.node.defaultKeyPair);
-    // finished() can hang indefinitely on relay-only DHT nodes, so add a timeout
     await Promise.race([
       ann.finished().catch(() => {}),
-      new Promise<void>((r) => setTimeout(r, 5000)),
+      new Promise<void>((r) => setTimeout(r, ANNOUNCE_TIMEOUT)),
     ]);
   }
 
@@ -98,35 +111,60 @@ export class SwarmClient {
     if (!this.node) return;
     try {
       const unann = this.node.unannounce(topicBuf, this.node.defaultKeyPair);
-      await unann.finished().catch(() => {});
+      await Promise.race([
+        unann.finished().catch(() => {}),
+        new Promise<void>((r) => setTimeout(r, ANNOUNCE_TIMEOUT)),
+      ]);
     } catch { /* ok */ }
   }
 
   private lookup(topicBuf: Uint8Array) {
     if (!this.node || this.destroyed) return;
     const lookup = this.node.lookup(topicBuf);
-    // lookup is a Readable stream; each chunk is { token, from, to, peers }
     lookup.on("data", (result: { peers: Array<{ publicKey: Uint8Array; relayAddresses: unknown[] }> }) => {
       if (this.destroyed || !this.node) return;
       for (const peer of result.peers) {
         const remoteKey = toHex(peer.publicKey);
         const localKey = toHex(this.node.defaultKeyPair.publicKey);
-        // Don't connect to ourselves
         if (remoteKey === localKey) continue;
-        // Don't connect to already-known peers
         if (this.knownKeys.has(remoteKey)) continue;
         this.knownKeys.add(remoteKey);
         const socket = this.node.connect(peer.publicKey, { relayAddresses: peer.relayAddresses });
         this.handlePeer(socket, remoteKey);
       }
     });
+    // Ignore lookup errors (e.g. relay hiccup)
+    lookup.on("error", () => {});
+  }
+
+  /**
+   * Extract a stable remotePublicKey hex from a DHT relay socket.
+   * Falls back to undefined if the socket doesn't expose one.
+   */
+  private getRemoteKey(socket: NodeJS.ReadWriteStream): string | undefined {
+    const s = socket as unknown as { remotePublicKey?: Uint8Array };
+    if (s.remotePublicKey && s.remotePublicKey.length > 0) {
+      return toHex(s.remotePublicKey);
+    }
+    return undefined;
   }
 
   private handlePeer(socket: NodeJS.ReadWriteStream, remoteKey?: string) {
-    const remoteId = remoteKey || Math.random().toString(36).slice(2, 10);
-    this.peers.add(remoteId);
-    this.streams.push({ stream: socket, remoteId });
-    this.onPeerCount?.(this.peers.size);
+    // Try to get a stable key from the socket itself (works for server-side connections too)
+    const key = remoteKey || this.getRemoteKey(socket);
+
+    if (key) {
+      // Deduplicate: if we already have a live connection to this key, skip
+      if (this.peers.has(key)) {
+        try { (socket as unknown as { destroy(): void }).destroy(); } catch { /* ok */ }
+        return;
+      }
+      this.knownKeys.add(key);
+    }
+
+    const peerId = key || `anon-${Math.random().toString(36).slice(2, 10)}`;
+    this.peers.set(peerId, socket);
+    this.emitPeerCount();
 
     // Send hello
     const hello: P2PHello = {
@@ -139,7 +177,6 @@ export class SwarmClient {
     let buf = "";
     socket.on("data", (chunk: Uint8Array | string) => {
       buf += chunk.toString();
-      // Messages are newline-delimited JSON
       const lines = buf.split("\n");
       buf = lines.pop() || "";
       for (const line of lines) {
@@ -149,21 +186,22 @@ export class SwarmClient {
           if (pkt.t === "msg") {
             this.onMessage?.(pkt);
           }
-          // hello packets can be used for peer identification
         } catch { /* ignore malformed */ }
       }
     });
 
-    socket.on("error", () => this.removePeer(remoteId));
-    socket.on("close", () => this.removePeer(remoteId));
-    socket.on("end", () => this.removePeer(remoteId));
-  }
+    let removed = false;
+    const remove = () => {
+      if (removed) return;
+      removed = true;
+      this.peers.delete(peerId);
+      if (key) this.knownKeys.delete(key);
+      this.emitPeerCount();
+    };
 
-  private removePeer(id: string) {
-    this.peers.delete(id);
-    this.knownKeys.delete(id);
-    this.streams = this.streams.filter((s) => s.remoteId !== id);
-    this.onPeerCount?.(this.peers.size);
+    socket.on("error", remove);
+    socket.on("close", remove);
+    socket.on("end", remove);
   }
 
   private writeToStream(stream: NodeJS.ReadWriteStream, data: P2PPacket) {
@@ -174,7 +212,7 @@ export class SwarmClient {
   }
 
   send(msg: P2PMessage): void {
-    for (const { stream } of this.streams) {
+    for (const [, stream] of this.peers) {
       this.writeToStream(stream, msg);
     }
   }
@@ -182,13 +220,19 @@ export class SwarmClient {
   async destroy(): Promise<void> {
     this.destroyed = true;
     this.setState("disconnected");
-    if (this.topic) {
-      await this.unannounce(this.topic);
+
+    // Stop periodic timers first
+    if (this.lookupTimer) { clearInterval(this.lookupTimer); this.lookupTimer = null; }
+    if (this.announceTimer) { clearInterval(this.announceTimer); this.announceTimer = null; }
+
+    // Unannounce in background — don't block destroy
+    if (this.topic && this.node) {
+      this.unannounce(this.topic).catch(() => {});
     }
-    for (const { stream } of this.streams) {
+
+    for (const [, stream] of this.peers) {
       try { (stream as unknown as { destroy(): void }).destroy(); } catch { /* ok */ }
     }
-    this.streams = [];
     this.peers.clear();
     this.knownKeys.clear();
     try { await this.server?.close(); } catch { /* ok */ }
