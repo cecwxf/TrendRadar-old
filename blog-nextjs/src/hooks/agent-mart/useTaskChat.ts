@@ -14,7 +14,8 @@ interface UseTaskChatOptions {
 
 interface UseTaskChatReturn {
   messages: TaskMessage[];
-  sendMessage: (content: string) => void;
+  sendMessage: (content: string) => Promise<boolean>;
+  sending: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -27,6 +28,7 @@ export function useTaskChat({
 }: UseTaskChatOptions): UseTaskChatReturn {
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const headersRef = useRef(authHeaders);
@@ -66,8 +68,10 @@ export function useTaskChat({
   }, [enabled, taskId, fetchMessages]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
-      if (!taskId || !content.trim()) return;
+    async (content: string): Promise<boolean> => {
+      if (!taskId || !content.trim()) return false;
+      setSending(true);
+      setError(null);
       try {
         const res = await fetch(`/api/agent-mart/tasks/${taskId}/messages`, {
           method: "POST",
@@ -77,16 +81,21 @@ export function useTaskChat({
         const json = await res.json();
         if (json.success) {
           // Immediately fetch to show the new message
-          fetchMessages();
+          await fetchMessages();
+          return true;
         } else {
           setError(json.error || "发送失败");
+          return false;
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
+        return false;
+      } finally {
+        setSending(false);
       }
     },
     [taskId, fetchMessages],
   );
 
-  return { messages, sendMessage, loading, error };
+  return { messages, sendMessage, sending, loading, error };
 }

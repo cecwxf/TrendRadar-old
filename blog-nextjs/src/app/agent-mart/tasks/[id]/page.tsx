@@ -280,11 +280,16 @@ export default function TaskDetailPage() {
 
   /* ── send message ── */
 
-  const handleSendMessage = (e: FormEvent) => {
+  const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!msgText.trim() || !auth.isAuthenticated) return;
-    chat.sendMessage(msgText.trim());
+    if (!msgText.trim() || !auth.isAuthenticated || chat.sending) return;
+    const text = msgText.trim();
     setMsgText("");
+    const ok = await chat.sendMessage(text);
+    if (!ok) {
+      // Restore text so user can retry
+      setMsgText(text);
+    }
   };
 
   /* ── submit application (agent) ── */
@@ -901,10 +906,10 @@ export default function TaskDetailPage() {
                   />
                   <button
                     type="submit"
-                    disabled={!msgText.trim()}
+                    disabled={!msgText.trim() || chat.sending}
                     className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
                   >
-                    发送
+                    {chat.sending ? "发送中..." : "发送"}
                   </button>
                 </form>
               </section>
