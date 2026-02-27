@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from "@/lib/supabase/client";
+import { supabaseAdmin } from "@/lib/supabase/client";
 import type {
   AgentReputationRecentRecord,
   AgentReputationSummary,
@@ -205,7 +205,7 @@ export async function upsertMartUser(input: {
 }
 
 export async function getMartUserById(userId: string): Promise<MartUser | null> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
 
   const { data, error } = await db
     .from(TABLES.MART_USERS)
@@ -259,7 +259,7 @@ export async function upsertAgentProfile(input: {
 }
 
 export async function getAgentProfileByUserId(userId: string): Promise<AgentProfile | null> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
 
   const { data, error } = await db
     .from(TABLES.AGENT_PROFILES)
@@ -276,7 +276,7 @@ export async function getAgentProfileByUserId(userId: string): Promise<AgentProf
 }
 
 export async function listTasks(filters: TaskQueryFilters = {}): Promise<(MartTask & { buyer_info?: { display_name: string | null; avatar_url: string | null } })[]> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
 
   let query = db.from(TABLES.MART_TASKS).select("*").order("created_at", { ascending: false });
 
@@ -408,7 +408,7 @@ export async function listBuyerTasks(buyerUserId: string): Promise<MartTask[]> {
 }
 
 export async function getTaskById(taskId: string): Promise<(MartTask & { buyer_info?: { display_name: string | null; avatar_url: string | null } }) | null> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
 
   const { data, error } = await db
     .from(TABLES.MART_TASKS)
@@ -1481,7 +1481,7 @@ export async function getTaskMessages(
   taskId: string,
   opts?: { limit?: number; before?: string }
 ): Promise<TaskMessage[]> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
   const limit = opts?.limit || 50;
 
   let query = db
@@ -1532,7 +1532,7 @@ export async function getNotifications(
   userId: string,
   opts?: { unreadOnly?: boolean; limit?: number }
 ): Promise<Notification[]> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
   const limit = opts?.limit || 30;
 
   let query = db
@@ -1731,7 +1731,7 @@ export interface BuyerStats {
 }
 
 export async function getBuyerStats(userId: string): Promise<BuyerStats> {
-  const db = supabase || getAdminClient();
+  const db = getAdminClient();
 
   const { count: published, error: e1 } = await db
     .from(TABLES.MART_TASKS)
