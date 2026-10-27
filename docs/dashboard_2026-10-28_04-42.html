@@ -1,0 +1,1285 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>智展AI - 2026-10-28</title>
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                margin: 0;
+                padding: 0;
+                background: #f5f7fa;
+                color: #1f2937;
+                line-height: 1.6;
+                min-height: 100vh;
+            }
+
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0;
+            }
+
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+                color: white;
+                padding: 48px 32px 32px;
+                text-align: center;
+                border-radius: 0;
+                margin-bottom: 32px;
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            }
+
+            .header h1 {
+                margin: 0 0 12px 0;
+                font-size: 42px;
+                font-weight: 700;
+                letter-spacing: -0.5px;
+            }
+
+            .header .subtitle {
+                font-size: 17px;
+                opacity: 0.92;
+                font-weight: 400;
+            }
+
+            .section {
+                background: transparent;
+                padding: 24px 32px;
+                margin-bottom: 24px;
+            }
+
+            .section-title {
+                font-size: 24px;
+                font-weight: 700;
+                margin: 0 0 24px 0;
+                color: #1f2937;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+
+            /* 板块分类样式 */
+            .crypto-category, .stock-category {
+                margin-bottom: 32px;
+            }
+
+            .category-title {
+                font-size: 20px;
+                font-weight: 700;
+                margin: 0 0 20px 0;
+                color: #374151;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding-bottom: 12px;
+                border-bottom: 2px solid #e5e7eb;
+            }
+
+            .card-name {
+                font-size: 13px;
+                color: #6b7280;
+                font-weight: 500;
+            }
+
+            .card-ticker {
+                font-size: 12px;
+                color: #6b7280;
+                background: #f3f4f6;
+                padding: 3px 8px;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+
+            .cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-bottom: 24px;
+            }
+
+            .card {
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                border: 1px solid #e5e7eb;
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+            }
+
+            .card:hover {
+                border-color: #667eea;
+                box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15), 0 4px 8px rgba(102, 126, 234, 0.1);
+                transform: translateY(-4px);
+            }
+
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+
+            .card-symbol {
+                font-size: 20px;
+                font-weight: 700;
+                color: #1f2937;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+
+            .card-exchange {
+                font-size: 13px;
+                color: white;
+                background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+                padding: 4px 12px;
+                border-radius: 8px;
+                font-weight: 600;
+                box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+            }
+
+            .card-price {
+                font-size: 36px;
+                font-weight: 700;
+                margin: 12px 0;
+                color: #1f2937;
+                letter-spacing: -1px;
+            }
+
+            .card-change {
+                font-size: 17px;
+                font-weight: 600;
+                padding: 6px 14px;
+                border-radius: 8px;
+                display: inline-block;
+            }
+
+            .card-change.positive {
+                color: white;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+            }
+
+            .card-change.negative {
+                color: white;
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+            }
+
+            .card-volume {
+                font-size: 14px;
+                color: #6b7280;
+                margin-top: 14px;
+                padding: 8px 12px;
+                background: #f9fafb;
+                border-radius: 8px;
+                font-weight: 500;
+            }
+
+            .chart-container {
+                width: 100%;
+                height: 400px;
+                margin-bottom: 20px;
+                background: white;
+                border-radius: 16px;
+                padding: 20px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+            }
+
+            .ai-insights {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 16px;
+                padding: 32px;
+                margin: 24px 32px;
+                border: none;
+                box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+            }
+
+            .ai-insights h3 {
+                margin: 0 0 20px 0;
+                font-size: 24px;
+                color: white;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-weight: 700;
+            }
+
+            .ai-insights .content {
+                color: rgba(255, 255, 255, 0.95);
+                line-height: 1.8;
+                white-space: pre-wrap;
+                font-size: 15px;
+            }
+
+            .rss-feed {
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+            }
+
+            .rss-item {
+                background: #f9fafb;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 16px;
+                border-left: 4px solid #10b981;
+                transition: all 0.2s ease;
+            }
+
+            .rss-item:hover {
+                background: #f3f4f6;
+                transform: translateX(4px);
+                border-left-color: #059669;
+            }
+
+            .rss-item .title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #1f2937;
+                margin-bottom: 10px;
+                line-height: 1.6;
+            }
+
+            .rss-item .title a {
+                color: #1f2937;
+                text-decoration: none;
+                transition: color 0.2s ease;
+            }
+
+            .rss-item .title a:hover {
+                color: #667eea;
+            }
+
+            .rss-item .meta {
+                font-size: 13px;
+                color: #6b7280;
+                font-weight: 500;
+            }
+
+            .rss-item .summary {
+                font-size: 14px;
+                color: #6b7280;
+                margin-top: 10px;
+                line-height: 1.7;
+            }
+
+            .time-range-tabs {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 24px;
+                padding: 6px;
+                background: white;
+                border-radius: 12px;
+                overflow-x: auto;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            }
+
+            .time-range-tab {
+                padding: 10px 24px;
+                border: none;
+                background: transparent;
+                color: #6b7280;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+                white-space: nowrap;
+            }
+
+            .time-range-tab:hover {
+                background: #f3f4f6;
+                color: #1f2937;
+            }
+
+            .time-range-tab.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            }
+
+            .timestamp {
+                text-align: center;
+                color: #9ca3af;
+                font-size: 14px;
+                margin-top: 48px;
+                padding: 24px;
+                font-weight: 500;
+            }
+
+            @media (max-width: 768px) {
+                .container {
+                    padding: 0;
+                }
+
+                .section {
+                    padding: 20px 16px;
+                }
+
+                .header {
+                    padding: 36px 24px 24px;
+                    border-radius: 0;
+                }
+
+                .header h1 {
+                    font-size: 32px;
+                }
+
+                .header .subtitle {
+                    font-size: 15px;
+                }
+
+                .section-title {
+                    font-size: 20px;
+                }
+
+                .category-title {
+                    font-size: 18px;
+                }
+
+                .cards-grid {
+                    grid-template-columns: 1fr;
+                    gap: 16px;
+                }
+
+                .card {
+                    padding: 20px;
+                }
+
+                .card-price {
+                    font-size: 28px;
+                }
+
+                .chart-container {
+                    height: 300px;
+                    padding: 16px;
+                }
+
+                .ai-insights {
+                    margin: 24px 16px;
+                    padding: 24px;
+                }
+
+                .time-range-tabs {
+                    padding: 4px;
+                }
+
+                .time-range-tab {
+                    padding: 8px 16px;
+                    font-size: 13px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- 头部 -->
+            <div class="header">
+                <h1>📈 智展AI</h1>
+                <div class="subtitle">实时追踪加密货币、股票市场及AI智能分析</div>
+            </div>
+
+            <!-- 加密货币部分 -->
+            <div class="section">
+                <h2 class="section-title">💰 加密货币行情</h2>
+                <div class="cards-grid">
+                    
+        <div class="crypto-category">
+            <h3 class="category-title">💰 主流币</h3>
+            <div class="cards-grid">
+        
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-symbol">BTC</span>
+                    <span class="card-name">比特币</span>
+                </div>
+                <div class="card-price">$80,580.00</div>
+                <div class="card-change positive">
+                    ▲ +1.01%
+                </div>
+                <div class="card-volume">
+                    成交量: $23,412,082,716
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-symbol">ETH</span>
+                    <span class="card-name">以太坊</span>
+                </div>
+                <div class="card-price">$2,339.38</div>
+                <div class="card-change positive">
+                    ▲ +1.37%
+                </div>
+                <div class="card-volume">
+                    成交量: $9,293,782,537
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+
+        <div class="crypto-category">
+            <h3 class="category-title">⛓️ 公链</h3>
+            <div class="cards-grid">
+        
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-symbol">BNB</span>
+                    <span class="card-name">币安链</span>
+                </div>
+                <div class="card-price">$746.20</div>
+                <div class="card-change positive">
+                    ▲ +0.75%
+                </div>
+                <div class="card-volume">
+                    成交量: $908,145,992
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-symbol">SOL</span>
+                    <span class="card-name">Solana</span>
+                </div>
+                <div class="card-price">$100.85</div>
+                <div class="card-change positive">
+                    ▲ +0.66%
+                </div>
+                <div class="card-volume">
+                    成交量: $2,053,004,855
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-symbol">AVAX</span>
+                    <span class="card-name">Avalanche</span>
+                </div>
+                <div class="card-price">$8.87</div>
+                <div class="card-change negative">
+                    ▼ -0.32%
+                </div>
+                <div class="card-volume">
+                    成交量: $210,829,633
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+                </div>
+            </div>
+
+            <!-- 股票市场部分 -->
+            <div class="section">
+                <h2 class="section-title">📊 全球股票指数</h2>
+                <div class="cards-grid">
+                    
+        <div class="stock-category">
+            <h3 class="category-title">📊 市场指数</h3>
+            <div class="cards-grid">
+        
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">S&P 500</span>
+                    <span class="card-exchange">美股</span>
+                </div>
+                <div class="card-price">7,722.60</div>
+                <div class="card-change positive">
+                    ▲ +45.83 (+0.60%)
+                </div>
+                <div class="card-volume">
+                    成交量: 2,799,501,000
+                </div>
+            </div>
+            
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">NASDAQ Composite</span>
+                    <span class="card-exchange">美股</span>
+                </div>
+                <div class="card-price">26,477.81</div>
+                <div class="card-change positive">
+                    ▲ +308.43 (+1.18%)
+                </div>
+                <div class="card-volume">
+                    成交量: 7,042,710,000
+                </div>
+            </div>
+            
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">Dow Jones Industrial Average</span>
+                    <span class="card-exchange">美股</span>
+                </div>
+                <div class="card-price">52,377.57</div>
+                <div class="card-change positive">
+                    ▲ +15.99 (+0.03%)
+                </div>
+                <div class="card-volume">
+                    成交量: 400,713,990
+                </div>
+            </div>
+            
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">HANG SENG INDEX</span>
+                    <span class="card-exchange">港股</span>
+                </div>
+                <div class="card-price">23,041.32</div>
+                <div class="card-change negative">
+                    ▼ -52.08 (-0.23%)
+                </div>
+                <div class="card-volume">
+                    成交量: 0
+                </div>
+            </div>
+            
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">SSE Composite Index</span>
+                    <span class="card-exchange">A股</span>
+                </div>
+                <div class="card-price">3,648.30</div>
+                <div class="card-change negative">
+                    ▼ -42.18 (-1.14%)
+                </div>
+                <div class="card-volume">
+                    成交量: 3,124,247,536
+                </div>
+            </div>
+            
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">Shenzhen Index</span>
+                    <span class="card-exchange">A股</span>
+                </div>
+                <div class="card-price">11,245.73</div>
+                <div class="card-change negative">
+                    ▼ -428.07 (-3.67%)
+                </div>
+                <div class="card-volume">
+                    成交量: 3,008,992,322
+                </div>
+            </div>
+            
+            <div class="card index-card">
+                <div class="card-header">
+                    <span class="card-symbol">ChiNext</span>
+                    <span class="card-exchange">A股</span>
+                </div>
+                <div class="card-price">2,548.15</div>
+                <div class="card-change negative">
+                    ▼ -90.08 (-3.41%)
+                </div>
+                <div class="card-volume">
+                    成交量: 2,754,653,513
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+
+        <div class="stock-category">
+            <h3 class="category-title">🇺🇸 美股科技股</h3>
+            <div class="cards-grid">
+        
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Tesla, Inc.</span>
+                    <span class="card-ticker">TSLA</span>
+                </div>
+                <div class="card-price">$407.46</div>
+                <div class="card-change positive">
+                    ▲ +15.84 (+4.04%)
+                </div>
+                <div class="card-volume">
+                    成交量: 44,554,981
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Microsoft Corporation</span>
+                    <span class="card-ticker">MSFT</span>
+                </div>
+                <div class="card-price">$531.33</div>
+                <div class="card-change negative">
+                    ▼ -1.27 (-0.24%)
+                </div>
+                <div class="card-volume">
+                    成交量: 18,957,427
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Alphabet Inc.</span>
+                    <span class="card-ticker">GOOGL</span>
+                </div>
+                <div class="card-price">$320.58</div>
+                <div class="card-change positive">
+                    ▲ +3.78 (+1.19%)
+                </div>
+                <div class="card-volume">
+                    成交量: 28,327,299
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">NVIDIA Corporation</span>
+                    <span class="card-ticker">NVDA</span>
+                </div>
+                <div class="card-price">$217.94</div>
+                <div class="card-change positive">
+                    ▲ +1.94 (+0.90%)
+                </div>
+                <div class="card-volume">
+                    成交量: 84,182,670
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">QUALCOMM Incorporated</span>
+                    <span class="card-ticker">QCOM</span>
+                </div>
+                <div class="card-price">$184.17</div>
+                <div class="card-change positive">
+                    ▲ +4.57 (+2.54%)
+                </div>
+                <div class="card-volume">
+                    成交量: 12,041,512
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Meta Platforms, Inc.</span>
+                    <span class="card-ticker">META</span>
+                </div>
+                <div class="card-price">$620.19</div>
+                <div class="card-change negative">
+                    ▼ -10.37 (-1.64%)
+                </div>
+                <div class="card-volume">
+                    成交量: 50,369,963
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Broadcom Inc.</span>
+                    <span class="card-ticker">AVGO</span>
+                </div>
+                <div class="card-price">$342.33</div>
+                <div class="card-change positive">
+                    ▲ +13.16 (+4.00%)
+                </div>
+                <div class="card-volume">
+                    成交量: 25,207,168
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+
+        <div class="stock-category">
+            <h3 class="category-title">🇭🇰 港股</h3>
+            <div class="cards-grid">
+        
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Tencent Holdings Limited</span>
+                    <span class="card-ticker">0700.HK</span>
+                </div>
+                <div class="card-price">$385.20</div>
+                <div class="card-change negative">
+                    ▼ -1.20 (-0.31%)
+                </div>
+                <div class="card-volume">
+                    成交量: 16,238,414
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Xiaomi Corporation</span>
+                    <span class="card-ticker">1810.HK</span>
+                </div>
+                <div class="card-price">$25.66</div>
+                <div class="card-change negative">
+                    ▼ -1.24 (-4.61%)
+                </div>
+                <div class="card-volume">
+                    成交量: 138,340,888
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Alibaba Group Holding Limited</span>
+                    <span class="card-ticker">9988.HK</span>
+                </div>
+                <div class="card-price">$97.00</div>
+                <div class="card-change negative">
+                    ▼ -0.95 (-0.97%)
+                </div>
+                <div class="card-volume">
+                    成交量: 36,085,883
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">MicroPort CardioFlow Medtech Corporation</span>
+                    <span class="card-ticker">2160.HK</span>
+                </div>
+                <div class="card-price">$1.28</div>
+                <div class="card-change positive">
+                    ▲ +0.00 (+0.00%)
+                </div>
+                <div class="card-volume">
+                    成交量: 1,161,000
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+
+        <div class="stock-category">
+            <h3 class="category-title">🇨🇳 A股</h3>
+            <div class="cards-grid">
+        
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Suzhou UIGreen Micro&Nano Technologies Co.,Ltd</span>
+                    <span class="card-ticker">688661.SS</span>
+                </div>
+                <div class="card-price">$77.20</div>
+                <div class="card-change negative">
+                    ▼ -5.75 (-6.93%)
+                </div>
+                <div class="card-volume">
+                    成交量: 2,964,951
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Loongson Technology Corporation Limited</span>
+                    <span class="card-ticker">688047.SS</span>
+                </div>
+                <div class="card-price">$91.50</div>
+                <div class="card-change negative">
+                    ▼ -3.91 (-4.10%)
+                </div>
+                <div class="card-volume">
+                    成交量: 2,836,586
+                </div>
+            </div>
+            
+            <div class="card stock-card">
+                <div class="card-header">
+                    <span class="card-symbol">Kweichow Moutai Co., Ltd.</span>
+                    <span class="card-ticker">600519.SS</span>
+                </div>
+                <div class="card-price">$1,355.90</div>
+                <div class="card-change positive">
+                    ▲ +5.92 (+0.44%)
+                </div>
+                <div class="card-volume">
+                    成交量: 3,866,914
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+                </div>
+            </div>
+
+            <!-- 价格走势图表 -->
+            <div class="section">
+                <h2 class="section-title">📉 价格走势</h2>
+                <div class="time-range-tabs"><button class="time-range-tab active" data-range="24h">24小时</button><button class="time-range-tab" data-range="7d">7天</button><button class="time-range-tab" data-range="30d">30天</button><button class="time-range-tab" data-range="1y">1年</button></div><div id="chart-S&P500" class="chart-container"></div>
+<div id="chart-NASDAQ" class="chart-container"></div>
+<div id="chart-HSI" class="chart-container"></div>
+            </div>
+
+            <!-- AI 分析 -->
+            
+    <div class="ai-insights">
+        <h3>
+            <span>🤖</span>
+            <span>AI 智能分析</span>
+        </h3>
+        <div class="content">## 📊 市场数据概览
+
+### 💰 加密货币市场
+
+🔹 上涨: 4 个，平均涨幅 0.95%
+🔹 下跌: 1 个，平均跌幅 -0.32%
+
+### 📊 股票市场
+
+🔹 上涨: 10 个指数，平均涨幅 1.49%
+🔹 下跌: 11 个指数，平均跌幅 -2.48%
+
+---
+
+⚠️ **注意**: Claude API 暂时不可用，以上为简化统计分析。</div>
+    </div>
+    
+
+            <!-- RSS 推文 -->
+            
+
+            <!-- 时间戳 -->
+            <div class="timestamp">
+                更新时间: 2026-10-28 04-42 | 数据来源: CoinGecko, Yahoo Finance
+            </div>
+        </div>
+
+        <script>
+            
+        (function() {
+            var chartDom = document.getElementById('chart-S&P500');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+
+            // 所有时间范围的数据
+            var chartData = {"24h": {"timestamps": ["09:30", "10:30", "11:30", "12:30", "13:30", "14:30", "15:30"], "prices": [7690.7001953125, 7721.33984375, 7726.93994140625, 7720.1298828125, 7716.97998046875, 7726.97998046875, 7722.97998046875]}, "7d": {"timestamps": ["10-21 09:30", "10-21 10:30", "10-21 11:30", "10-21 12:30", "10-21 13:30", "10-21 14:30", "10-21 15:30", "10-22 09:30", "10-22 10:30", "10-22 11:30", "10-22 12:30", "10-22 13:30", "10-22 14:30", "10-22 15:30", "10-23 09:30", "10-23 10:30", "10-23 11:30", "10-23 12:30", "10-23 13:30", "10-23 14:30", "10-23 15:30", "10-26 09:30", "10-26 10:30", "10-26 11:30", "10-26 12:30", "10-26 13:30", "10-26 14:30", "10-26 15:30", "10-27 09:30", "10-27 10:30", "10-27 11:30", "10-27 12:30", "10-27 13:30", "10-27 14:30", "10-27 15:30"], "prices": [7719.43017578125, 7745.89990234375, 7748.60986328125, 7765.41015625, 7768.759765625, 7757.93017578125, 7757.22021484375, 7658.580078125, 7659.27001953125, 7678.4599609375, 7657.93017578125, 7648.9599609375, 7656.33984375, 7663.4501953125, 7621.58984375, 7655.31982421875, 7641.6201171875, 7628.740234375, 7634.31005859375, 7629.64013671875, 7622.990234375, 7672.06982421875, 7694.2001953125, 7681.2900390625, 7683.8798828125, 7681.759765625, 7678.64990234375, 7676.60986328125, 7690.7001953125, 7721.33984375, 7726.93994140625, 7720.1298828125, 7716.97998046875, 7726.97998046875, 7722.97998046875]}, "30d": {"timestamps": ["09-28", "09-29", "09-30", "10-01", "10-02", "10-05", "10-06", "10-07", "10-08", "10-09", "10-12", "10-13", "10-14", "10-15", "10-16", "10-19", "10-20", "10-21", "10-22", "10-23", "10-26", "10-27"], "prices": [7683.68994140625, 7670.83984375, 7651.5400390625, 7666.4501953125, 7722.72021484375, 7773.9501953125, 7818.93017578125, 7801.77001953125, 7765.35986328125, 7811.5400390625, 7807.240234375, 7805.4501953125, 7718.93994140625, 7744.06005859375, 7659.43994140625, 7690.72998046875, 7712.56982421875, 7757.169921875, 7663.43017578125, 7623.68017578125, 7676.77001953125, 7722.60009765625]}, "1y": {"timestamps": ["2025-10-28", "2025-10-29", "2025-10-30", "2025-10-31", "2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07", "2025-11-10", "2025-11-11", "2025-11-12", "2025-11-13", "2025-11-14", "2025-11-17", "2025-11-18", "2025-11-19", "2025-11-20", "2025-11-21", "2025-11-24", "2025-11-25", "2025-11-26", "2025-11-28", "2025-12-01", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11", "2025-12-12", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-26", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16", "2026-01-20", "2026-01-21", "2026-01-22", "2026-01-23", "2026-01-26", "2026-01-27", "2026-01-28", "2026-01-29", "2026-01-30", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05", "2026-02-06", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-23", "2026-02-24", "2026-02-25", "2026-02-26", "2026-02-27", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-04", "2026-05-05", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26", "2026-10-27"], "prices": [6890.89013671875, 6890.58984375, 6822.33984375, 6840.2001953125, 6851.97021484375, 6771.5498046875, 6796.2900390625, 6720.31982421875, 6728.7998046875, 6832.43017578125, 6846.60986328125, 6850.919921875, 6737.490234375, 6734.10986328125, 6672.41015625, 6617.31982421875, 6642.16015625, 6538.759765625, 6602.990234375, 6705.1201171875, 6765.8798828125, 6812.60986328125, 6849.08984375, 6812.6298828125, 6829.3701171875, 6849.72021484375, 6857.1201171875, 6870.39990234375, 6846.509765625, 6840.509765625, 6886.68017578125, 6901.0, 6827.41015625, 6816.509765625, 6800.259765625, 6721.43017578125, 6774.759765625, 6834.5, 6878.490234375, 6909.7900390625, 6932.0498046875, 6929.93994140625, 6905.740234375, 6896.240234375, 6845.5, 6858.47021484375, 6902.0498046875, 6944.81982421875, 6920.93017578125, 6921.4599609375, 6966.27978515625, 6977.27001953125, 6963.740234375, 6926.60009765625, 6944.47021484375, 6940.009765625, 6796.85986328125, 6875.6201171875, 6913.35009765625, 6915.60986328125, 6950.22998046875, 6978.60009765625, 6978.02978515625, 6969.009765625, 6939.02978515625, 6976.43994140625, 6917.81005859375, 6882.72021484375, 6798.39990234375, 6932.2998046875, 6964.81982421875, 6941.81005859375, 6941.47021484375, 6832.759765625, 6836.169921875, 6843.22021484375, 6881.31005859375, 6861.89013671875, 6909.509765625, 6837.75, 6890.06982421875, 6946.1298828125, 6908.85986328125, 6878.8798828125, 6881.6201171875, 6816.6298828125, 6869.5, 6830.7099609375, 6740.02001953125, 6795.990234375, 6781.47998046875, 6775.7998046875, 6672.6201171875, 6632.18994140625, 6699.3798828125, 6716.08984375, 6624.7001953125, 6606.490234375, 6506.47998046875, 6581.0, 6556.3701171875, 6591.89990234375, 6477.16015625, 6368.85009765625, 6343.72021484375, 6528.52001953125, 6575.31982421875, 6582.68994140625, 6611.830078125, 6616.85009765625, 6782.81005859375, 6824.66015625, 6816.89013671875, 6886.240234375, 6967.3798828125, 7022.9501953125, 7041.27978515625, 7126.06005859375, 7109.14013671875, 7064.009765625, 7137.89990234375, 7108.39990234375, 7165.080078125, 7173.91015625, 7138.7998046875, 7135.9501953125, 7209.009765625, 7230.1201171875, 7200.75, 7259.22021484375, 7365.1201171875, 7337.10986328125, 7398.93017578125, 7412.83984375, 7400.9599609375, 7444.25, 7501.240234375, 7408.5, 7403.0498046875, 7353.60986328125, 7432.97021484375, 7445.72021484375, 7473.47021484375, 7519.1201171875, 7520.35986328125, 7563.6298828125, 7580.06005859375, 7599.9599609375, 7609.77978515625, 7553.68017578125, 7584.31005859375, 7383.740234375, 7405.72998046875, 7386.64990234375, 7266.990234375, 7394.2998046875, 7431.4599609375, 7554.2900390625, 7511.35009765625, 7420.10009765625, 7500.580078125, 7472.7900390625, 7365.4599609375, 7358.22021484375, 7357.490234375, 7354.02001953125, 7440.43017578125, 7499.35986328125, 7483.22998046875, 7483.240234375, 7537.43017578125, 7503.85009765625, 7482.7099609375, 7543.64013671875, 7575.39013671875, 7515.33984375, 7543.58984375, 7572.39990234375, 7533.77001953125, 7457.68994140625, 7443.27978515625, 7509.2001953125, 7498.9599609375, 7408.2998046875, 7411.97998046875, 7413.18017578125, 7428.77978515625, 7316.14990234375, 7437.6298828125, 7489.72021484375, 7600.5, 7736.52001953125, 7723.5498046875, 7709.9599609375, 7757.64013671875, 7753.10986328125, 7728.2001953125, 7748.5, 7798.990234375, 7785.759765625, 7745.06005859375, 7691.759765625, 7707.97998046875, 7641.16015625, 7674.3701171875, 7652.85986328125, 7677.27978515625, 7675.7001953125, 7730.990234375, 7711.759765625, 7686.14013671875, 7631.47021484375, 7666.60009765625, 7747.7099609375, 7718.60009765625, 7673.52001953125, 7636.35986328125, 7591.7001953125, 7656.97998046875, 7619.97998046875, 7585.72998046875, 7551.81005859375, 7637.759765625, 7650.5, 7764.7001953125, 7764.64013671875, 7706.02978515625, 7704.1298828125, 7743.41015625, 7683.68994140625, 7670.83984375, 7651.5400390625, 7666.4501953125, 7722.72021484375, 7773.9501953125, 7818.93017578125, 7801.77001953125, 7765.35986328125, 7811.5400390625, 7807.240234375, 7805.4501953125, 7718.93994140625, 7744.06005859375, 7659.43994140625, 7690.72998046875, 7712.56982421875, 7757.169921875, 7663.43017578125, 7623.68017578125, 7676.77001953125, 7722.60009765625]}};
+
+            // 当前显示的时间范围
+            var currentRange = '24h';
+
+            // 更新图表函数
+            function updateChart(range) {
+                currentRange = range;
+                var data = chartData[range];
+
+                if (!data || data.timestamps.length === 0) {
+                    console.warn('No data for', 'S&P500', range);
+                    return;
+                }
+
+                var option = {
+                    title: {
+                        text: 'S&P500 价格走势',
+                        textStyle: {
+                            color: '#1f2937',
+                            fontSize: 18,
+                            fontWeight: 700
+                        },
+                        left: '20px'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        textStyle: {
+                            color: '#1f2937'
+                        },
+                        formatter: function(params) {
+                            var param = params[0];
+                            return param.name + '<br/>' +
+                                   '<span style="color:#667eea;">●</span> ' +
+                                   '<b>$' + param.value.toFixed(2) + '</b>';
+                        },
+                        shadowColor: 'rgba(0, 0, 0, 0.1)',
+                        shadowBlur: 10
+                    },
+                    grid: {
+                        left: '50px',
+                        right: '50px',
+                        top: '60px',
+                        bottom: '50px',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.timestamps,
+                        axisLine: {
+                            lineStyle: { color: '#e5e7eb' }
+                        },
+                        axisLabel: {
+                            color: '#6b7280',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            rotate: range === '1y' || range === '30d' ? 45 : 0
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLine: {
+                            lineStyle: { color: '#e5e7eb' }
+                        },
+                        splitLine: {
+                            lineStyle: { color: '#f3f4f6', type: 'solid' }
+                        },
+                        axisLabel: {
+                            color: '#6b7280',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            formatter: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        }
+                    },
+                    series: [{
+                        name: 'S&P500',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: range === '24h' ? 7 : 5,
+                        lineStyle: {
+                            color: '#667eea',
+                            width: 3
+                        },
+                        itemStyle: {
+                            color: '#667eea',
+                            borderColor: '#ffffff',
+                            borderWidth: 3
+                        },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(102, 126, 234, 0.25)' },
+                                    { offset: 1, color: 'rgba(102, 126, 234, 0.02)' }
+                                ]
+                            }
+                        },
+                        data: data.prices
+                    }]
+                };
+                myChart.setOption(option);
+            }
+
+            // 初始化显示24小时数据
+            updateChart('24h');
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+
+            // 将更新函数存储到全局，供时间范围切换按钮调用
+            window.updateChart_S&P500 = updateChart;
+        })();
+        
+
+        (function() {
+            var chartDom = document.getElementById('chart-NASDAQ');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+
+            // 所有时间范围的数据
+            var chartData = {"24h": {"timestamps": ["09:30", "10:30", "11:30", "12:30", "13:30", "14:30", "15:30"], "prices": [26307.328125, 26448.59375, 26510.677734375, 26462.380859375, 26453.212890625, 26501.28515625, 26474.904296875]}, "7d": {"timestamps": ["10-21 09:30", "10-21 10:30", "10-21 11:30", "10-21 12:30", "10-21 13:30", "10-21 14:30", "10-21 15:30", "10-22 09:30", "10-22 10:30", "10-22 11:30", "10-22 12:30", "10-22 13:30", "10-22 14:30", "10-22 15:30", "10-23 09:30", "10-23 10:30", "10-23 11:30", "10-23 12:30", "10-23 13:30", "10-23 14:30", "10-23 15:30", "10-26 09:30", "10-26 10:30", "10-26 11:30", "10-26 12:30", "10-26 13:30", "10-26 14:30", "10-26 15:30", "10-27 09:30", "10-27 10:30", "10-27 11:30", "10-27 12:30", "10-27 13:30", "10-27 14:30", "10-27 15:30"], "prices": [26557.544921875, 26681.865234375, 26684.724609375, 26758.169921875, 26760.42578125, 26709.46875, 26701.61328125, 26148.203125, 26113.560546875, 26159.34765625, 26054.64453125, 25982.150390625, 26003.7734375, 26017.75, 25968.123046875, 26071.419921875, 26021.12109375, 25981.828125, 26003.466796875, 25971.28125, 25954.015625, 26135.423828125, 26277.9609375, 26215.271484375, 26227.51171875, 26211.404296875, 26190.822265625, 26169.361328125, 26307.328125, 26448.59375, 26510.677734375, 26462.380859375, 26453.212890625, 26501.28515625, 26474.904296875]}, "30d": {"timestamps": ["09-28", "09-29", "09-30", "10-01", "10-02", "10-05", "10-06", "10-07", "10-08", "10-09", "10-12", "10-13", "10-14", "10-15", "10-16", "10-19", "10-20", "10-21", "10-22", "10-23", "10-26", "10-27"], "prices": [26820.380859375, 26797.5390625, 26861.060546875, 26871.599609375, 27190.859375, 27477.310546875, 27599.7890625, 27538.689453125, 27193.33984375, 27366.169921875, 27245.900390625, 27204.380859375, 26692.869140625, 26713.029296875, 26140.029296875, 26430.890625, 26424.8203125, 26702.859375, 26008.859375, 25955.33984375, 26169.380859375, 26477.810546875]}, "1y": {"timestamps": ["2025-10-28", "2025-10-29", "2025-10-30", "2025-10-31", "2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07", "2025-11-10", "2025-11-11", "2025-11-12", "2025-11-13", "2025-11-14", "2025-11-17", "2025-11-18", "2025-11-19", "2025-11-20", "2025-11-21", "2025-11-24", "2025-11-25", "2025-11-26", "2025-11-28", "2025-12-01", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11", "2025-12-12", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-26", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16", "2026-01-20", "2026-01-21", "2026-01-22", "2026-01-23", "2026-01-26", "2026-01-27", "2026-01-28", "2026-01-29", "2026-01-30", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05", "2026-02-06", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-23", "2026-02-24", "2026-02-25", "2026-02-26", "2026-02-27", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-04", "2026-05-05", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26", "2026-10-27"], "prices": [23827.490234375, 23958.470703125, 23581.140625, 23724.9609375, 23834.720703125, 23348.640625, 23499.80078125, 23053.990234375, 23004.5390625, 23527.169921875, 23468.30078125, 23406.4609375, 22870.359375, 22900.58984375, 22708.0703125, 22432.849609375, 22564.23046875, 22078.05078125, 22273.080078125, 22872.009765625, 23025.58984375, 23214.689453125, 23365.689453125, 23275.919921875, 23413.669921875, 23454.08984375, 23505.140625, 23578.130859375, 23545.900390625, 23576.490234375, 23654.150390625, 23593.859375, 23195.169921875, 23057.41015625, 23111.4609375, 22693.3203125, 23006.359375, 23307.619140625, 23428.830078125, 23561.83984375, 23613.310546875, 23593.099609375, 23474.349609375, 23419.080078125, 23241.990234375, 23235.630859375, 23395.8203125, 23547.169921875, 23584.279296875, 23480.01953125, 23671.349609375, 23733.900390625, 23709.869140625, 23471.75, 23530.01953125, 23515.390625, 22954.3203125, 23224.8203125, 23436.01953125, 23501.240234375, 23601.359375, 23817.099609375, 23857.44921875, 23685.119140625, 23461.8203125, 23592.109375, 23255.189453125, 22904.580078125, 22540.58984375, 23031.2109375, 23238.669921875, 23102.470703125, 23066.470703125, 22597.150390625, 22546.669921875, 22578.380859375, 22753.630859375, 22682.73046875, 22886.0703125, 22627.26953125, 22863.6796875, 23152.080078125, 22878.380859375, 22668.2109375, 22748.859375, 22516.689453125, 22807.48046875, 22748.990234375, 22387.6796875, 22695.94921875, 22697.099609375, 22716.130859375, 22311.98046875, 22105.359375, 22374.1796875, 22479.529296875, 22152.419921875, 22090.689453125, 21647.609375, 21946.759765625, 21761.890625, 21929.8203125, 21408.080078125, 20948.359375, 20794.640625, 21590.630859375, 21840.94921875, 21879.1796875, 21996.33984375, 22017.849609375, 22634.990234375, 22822.419921875, 22902.890625, 23183.740234375, 23639.080078125, 24016.01953125, 24102.69921875, 24468.48046875, 24404.390625, 24259.9609375, 24657.5703125, 24438.5, 24836.599609375, 24887.099609375, 24663.80078125, 24673.240234375, 24892.310546875, 25114.439453125, 25067.80078125, 25326.130859375, 25838.939453125, 25806.19921875, 26247.080078125, 26274.130859375, 26088.19921875, 26402.33984375, 26635.220703125, 26225.140625, 26090.73046875, 25870.7109375, 26270.359375, 26293.099609375, 26343.970703125, 26656.1796875, 26674.73046875, 26917.470703125, 26972.619140625, 27086.810546875, 27093.900390625, 26853.98046875, 26830.9609375, 25709.4296875, 25929.66015625, 25678.8203125, 25169.5, 25809.66015625, 25888.83984375, 26683.939453125, 26376.33984375, 26021.66015625, 26517.9296875, 26166.599609375, 25587.0390625, 25476.640625, 25358.599609375, 25297.619140625, 25820.140625, 26213.720703125, 26040.029296875, 25832.669921875, 26121.16015625, 25818.689453125, 25870.650390625, 26206.890625, 26281.609375, 25873.1796875, 26107.009765625, 26269.23046875, 25881.94921875, 25520.240234375, 25508.0703125, 25837.2109375, 25690.900390625, 25137.689453125, 24975.8203125, 24932.080078125, 24876.91015625, 24442.939453125, 25122.1796875, 25373.849609375, 25913.900390625, 26584.990234375, 26363.439453125, 26348.349609375, 26690.619140625, 26605.359375, 26445.44921875, 26588.490234375, 26803.029296875, 26729.16015625, 26644.91015625, 26289.7109375, 26331.08984375, 26067.169921875, 26180.4609375, 25980.189453125, 26151.30078125, 26130.19921875, 26541.349609375, 26402.419921875, 26370.890625, 26099.76953125, 26217.830078125, 26584.060546875, 26506.990234375, 26421.41015625, 26253.33984375, 26081.720703125, 26333.0390625, 26186.41015625, 25981.5703125, 25978.4296875, 26418.30078125, 26522.5390625, 27122.08984375, 27244.279296875, 26936.0390625, 26939.369140625, 27068.720703125, 26820.380859375, 26797.5390625, 26861.060546875, 26871.599609375, 27190.859375, 27477.310546875, 27599.7890625, 27538.689453125, 27193.33984375, 27366.169921875, 27245.900390625, 27204.380859375, 26692.869140625, 26713.029296875, 26140.029296875, 26430.890625, 26424.8203125, 26702.859375, 26008.859375, 25955.33984375, 26169.380859375, 26477.810546875]}};
+
+            // 当前显示的时间范围
+            var currentRange = '24h';
+
+            // 更新图表函数
+            function updateChart(range) {
+                currentRange = range;
+                var data = chartData[range];
+
+                if (!data || data.timestamps.length === 0) {
+                    console.warn('No data for', 'NASDAQ', range);
+                    return;
+                }
+
+                var option = {
+                    title: {
+                        text: 'NASDAQ 价格走势',
+                        textStyle: {
+                            color: '#1f2937',
+                            fontSize: 18,
+                            fontWeight: 700
+                        },
+                        left: '20px'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        textStyle: {
+                            color: '#1f2937'
+                        },
+                        formatter: function(params) {
+                            var param = params[0];
+                            return param.name + '<br/>' +
+                                   '<span style="color:#667eea;">●</span> ' +
+                                   '<b>$' + param.value.toFixed(2) + '</b>';
+                        },
+                        shadowColor: 'rgba(0, 0, 0, 0.1)',
+                        shadowBlur: 10
+                    },
+                    grid: {
+                        left: '50px',
+                        right: '50px',
+                        top: '60px',
+                        bottom: '50px',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.timestamps,
+                        axisLine: {
+                            lineStyle: { color: '#e5e7eb' }
+                        },
+                        axisLabel: {
+                            color: '#6b7280',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            rotate: range === '1y' || range === '30d' ? 45 : 0
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLine: {
+                            lineStyle: { color: '#e5e7eb' }
+                        },
+                        splitLine: {
+                            lineStyle: { color: '#f3f4f6', type: 'solid' }
+                        },
+                        axisLabel: {
+                            color: '#6b7280',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            formatter: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        }
+                    },
+                    series: [{
+                        name: 'NASDAQ',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: range === '24h' ? 7 : 5,
+                        lineStyle: {
+                            color: '#667eea',
+                            width: 3
+                        },
+                        itemStyle: {
+                            color: '#667eea',
+                            borderColor: '#ffffff',
+                            borderWidth: 3
+                        },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(102, 126, 234, 0.25)' },
+                                    { offset: 1, color: 'rgba(102, 126, 234, 0.02)' }
+                                ]
+                            }
+                        },
+                        data: data.prices
+                    }]
+                };
+                myChart.setOption(option);
+            }
+
+            // 初始化显示24小时数据
+            updateChart('24h');
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+
+            // 将更新函数存储到全局，供时间范围切换按钮调用
+            window.updateChart_NASDAQ = updateChart;
+        })();
+        
+
+        (function() {
+            var chartDom = document.getElementById('chart-HSI');
+            if (!chartDom) return;
+
+            var myChart = echarts.init(chartDom);
+
+            // 所有时间范围的数据
+            var chartData = {"24h": {"timestamps": ["09:30", "10:30", "11:30", "12:30", "13:30", "14:30", "15:30"], "prices": [23170.23046875, 23136.650390625, 23180.400390625, 23031.080078125, 23057.419921875, 23021.33984375, 23041.3203125]}, "7d": {"timestamps": ["10-21 09:30", "10-21 10:30", "10-21 11:30", "10-21 12:30", "10-21 13:30", "10-21 14:30", "10-21 15:30", "10-22 09:30", "10-22 10:30", "10-22 11:30", "10-22 12:30", "10-22 13:30", "10-22 14:30", "10-22 15:30", "10-23 09:30", "10-23 10:30", "10-23 11:30", "10-23 12:30", "10-23 13:30", "10-23 14:30", "10-23 15:30", "10-26 09:30", "10-26 10:30", "10-26 11:30", "10-26 12:30", "10-26 13:30", "10-26 14:30", "10-26 15:30", "10-27 09:30", "10-27 10:30", "10-27 11:30", "10-27 12:30", "10-27 13:30", "10-27 14:30", "10-27 15:30"], "prices": [23844.189453125, 23819.2890625, 23784.26953125, 23773.359375, 23701.8203125, 23668.810546875, 23651.869140625, 23063.880859375, 23022.94921875, 22971.9296875, 22924.9609375, 22913.830078125, 22938.830078125, 22934.6796875, 22921.529296875, 23057.1796875, 23066.7890625, 23104.25, 23183.6796875, 23110.880859375, 23093.369140625, 23070.48046875, 23193.76953125, 23193.939453125, 23247.0390625, 23203.26953125, 23205.240234375, 23211.810546875, 23170.23046875, 23136.650390625, 23180.400390625, 23031.080078125, 23057.419921875, 23021.33984375, 23041.3203125]}, "30d": {"timestamps": ["09-28", "09-29", "09-30", "10-02", "10-05", "10-06", "10-07", "10-08", "10-09", "10-12", "10-13", "10-14", "10-15", "10-16", "10-20", "10-21", "10-22", "10-23", "10-26"], "prices": [24642.509765625, 24523.5703125, 24613.26953125, 23972.2890625, 24040.33984375, 24280.560546875, 24130.5, 23785.7890625, 24211.349609375, 24271.19921875, 24345.220703125, 24314.169921875, 24062.720703125, 24186.830078125, 23867.740234375, 23651.869140625, 22934.6796875, 23093.369140625, 23211.810546875]}, "1y": {"timestamps": ["2025-10-27", "2025-10-28", "2025-10-30", "2025-10-31", "2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07", "2025-11-10", "2025-11-11", "2025-11-12", "2025-11-13", "2025-11-14", "2025-11-17", "2025-11-18", "2025-11-19", "2025-11-20", "2025-11-21", "2025-11-24", "2025-11-25", "2025-11-26", "2025-11-27", "2025-11-28", "2025-12-01", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11", "2025-12-12", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16", "2026-01-19", "2026-01-20", "2026-01-21", "2026-01-22", "2026-01-23", "2026-01-26", "2026-01-27", "2026-01-28", "2026-01-29", "2026-01-30", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05", "2026-02-06", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-16", "2026-02-20", "2026-02-23", "2026-02-24", "2026-02-25", "2026-02-26", "2026-02-27", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-04", "2026-05-05", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26"], "prices": [26433.69921875, 26346.140625, 26282.689453125, 25906.650390625, 26158.359375, 25952.400390625, 25935.41015625, 26485.900390625, 26241.830078125, 26649.060546875, 26696.41015625, 26922.73046875, 27073.029296875, 26572.4609375, 26384.279296875, 25930.029296875, 25830.650390625, 25835.5703125, 25220.01953125, 25716.5, 25894.55078125, 25928.080078125, 25945.9296875, 25858.890625, 26033.259765625, 26095.05078125, 25760.73046875, 25935.900390625, 26085.080078125, 25765.359375, 25434.23046875, 25540.779296875, 25530.509765625, 25976.7890625, 25628.880859375, 25235.41015625, 25468.779296875, 25498.130859375, 25690.529296875, 25801.76953125, 25774.140625, 25818.9296875, 25635.23046875, 25854.599609375, 25630.5390625, 26338.470703125, 26347.240234375, 26710.44921875, 26458.94921875, 26149.310546875, 26231.7890625, 26608.48046875, 26848.470703125, 26999.810546875, 26923.619140625, 26844.9609375, 26563.900390625, 26487.509765625, 26585.060546875, 26629.9609375, 26749.509765625, 26765.51953125, 27126.94921875, 27826.91015625, 27968.08984375, 27387.109375, 26775.5703125, 26834.76953125, 26847.3203125, 26885.240234375, 26559.94921875, 27027.16015625, 27183.150390625, 27266.380859375, 27032.5390625, 26567.119140625, 26705.939453125, 26413.349609375, 27081.91015625, 26590.3203125, 26765.720703125, 26381.01953125, 26630.5390625, 26059.849609375, 25768.080078125, 25249.48046875, 25321.33984375, 25757.2890625, 25408.4609375, 25959.900390625, 25898.759765625, 25716.759765625, 25465.599609375, 25834.01953125, 25868.5390625, 26025.419921875, 25500.580078125, 25277.3203125, 24382.470703125, 25063.7109375, 25335.94921875, 24856.4296875, 24951.880859375, 24750.7890625, 24788.140625, 25294.029296875, 25116.529296875, 25893.01953125, 25752.400390625, 25893.5390625, 25660.849609375, 25872.3203125, 25947.3203125, 26394.259765625, 26160.330078125, 26361.0703125, 26487.48046875, 26163.240234375, 25915.19921875, 25978.0703125, 25925.650390625, 25679.779296875, 26111.83984375, 25776.529296875, 26095.880859375, 25898.609375, 26213.779296875, 26626.279296875, 26393.7109375, 26406.83984375, 26347.91015625, 26388.439453125, 26389.0390625, 25962.73046875, 25675.1796875, 25797.849609375, 25651.119140625, 25386.51953125, 25606.029296875, 25599.44921875, 25328.23046875, 25006.16015625, 25182.390625, 25398.1796875, 26038.3203125, 25633.2109375, 25253.400390625, 24961.94921875, 24657.060546875, 24565.900390625, 24407.9609375, 24249.2890625, 24718.099609375, 24842.669921875, 24493.94921875, 24312.16015625, 23924.810546875, 23768.51953125, 23336.279296875, 23412.1796875, 23076.91015625, 22671.859375, 23026.6796875, 22881.01953125, 23055.029296875, 23350.029296875, 23616.3203125, 23496.890625, 24199.4609375, 24030.1796875, 24175.119140625, 24213.720703125, 24340.73046875, 24681.099609375, 25008.599609375, 24562.240234375, 25143.05078125, 25132.2890625, 24892.66015625, 25210.810546875, 24963.23046875, 25207.1796875, 25310.849609375, 25807.919921875, 25858.880859375, 25884.4296875, 26009.400390625, 25852.919921875, 25915.8203125, 25530.279296875, 25668.029296875, 25937.490234375, 25652.8203125, 25440.169921875, 25396.509765625, 25116.849609375, 25453.23046875, 25471.150390625, 25495.0703125, 25698.490234375, 26009.4609375, 25517.330078125, 25511.099609375, 25652.970703125, 25565.740234375, 25584.7890625, 25566.990234375, 25329.73046875, 25311.2109375, 25213.310546875, 25650.869140625, 25413.119140625, 25317.1796875, 25274.9609375, 24954.470703125, 24805.630859375, 24917.599609375, 24667.240234375, 24713.779296875, 24604.2890625, 24750.779296875, 25042.7109375, 25087.75, 24834.119140625, 24761.130859375, 24510.08984375, 24642.509765625, 24523.5703125, 24613.26953125, 23972.2890625, 24040.33984375, 24280.560546875, 24130.5, 23785.7890625, 24211.349609375, 24271.19921875, 24345.220703125, 24314.169921875, 24062.720703125, 24186.830078125, 23867.740234375, 23651.869140625, 22934.6796875, 23093.369140625, 23211.810546875]}};
+
+            // 当前显示的时间范围
+            var currentRange = '24h';
+
+            // 更新图表函数
+            function updateChart(range) {
+                currentRange = range;
+                var data = chartData[range];
+
+                if (!data || data.timestamps.length === 0) {
+                    console.warn('No data for', 'HSI', range);
+                    return;
+                }
+
+                var option = {
+                    title: {
+                        text: 'HSI 价格走势',
+                        textStyle: {
+                            color: '#1f2937',
+                            fontSize: 18,
+                            fontWeight: 700
+                        },
+                        left: '20px'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        textStyle: {
+                            color: '#1f2937'
+                        },
+                        formatter: function(params) {
+                            var param = params[0];
+                            return param.name + '<br/>' +
+                                   '<span style="color:#667eea;">●</span> ' +
+                                   '<b>$' + param.value.toFixed(2) + '</b>';
+                        },
+                        shadowColor: 'rgba(0, 0, 0, 0.1)',
+                        shadowBlur: 10
+                    },
+                    grid: {
+                        left: '50px',
+                        right: '50px',
+                        top: '60px',
+                        bottom: '50px',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.timestamps,
+                        axisLine: {
+                            lineStyle: { color: '#e5e7eb' }
+                        },
+                        axisLabel: {
+                            color: '#6b7280',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            rotate: range === '1y' || range === '30d' ? 45 : 0
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLine: {
+                            lineStyle: { color: '#e5e7eb' }
+                        },
+                        splitLine: {
+                            lineStyle: { color: '#f3f4f6', type: 'solid' }
+                        },
+                        axisLabel: {
+                            color: '#6b7280',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            formatter: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        }
+                    },
+                    series: [{
+                        name: 'HSI',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: range === '24h' ? 7 : 5,
+                        lineStyle: {
+                            color: '#667eea',
+                            width: 3
+                        },
+                        itemStyle: {
+                            color: '#667eea',
+                            borderColor: '#ffffff',
+                            borderWidth: 3
+                        },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(102, 126, 234, 0.25)' },
+                                    { offset: 1, color: 'rgba(102, 126, 234, 0.02)' }
+                                ]
+                            }
+                        },
+                        data: data.prices
+                    }]
+                };
+                myChart.setOption(option);
+            }
+
+            // 初始化显示24小时数据
+            updateChart('24h');
+
+            // 响应式
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+
+            // 将更新函数存储到全局，供时间范围切换按钮调用
+            window.updateChart_HSI = updateChart;
+        })();
+        
+
+    // 时间范围切换
+    document.addEventListener('DOMContentLoaded', function() {
+        var tabs = document.querySelectorAll('.time-range-tab');
+
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // 更新选中状态
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // 获取选中的时间范围
+                var range = this.dataset.range;
+
+                // 更新所有图表
+                Object.keys(window).forEach(function(key) {
+                    if (key.startsWith('updateChart_')) {
+                        window[key](range);
+                    }
+                });
+            });
+        });
+    });
+    
+        </script>
+    </body>
+    </html>
+    
